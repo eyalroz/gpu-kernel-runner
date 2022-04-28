@@ -117,6 +117,7 @@ load_preinclude_files(const include_paths_t& preincludes, const include_paths_t&
                 }
             }
             spdlog::error("Could not locate preinclude \"{}\"", preinclude_file_path_suffix);
+			throw std::invalid_argument("Preinclude loading failed due to missing preinclude"); 
         });
     return loaded_preincludes;
 }

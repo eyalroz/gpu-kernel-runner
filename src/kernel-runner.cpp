@@ -143,7 +143,7 @@ cxxopts::Options create_command_line_options_for_kernel(const char* program_name
 
     // This splits up the buffers into sections in the options display, each with a "section title"
 
-    constexpr const auto all_directions = { parameter_direction_t::input, parameter_direction_t::output, parameter_direction_t::inout};
+    static constexpr const auto all_directions = { parameter_direction_t::input, parameter_direction_t::output, parameter_direction_t::inout};
     for(parameter_direction_t dir : all_directions) {
         auto adder = options.add_options(ka.key() + std::string(" (") + parameter_direction_name(dir) + " buffers)");
         kernel_adapter::buffer_details_type dir_buffers =

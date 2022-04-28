@@ -34,8 +34,8 @@ union launch_configuration_type {
 
     ~launch_configuration_type() { }
 
-    launch_configuration_type& operator=(const raw_opencl_launch_config& other) { opencl = other; }
-    launch_configuration_type& operator=(const cuda::launch_configuration_t& other) { cuda = other; }
+    launch_configuration_type& operator=(const raw_opencl_launch_config& other) { opencl = other; return *this; }
+    launch_configuration_type& operator=(const cuda::launch_configuration_t& other) { cuda = other; return *this; }
 
 
 };

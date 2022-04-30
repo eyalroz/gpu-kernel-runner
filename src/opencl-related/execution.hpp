@@ -42,7 +42,7 @@ void launch_time_and_sync_opencl_kernel(execution_context_t& context, run_index_
 
     const std::vector<cl::Event>* no_events_to_wait_on { nullptr };
     auto kernel_execution_event_ptr =
-        context.parsed_inspecific_options.time_with_events ? &kernel_execution : nullptr;
+    context.options.time_with_events ? &kernel_execution : nullptr;
 
     try {
         context.opencl.queue.enqueueNDRangeKernel(
@@ -59,7 +59,7 @@ void launch_time_and_sync_opencl_kernel(execution_context_t& context, run_index_
 
     spdlog::debug("Launched run {} of kernel '{}'", run_index+1, context.kernel_adapter_->kernel_function_name());
 
-    if (context.parsed_inspecific_options.time_with_events) {
+    if (context.options.time_with_events) {
         kernel_execution.wait();
         auto time_elapsed = opencl_command_execution_time(kernel_execution);
         spdlog::info("Event-measured time of run {} of kernel {}: {} nsec",

@@ -54,8 +54,9 @@ class kernel_adapter;
 
 // Essentially, a manually-managed closure and some other dynamically-generated data
 struct execution_context_t {
-    kernel_inspecific_cmdline_options_t parsed_inspecific_options;
+    kernel_inspecific_cmdline_options_t options;
     std::unique_ptr<kernel_adapter> kernel_adapter_;
+      // The adapter also holds the parsed kernel-specific command-line options
     struct {
         struct {
             host_buffers_map inputs, outputs; // , expected;
@@ -68,12 +69,12 @@ struct execution_context_t {
         struct {
             string_map inputs, outputs; // , expected;
         } filenames;
-    }               buffers;
+    } buffers;
         // Note: in-out buffers will appear both in the input and the output buffer maps;
         // The input copy will not be used by the kernel directly; rather, before a run,
         // it will first be copied to the output, and the "output" buffer will be used
         // instead.
-    device_id_t     device_id;
+    device_id_t device_id;
     execution_ecosystem_t ecosystem;
     struct {
         int             driver_device_id;
@@ -92,16 +93,12 @@ struct execution_context_t {
         std::vector<std::size_t> finalized_argument_sizes;
             // TODO: Consider moving these out of the OpenCL-specific structure
     } opencl;
-    std::string     compiled_ptx; // PTX or whatever OpenCL become.
+    std::string compiled_ptx; // PTX or whatever OpenCL becomes.
     struct {
         string_map raw; // the strings passed on the command-line for the arguments
         scalar_arguments_map typed; // the parsed values for each scalar, after type-erasure
     } scalar_input_arguments;
-    // We use this next field since we get some preprocessor definitions through
-    // specific command-line options
-    preprocessor_value_definitions_t  option_specified_preprocessor_definitions;
-    std::vector<std::string>
-                    parameter_names; // for determining how to pass the arguments
+    std::vector<std::string> parameter_names; // for determining how to pass the arguments
     struct {
         preprocessor_definitions_t valueless;
         preprocessor_value_definitions_t valued;

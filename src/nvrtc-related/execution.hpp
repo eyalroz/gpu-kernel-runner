@@ -11,8 +11,8 @@ void launch_time_and_sync_cuda_kernel(execution_context_t& context, run_index_t 
     void** alternative_format_arguments { nullptr };
     const auto& lc = context.kernel_launch_configuration.cuda;
     spdlog::info("Launching kernel {} (function name \"{}\")",
-        context.parsed_inspecific_options.kernel.key,
-        context.parsed_inspecific_options.kernel.function_name);
+        context.options.kernel.key,
+        context.options.kernel.function_name);
 
     CUstream stream_handle;
     cuda_api_call(cuStreamCreate, &stream_handle, CU_STREAM_NON_BLOCKING);
@@ -21,7 +21,7 @@ void launch_time_and_sync_cuda_kernel(execution_context_t& context, run_index_t 
     struct {
         CUevent before, after;
     } events;
-    if (context.parsed_inspecific_options.time_with_events) {
+    if (context.options.time_with_events) {
         spdlog::debug("Creating events & recording \"before\" event.");
         cuda_api_call(cuEventCreate, &events.before, CU_EVENT_BLOCKING_SYNC);
         cuda_api_call(cuEventCreate, &events.after, CU_EVENT_BLOCKING_SYNC);
@@ -40,13 +40,13 @@ void launch_time_and_sync_cuda_kernel(execution_context_t& context, run_index_t 
         alternative_format_arguments
 
     );
-    if (context.parsed_inspecific_options.time_with_events) {
+    if (context.options.time_with_events) {
         cuda_api_call(cuEventRecord, events.after, stream_handle);
     }
     cuda_api_call(cuStreamSynchronize, cuda::stream::default_stream_handle);
     cuda_api_call(cuCtxSynchronize);
 
-    if (context.parsed_inspecific_options.time_with_events) {
+    if (context.options.time_with_events) {
         float milliseconds_elapsed;
         cuda_api_call(cuEventElapsedTime, &milliseconds_elapsed, events.before, events.after);
         spdlog::info("Event-measured time of run {} of kernel {}: {:.0f} nsec",

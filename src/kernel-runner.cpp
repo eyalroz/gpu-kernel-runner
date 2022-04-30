@@ -1198,6 +1198,8 @@ int main(int argc, char** argv)
     build_kernel(context);
     maybe_write_intermediate_representation(context);
 
+    if (context.options.compile_only) { return EXIT_SUCCESS; }
+
     read_buffers_from_files(context);
     // TODO: Consider verifying before reading the buffers, but obtaining the sizes
     // for the verification

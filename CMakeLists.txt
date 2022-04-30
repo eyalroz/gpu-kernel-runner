@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.19)
 project(gpu-kernel-runner
 	DESCRIPTION "Dynamically-compiled GPU kernel runner"
 	VERSION 0.1.0
-#	HOMEPAGE_URL "https://some.where/gpu-kernel-runner"
+	HOMEPAGE_URL "https://github.com/eyalroz/gpu-kernel-runner"
 	LANGUAGES CXX CUDA)
 
 ###############
@@ -13,6 +13,8 @@ project(gpu-kernel-runner
 # (none)
 # Custom modules
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
+
+include(CompileWithWarnings)
 
 ############################
 ##  Package dependencies  ##
@@ -102,6 +104,7 @@ foreach(TARGET ${compiled-targets})
 		src
 		src/cuda-samples-helpers
 	)
+	target_warning_options(${TARGET})
 endforeach(TARGET)
 
 target_link_libraries(

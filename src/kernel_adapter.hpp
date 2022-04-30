@@ -226,7 +226,7 @@ public:
     }
 
     optional_launch_config_components make_launch_config(const execution_context_t& context) const {
-        auto& forced = context.parsed_inspecific_options.forced_launch_config_components;
+        auto& forced = context.options.forced_launch_config_components;
         if (forced.is_sufficient()) {
             return forced;
         }

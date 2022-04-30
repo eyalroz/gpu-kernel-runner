@@ -14,6 +14,7 @@
 #include <string>
 #include <cstdlib>
 
+// These options are common, and relevant, to any and all kernel adapters
 struct kernel_inspecific_cmdline_options_t {
     struct {
         std::string key;
@@ -29,6 +30,13 @@ struct kernel_inspecific_cmdline_options_t {
     } buffer_base_paths;
     filesystem::path kernel_sources_base_path;
     preprocessor_definitions_t preprocessor_definitions;
+
+    /**
+     * Preprocessor definitions specified on the command-line using the
+     * defined term as the command-line option, e.g. "--FOO=bar" rather than
+     * "-D FOO=bar".
+     */
+    preprocessor_value_definitions_t preprocessor_value_definitions;
     include_paths_t include_dir_paths;
     include_paths_t preinclude_files;
     bool zero_output_buffers;

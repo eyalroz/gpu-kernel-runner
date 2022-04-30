@@ -113,9 +113,9 @@ void ensure_necessary_terms_were_defined(
     const auto& ka = *context.kernel_adapter_;
 
     parameter_name_set terms_defined_by_define_options =
-        get_defined_terms(context.parsed_inspecific_options.preprocessor_definitions);
+        get_defined_terms(context.options.preprocessor_definitions);
     parameter_name_set terms_defined_by_specific_options =
-        util::keys(context.option_specified_preprocessor_definitions);
+        util::keys(context.options.preprocessor_value_definitions);
     auto all_defined_terms = util::union_(terms_defined_by_define_options, terms_defined_by_specific_options);
     auto terms_required_to_be_defined = ka.cmdline_required_preprocessor_definition_terms();
     auto required_but_undefined = util::difference(terms_required_to_be_defined, all_defined_terms);
@@ -160,9 +160,9 @@ cxxopts::Options create_command_line_options_for_kernel(const char* program_name
 void collect_include_paths(execution_context_t& context)
 {
     // Note the relative order in which we place the includes; it is non-trivial.
-    context.finalized_include_dir_paths = context.parsed_inspecific_options.include_dir_paths;
+    context.finalized_include_dir_paths = context.options.include_dir_paths;
 
-    auto source_file_include_dir = context.parsed_inspecific_options.kernel.source_file.parent_path();
+    auto source_file_include_dir = context.options.kernel.source_file.parent_path();
     if (source_file_include_dir.empty()) {
         // We can't rely on the dynamic compilation libraries accepting empty paths.
         // ... and note that "." is guaranteed to be portable to any platform
@@ -186,9 +186,9 @@ void collect_include_paths(execution_context_t& context)
 void finalize_preprocessor_definitions(execution_context_t& context)
 {
     spdlog::debug("Finalizing preprocessor definitions.");
-    context.finalized_preprocessor_definitions.valued = context.option_specified_preprocessor_definitions;
+    context.finalized_preprocessor_definitions.valued = context.options.preprocessor_value_definitions;
 
-    for (const auto& definition : context.parsed_inspecific_options.preprocessor_definitions) {
+    for (const auto& definition : context.options.preprocessor_definitions) {
         auto equals_pos = definition.find('=');
         switch(equals_pos) {
         case std::string::npos:
@@ -251,7 +251,7 @@ void parse_command_line_for_kernel(int argc, char** argv, execution_context_t& c
         }
         spdlog::trace("Filename for input buffer {}: {}", buffer_name, context.buffers.filenames.inputs[buffer_name]);
     }
-    if (context.parsed_inspecific_options.write_output_buffers_to_files) {
+    if (context.options.write_output_buffers_to_files) {
         for(const auto& buffer_name : ka.buffer_names(parameter_direction_t::output)  ) {
             if (contains(parse_result, buffer_name)) {
                 context.buffers.filenames.outputs[buffer_name] = parse_result[buffer_name].as<std::string>();
@@ -296,7 +296,7 @@ void parse_command_line_for_kernel(int argc, char** argv, execution_context_t& c
         // TODO: Consider not parsing anything at this stage, and just marshaling all the scalar arguments together.
         // context.scalar_input_arguments.raw[arg_name] = parse_result[arg_name].as<std::string>();
         const auto& arg_value = parse_result[arg_name].as<std::string>();
-        context.option_specified_preprocessor_definitions[arg_name] = arg_value;
+        context.options.preprocessor_value_definitions[arg_name] = arg_value;
         spdlog::trace("Got preprocessor argument {}={} through specific option", arg_name, arg_value);
     }
 
@@ -665,7 +665,7 @@ void write_buffers_to_files(execution_context_t& context)
         const auto& buffer_name = pair.first;
         const auto& buffer = pair.second;
         auto write_destination = maybe_prepend_base_dir(
-               context.parsed_inspecific_options.buffer_base_paths.output,
+               context.options.buffer_base_paths.output,
                context.buffers.filenames.outputs[buffer_name]);
         write_buffer_to_file(buffer_name, buffer, write_destination);
     }
@@ -706,7 +706,7 @@ execution_context_t initialize_execution_context(kernel_inspecific_cmdline_optio
     spdlog::debug("Initializing kernel execution context");
 
     execution_context_t execution_context {};
-    execution_context.parsed_inspecific_options = parsed_options;
+    execution_context.options = parsed_options;
     execution_context.ecosystem = parsed_options.gpu_ecosystem;
 
     if (parsed_options.gpu_ecosystem == execution_ecosystem_t::cuda) {
@@ -985,12 +985,12 @@ void read_buffers_from_files(execution_context_t& context)
         read_buffers_from_files(
             buffer_names_to_read_from_files,
             context.buffers.filenames.inputs,
-            context.parsed_inspecific_options.buffer_base_paths.input);
+            context.options.buffer_base_paths.input);
 }
 
 void finalize_kernel_function_name(execution_context_t& context)
 {
-    auto& kinfo = context.parsed_inspecific_options.kernel;
+    auto& kinfo = context.options.kernel;
     if (kinfo.function_name.empty()) {
         kinfo.function_name = context.kernel_adapter_->kernel_function_name();
         if (not util::is_valid_identifier(kinfo.function_name)) {
@@ -999,19 +999,19 @@ void finalize_kernel_function_name(execution_context_t& context)
         }
     }
 
-    if (context.parsed_inspecific_options.write_ptx_to_file and
-        context.parsed_inspecific_options.ptx_output_file.empty())
+    if (context.options.write_ptx_to_file and
+        context.options.ptx_output_file.empty())
     {
-        context.parsed_inspecific_options.ptx_output_file =
-            context.parsed_inspecific_options.kernel.function_name + '.' +
-            ptx_file_extension(context.parsed_inspecific_options.gpu_ecosystem);
+        context.options.ptx_output_file =
+        context.options.kernel.function_name + '.' +
+        ptx_file_extension(context.options.gpu_ecosystem);
     }
 }
 
 void build_kernel(execution_context_t& context)
 {
     finalize_kernel_function_name(context);
-    const auto& source_file = context.parsed_inspecific_options.kernel.source_file;
+    const auto& source_file = context.options.kernel.source_file;
     spdlog::debug("Reading the kernel from {}", source_file.native());
     auto kernel_source_buffer = read_file_as_null_terminated_string(source_file);
     auto kernel_source = static_cast<const char*>(kernel_source_buffer.data());
@@ -1021,12 +1021,12 @@ void build_kernel(execution_context_t& context)
             cuda::device::get(context.cuda.driver_device_id),
             source_file.c_str(),
             kernel_source,
-            context.parsed_inspecific_options.kernel.function_name.c_str(),
-            context.parsed_inspecific_options.compile_in_debug_mode,
-            context.parsed_inspecific_options.generate_line_info,
-            context.parsed_inspecific_options.language_standard,
+            context.options.kernel.function_name.c_str(),
+            context.options.compile_in_debug_mode,
+            context.options.generate_line_info,
+            context.options.language_standard,
             context.finalized_include_dir_paths,
-            context.parsed_inspecific_options.preinclude_files,
+            context.options.preinclude_files,
             context.finalized_preprocessor_definitions.valueless,
             context.finalized_preprocessor_definitions.valued);
     }
@@ -1035,18 +1035,18 @@ void build_kernel(execution_context_t& context)
             context.opencl.context,
             context.opencl.device,
             context.device_id,
-            context.parsed_inspecific_options.kernel.function_name.c_str(),
+            context.options.kernel.function_name.c_str(),
             kernel_source,
-            context.parsed_inspecific_options.compile_in_debug_mode,
-            context.parsed_inspecific_options.generate_line_info,
-            context.parsed_inspecific_options.write_ptx_to_file,
+            context.options.compile_in_debug_mode,
+            context.options.generate_line_info,
+            context.options.write_ptx_to_file,
             context.finalized_include_dir_paths,
-            context.parsed_inspecific_options.preinclude_files,
+            context.options.preinclude_files,
             context.finalized_preprocessor_definitions.valueless,
             context.finalized_preprocessor_definitions.valued);
     }
 
-    spdlog::info("Kernel {} built successfully.", context.parsed_inspecific_options.kernel.key);
+    spdlog::info("Kernel {} built successfully.", context.options.kernel.key);
 }
 
 // Note: We could actually do some verification
@@ -1127,8 +1127,8 @@ void reset_working_copy_of_inout_buffers(execution_context_t& context)
 
 void perform_single_run(execution_context_t& context, run_index_t run_index)
 {
-    spdlog::info("Preparing for kernel run {} of {} (1-based).", run_index+1, context.parsed_inspecific_options.num_runs);
-    if (context.parsed_inspecific_options.zero_output_buffers) {
+    spdlog::info("Preparing for kernel run {} of {} (1-based).", run_index+1, context.options.num_runs);
+    if (context.options.zero_output_buffers) {
         zero_output_buffers(context);
     }
     reset_working_copy_of_inout_buffers(context);
@@ -1172,10 +1172,10 @@ void configure_launch(execution_context_t& context)
 
 void maybe_write_intermediate_representation(execution_context_t& context)
 {
-    if (not context.parsed_inspecific_options.write_ptx_to_file) { return; }
-    const auto& destination = context.parsed_inspecific_options.ptx_output_file;
+    if (not context.options.write_ptx_to_file) { return; }
+    const auto& destination = context.options.ptx_output_file;
     spdlog::debug("Writing generated intermediate representation for kernel '{}' to file {}",
-        context.parsed_inspecific_options.kernel.key, destination.c_str());
+                  context.options.kernel.key, destination.c_str());
     auto file = std::fstream(destination, std::ios::out);
     file.write(context.compiled_ptx.data(), context.compiled_ptx.length());
     if (file.fail()) {
@@ -1211,10 +1211,10 @@ int main(int argc, char** argv)
     finalize_kernel_arguments(context);
     configure_launch(context);
 
-    for(run_index_t ri = 0; ri < context.parsed_inspecific_options.num_runs; ri++) {
+    for(run_index_t ri = 0; ri < context.options.num_runs; ri++) {
         perform_single_run(context, ri);
     }
-    if (context.parsed_inspecific_options.write_output_buffers_to_files) {
+    if (context.options.write_output_buffers_to_files) {
         copy_outputs_from_device(context);
         write_buffers_to_files(context);
     }

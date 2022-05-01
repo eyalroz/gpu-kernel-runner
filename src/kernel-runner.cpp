@@ -1190,16 +1190,10 @@ void configure_launch(execution_context_t& context)
 void maybe_write_intermediate_representation(execution_context_t& context)
 {
     if (not context.options.write_ptx_to_file) { return; }
-    const auto& destination = context.options.ptx_output_file;
-    spdlog::debug("Writing generated intermediate representation for kernel '{}' to file {}",
-                  context.options.kernel.key, destination.c_str());
-    auto file = std::fstream(destination, std::ios::out);
-    file.write(context.compiled_ptx.data(), context.compiled_ptx.length());
-    if (file.fail()) {
-        throw std::system_error(errno, std::generic_category(),
-            "trying to write compiled kernel PTX to file " + destination.native());
-    }
-    file.close();
+    write_data_to_file(
+        "generated PTX for kernel", context.options.kernel.key,
+        poor_mans_span{ const_cast<byte_type *>(context.compiled_ptx.data()), context.compiled_ptx.length() },
+        context.options.ptx_output_file, spdlog::level::info);
 }
 
 int main(int argc, char** argv)

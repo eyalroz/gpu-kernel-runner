@@ -41,6 +41,7 @@ struct kernel_inspecific_cmdline_options_t {
     include_paths_t preinclude_files;
     bool zero_output_buffers;
     bool write_output_buffers_to_files;
+    bool overwrite_allowed;
     bool write_ptx_to_file;
     bool generate_line_info;
     bool compile_only;

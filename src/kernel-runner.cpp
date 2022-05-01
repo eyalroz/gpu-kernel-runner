@@ -88,7 +88,8 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
         ("g,grid-dimensions", "Set grid dimensions in blocks; a comma-separated list", cxxopts::value<std::vector<unsigned>>() )
         ("o,overall-grid-dimensions", "Set grid dimensions in threads (OpenCL: global work size); a comma-separated list", cxxopts::value<std::vector<unsigned>>() )
         ("S,dynamic-shared-memory-size", "Force specific amount of dynamic shared memory", cxxopts::value<unsigned>() )
-        ("W,ptx-output-file", "File to which to write the kernel's intermediate representation", cxxopts::value<string>())
+        ("ptx-output-file", "File to which to write the kernel's intermediate representation", cxxopts::value<string>())
+        ("W,overwrite-allowed", "Overwrite the files for buffer and/or PTX output if they already exists", cxxopts::value<string>()->default_value("false"))
         ("i,include", "Include a specific file into the kernels' translation unit", cxxopts::value<std::vector<string>>())
         ("I,include-path", "Add a directory to the search paths for header files included by the kernel (can be used repeatedly)", cxxopts::value<std::vector<string>>())
         ("s,kernel-source", "Path to CUDA source file with the kernel function to compile; may be absolute or relative to the sources dir", cxxopts::value<string>())
@@ -253,15 +254,26 @@ void parse_command_line_for_kernel(int argc, char** argv, execution_context_t& c
     }
     if (context.options.write_output_buffers_to_files) {
         for(const auto& buffer_name : ka.buffer_names(parameter_direction_t::output)  ) {
-            if (contains(parse_result, buffer_name)) {
-                context.buffers.filenames.outputs[buffer_name] = parse_result[buffer_name].as<std::string>();
+            auto output_filename = [&]() {
+                if (contains(parse_result, buffer_name)) {
+                    return parse_result[buffer_name].as<std::string>();
+                } else {
+                    // TODO: Is this a reasonable convention for the output filename?
+                    spdlog::debug("Filename for output buffer {0} not specified; defaulting to: \"{0}.out\".", buffer_name);
+                    return buffer_name + ".out";
+                }
+            }();
+            if (filesystem::exists(output_filename)) {
+                if (not context.options.overwrite_allowed) {
+                    throw std::invalid_argument("Writing the contents of output buffer "
+                        + buffer_name + " would overwrite an existing file: " + output_filename);
+                }
+                spdlog::info("Output buffer {} will overwrite {}", buffer_name, output_filename);
             }
-            else {
-                // TODO: Is this a reasonable convention for the output filename?
-                context.buffers.filenames.outputs[buffer_name] = buffer_name + ".out";
-                spdlog::debug("Filename for output buffer {0} not specified; defaulting to: \"{0}.out\".", buffer_name);
-            }
-            spdlog::trace("Filename for output buffer {}: {}", buffer_name, context.buffers.filenames.outputs[buffer_name]);
+            // Note that if the output file gets created while the kernel runs, we might miss this fact
+            // when trying to write to it.
+            spdlog::trace("Filename for output buffer {}: {}", buffer_name, output_filename);
+            context.buffers.filenames.outputs[buffer_name] = output_filename;
         }
         // TODO: Be more careful about inout buffer filenames:
         // 1. Check for overlap between buffer filenames
@@ -546,9 +558,16 @@ kernel_inspecific_cmdline_options_t parse_command_line_initially(int argc, char*
     parsed_options.write_ptx_to_file = contains(parse_result, "write-ptx") and parse_result["write-ptx"].as<bool>();
     parsed_options.generate_line_info = (not contains(parse_result, "generate-line-info")) or parse_result["generate-line-info"].as<bool>();
     if (parsed_options.write_ptx_to_file) {
-        parsed_options.write_ptx_to_file = true;
         if (contains(parse_result, "ptx-output-file")) {
             parsed_options.ptx_output_file = parse_result["ptx-output-file"].as<string>();
+            if (filesystem::exists(parsed_options.ptx_output_file)) {
+                if (not parsed_options.overwrite_allowed) {
+                    throw std::invalid_argument("Specified PTX output file "
+                        + parsed_options.ptx_output_file.native() + " exists, and overwrite is not allowed.");
+                }
+                // Note that there could theoretically be a race condition in which the file gets created
+                // between our checking for its existence and our wanting to write to it after compilation.
+            }
         }
     }
 

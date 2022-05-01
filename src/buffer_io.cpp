@@ -9,7 +9,7 @@ host_buffer_type read_input_file(filesystem::path src, size_t extra_buffer_size)
     file.seekg(0, std::ios::beg);
 
     host_buffer_type result(buffer_size);
-    file.read(result.data(), file_size);
+    file.read(result.data(), (std::streamsize) file_size);
     if (file.fail()) {
         throw std::system_error(errno, std::generic_category());
     }
@@ -18,7 +18,7 @@ host_buffer_type read_input_file(filesystem::path src, size_t extra_buffer_size)
 
 host_buffer_type read_file_as_null_terminated_string(const filesystem::path& source)
 {
-    auto add_one_extra_byte { 1 };
+    size_t add_one_extra_byte { 1 };
     auto buffer = read_input_file(source, add_one_extra_byte);
     buffer.back() = '\0';
     return buffer;
@@ -28,7 +28,7 @@ void write_data_to_file(std::string kind, std::string name, poor_mans_span data,
 {
     spdlog::log(level, "Writing {} '{}' to file {}", kind, name, destination.c_str());
     auto file = std::fstream(destination, std::ios::out | std::ios::binary);
-    file.write(data.data(), data.size());
+    file.write(data.data(), (std::streamsize) data.size());
     if (file.fail()) {
         throw std::system_error(errno, std::generic_category(),
             "trying to write " + kind + "'" + name + "' to file " + destination.native());

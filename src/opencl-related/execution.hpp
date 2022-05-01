@@ -13,7 +13,7 @@ void set_opencl_kernel_arguments(
         throw std::runtime_error("Number of kernel arguments does not match number of kernel argument sizes");
     }
     spdlog::debug("Passing {} arguments to the kernel...", args.pointers.size());
-    for (auto i = 0; i < args.pointers.size(); i++) {
+    for (cl_uint i = 0; i < args.pointers.size(); i++) {
         kernel.setArg(i, args.sizes[i], args.pointers[i]);
     }
     spdlog::debug("All arguments passed.");

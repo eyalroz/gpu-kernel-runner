@@ -163,7 +163,7 @@ std::vector<std::string> marshal_compilation_options(
     }
 
     if (spdlog::level_is_at_least(spdlog::level::debug)) {
-        std::stringstream ss;
+        ss.str("");
         util::implode(compilation_cmdline_args, ss, ' ');
         spdlog::debug("Kernel compilation generated-command-line arguments: \"{}\"", ss.str());
     }
@@ -215,7 +215,7 @@ compilation_result_t compile_kernel_source_to_ptx(
       &nvrtc_program,
       kernel_source_code,
       kernel_source_filename,
-      header_sources.size(),
+      (int) header_sources.size(),
       header_sources.data(),
       header_names.data());
 
@@ -229,7 +229,7 @@ compilation_result_t compile_kernel_source_to_ptx(
       [](const std::string& opt) { return const_cast<char*>(opt.c_str()); }
   );
 
-  auto res = nvrtcCompileProgram(nvrtc_program, raw_ptr_compilation_options.size(), raw_ptr_compilation_options.data());
+  auto res = nvrtcCompileProgram(nvrtc_program, (int) raw_ptr_compilation_options.size(), raw_ptr_compilation_options.data());
 
 //  if (res != NVRTC_SUCCESS) {
 //      spdlog::log(spdlog::level::err, "nvrtcCompileProgram() failed: {}", nvrtcGetErrorString(res));
@@ -286,7 +286,8 @@ auto build_cuda_kernel(
     }
     spdlog::debug("PTX compilation succeeded, PTX length: {} characters.", compilation_result.ptx.length());
     CUmodule module;
-    cuda_api_call(cuModuleLoadDataEx, &module, compilation_result.ptx.c_str(), 0, nullptr, nullptr);
+    constexpr const unsigned no_options { 0  };
+    cuda_api_call(cuModuleLoadDataEx, &module, compilation_result.ptx.c_str(), no_options, nullptr, nullptr);
     spdlog::debug("PTX loaded as a CUDA module.");
     const char* lowered_name;
     CUfunction kernel_function;

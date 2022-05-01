@@ -17,7 +17,7 @@ Container map(const Container& container, F mapper)
 }
 
 // This applies the functional operator "map" to the C++ data structure Map (e.g. std::map or std::unordered_map)
-template<template<class, class> typename Map, typename Key, typename Value , typename F>
+template<template<class, class> class Map, typename Key, typename Value , typename F>
 auto map_values(const Map<Key,Value>& map, const F& value_mapper)
 {
     using mapped_value_type = decltype(value_mapper(std::declval<Value>()));

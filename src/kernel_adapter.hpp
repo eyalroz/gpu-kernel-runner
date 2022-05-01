@@ -160,7 +160,7 @@ public:
     virtual parameter_name_set cmdline_required_scalar_argument_names() const = 0;
     virtual any parse_cmdline_scalar_argument(const std::string& argument_name, const std::string& argument) const = 0;
     virtual parameter_name_set cmdline_required_preprocessor_definition_terms() const { return {}; }
-    virtual scalar_arguments_map generate_additional_scalar_arguments(execution_context_t& context) const { return {}; }
+    virtual scalar_arguments_map generate_additional_scalar_arguments(execution_context_t&) const { return {}; }
 
     // Notes:
     // 1. Sizes are in bytes
@@ -175,8 +175,8 @@ public:
 
     // Try not to require the whole context
 
-    virtual bool extra_validity_checks(const execution_context_t& context) const { return true; }
-    virtual bool input_sizes_are_valid(const execution_context_t& context) const { return true; }
+    virtual bool extra_validity_checks(const execution_context_t&) const { return true; }
+    virtual bool input_sizes_are_valid(const execution_context_t&) const { return true; }
 
 protected:
     /**
@@ -218,7 +218,7 @@ public:
         return argument_ptrs_and_maybe_sizes;
     }
 
-    virtual optional_launch_config_components deduce_launch_config(const execution_context_t& context) const
+    virtual optional_launch_config_components deduce_launch_config(const execution_context_t&) const
     {
         throw std::runtime_error(
             "Unable to deduce launch configuration - please specify all launch configuration components "

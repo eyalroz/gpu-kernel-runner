@@ -44,13 +44,13 @@ void launch_time_and_sync_cuda_kernel(execution_context_t& context, run_index_t 
         cuda_api_call(cuEventRecord, events.after, stream_handle);
     }
     cuda_api_call(cuStreamSynchronize, cuda::stream::default_stream_handle);
-    cuda_api_call(cuCtxSynchronize);
+    cuda_api_call_noargs(cuCtxSynchronize);
 
     if (context.options.time_with_events) {
         float milliseconds_elapsed;
         cuda_api_call(cuEventElapsedTime, &milliseconds_elapsed, events.before, events.after);
         spdlog::info("Event-measured time of run {} of kernel {}: {:.0f} nsec",
-            run_index+1, context.kernel_adapter_->kernel_function_name(), (milliseconds_elapsed * 1000000.0));
+            run_index+1, context.kernel_adapter_->kernel_function_name(), ((double) milliseconds_elapsed * 1000000.0));
     }
     cuda_api_call(cuCtxPopCurrent, nullptr);
 }

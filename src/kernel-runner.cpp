@@ -74,10 +74,10 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
         ("log-flush-threshold", "Set the threshold level at and above which the log is flushed on each message",
             cxxopts::value<string>()->default_value("info"))
         ("w,write-output", "Write output buffers to files", cxxopts::value<bool>()->default_value("true"))
-        ("n,num-runs", "Number of times to run the compiled kernel", cxxopts::value<int>()->default_value("1"))
+        ("n,num-runs", "Number of times to run the compiled kernel", cxxopts::value<unsigned>()->default_value("1"))
         ("opencl", "Use OpenCL", cxxopts::value<bool>())
         ("cuda", "Use CUDA", cxxopts::value<bool>())
-        ("p,platform-id", "Use the OpenCL platform with the specified index", cxxopts::value<int>())
+        ("p,platform-id", "Use the OpenCL platform with the specified index", cxxopts::value<unsigned>())
         ("d,device", "Device index", cxxopts::value<int>()->default_value("0"))
         ("D,define", "Set a preprocessor definition for NVRTC (can be used repeatedly; specify either DEFINITION or DEFINITION=VALUE)", cxxopts::value<std::vector<string>>())
         ("c,compile-only", "Compile the kernel, but don't actually run it", cxxopts::value<bool>()->default_value("false"))
@@ -317,13 +317,13 @@ void parse_command_line_for_kernel(int argc, char** argv, execution_context_t& c
 
 void ensure_gpu_device_validity(
     execution_ecosystem_t ecosystem,
-    optional<int> platform_id,
+    optional<unsigned> platform_id,
     int device_id,
     bool need_ptx)
 {
     std::size_t device_count;
 
-    constexpr const int OpenCLDefaultPlatformID { 0 };
+    constexpr const unsigned OpenCLDefaultPlatformID { 0 };
     switch(ecosystem) {
     case execution_ecosystem_t::opencl : {
         auto actual_platform_id = platform_id.value_or(OpenCLDefaultPlatformID);
@@ -347,12 +347,12 @@ void ensure_gpu_device_validity(
         cl::Context context(CL_DEVICE_TYPE_GPU, properties);
         std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
         if(devices.empty()) die("No OpenCL devices found on the platform {}", actual_platform_id);
-        device_count = devices.size();
+        device_count = (std::size_t) devices.size();
         break;
     }
     case execution_ecosystem_t::cuda:
     default:
-        device_count = cuda::device::count();
+        device_count = (std::size_t) cuda::device::count();
         if(device_count == 0) die("No CUDA devices detected on this system");
         break;
     }
@@ -451,7 +451,7 @@ kernel_inspecific_cmdline_options_t parse_command_line_initially(int argc, char*
     if (contains(parse_result, "platform-id")) {
         if (not use_opencl) die("CUDA does not support multiple per-machine platforms; thus any 'platform-id' value is unacceptable");
             // TODO: We could theoretically just ignore this, or warn later on
-        parsed_options.platform_id = parse_result["platform-id"].as<int>();
+        parsed_options.platform_id = parse_result["platform-id"].as<unsigned>();
     }
     else {
         parsed_options.platform_id = 0;
@@ -549,7 +549,7 @@ kernel_inspecific_cmdline_options_t parse_command_line_initially(int argc, char*
     if (parse_result["num-runs"].as<int>() <= 0) {
         die("Number of runs {} is not a positive integer", parse_result["num-runs"].as<int>());
     }
-    parsed_options.num_runs = parse_result["num-runs"].as<int>();
+    parsed_options.num_runs = parse_result["num-runs"].as<unsigned>();
 
     parsed_options.buffer_base_paths.input = parse_result["input-buffer-dir"].as<string>();
     parsed_options.buffer_base_paths.output = parse_result["output-buffer-dir"].as<string>();
@@ -727,7 +727,7 @@ execution_context_t initialize_execution_context(kernel_inspecific_cmdline_optio
     execution_context.ecosystem = parsed_options.gpu_ecosystem;
 
     if (parsed_options.gpu_ecosystem == execution_ecosystem_t::cuda) {
-        constexpr const auto no_flags { 0 };
+        constexpr const auto no_flags { 0u };
 
         cuda_api_call(cuInit, no_flags);
         cuda_api_call(cuDeviceGet, &execution_context.cuda.driver_device_id, parsed_options.gpu_device_id);
@@ -798,7 +798,6 @@ void copy_buffer_on_device(
     } else { // OpenCL
         size_t size;
         origin.opencl.getInfo(CL_MEM_SIZE, &size);
-        const constexpr auto blocking { CL_TRUE };
         queue->enqueueCopyBuffer(origin.opencl, destination.opencl, 0, 0, size);
     }
 }
@@ -866,7 +865,7 @@ device_buffer_type create_device_side_buffer(
     execution_ecosystem_t ecosystem,
     cuda::device_t cuda_device,
     optional<cl::Context> opencl_context,
-    const host_buffers_map& host_side_buffers)
+    const host_buffers_map&)
 {
     device_buffer_type result;
     if (ecosystem == execution_ecosystem_t::cuda) {
@@ -920,6 +919,7 @@ void zero_output_buffer(
     cl::CommandQueue* opencl_queue,
     const std::string &buffer_name)
 {
+    spdlog::trace("Zeroing output buffer '{}'", buffer_name);
     if (ecosystem == execution_ecosystem_t::cuda) {
         cuda::memory::zero(buffer.cuda.data(), buffer.cuda.size());
     } else {

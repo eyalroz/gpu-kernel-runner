@@ -22,7 +22,7 @@ struct kernel_inspecific_cmdline_options_t {
         filesystem::path source_file;
     } kernel;
     execution_ecosystem_t gpu_ecosystem;
-    optional<int> platform_id; // Will be nullopt for CUDA
+    optional<unsigned> platform_id; // Will be nullopt for CUDA
     device_id_t gpu_device_id;
     std::size_t num_runs;
     struct {

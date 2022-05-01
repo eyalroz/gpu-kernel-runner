@@ -115,7 +115,7 @@ struct has_find_method<T, Key, decltype(void(std::declval<T>().find(std::declval
 
 template <typename Container, typename Key>
 typename Container::const_iterator find(
-    std::true_type has_find_method,
+    [[maybe_unused]] std::true_type has_find_method,
     const Container& container,
     const Key& x)
 {
@@ -124,7 +124,7 @@ typename Container::const_iterator find(
 
 template <typename Container, typename Key>
 typename Container::const_iterator find(
-    std::false_type doesnt_have_find_method,
+    [[maybe_unused]] std::false_type doesnt_have_find_method,
     const Container& container,
     const Key& x)
 {
@@ -224,23 +224,24 @@ inline bool is_valid_identifier(const std::string& str)
 {
     if (str.length() == 0) { return false; }
 
-    char ch = *str.cbegin();
-    if (!(
-          util::in_range(ch, {'a', 'z'}) ||
-          util::in_range(ch, {'Z', 'Z'}) ||
-          ch== '_'))
-        return false;
+    {
+        char first_char = *str.cbegin();
+        if (!(
+              util::in_range(first_char, {'a', 'z'}) or
+              util::in_range(first_char, {'A', 'Z'}) or
+              first_char == '_'))
+            return false;
+    }
 
     // Traverse the string for the rest of the characters
     return std::all_of(str.cbegin()+1, str.cend(),
         [](auto ch) {
-          return util::in_range(ch, {'a', 'z'}) ||
-            util::in_range(ch, {'A', 'Z'}) ||
-            util::in_range(ch, {'0', '9'}) ||
+          return util::in_range(ch, {'a', 'z'}) or
+            util::in_range(ch, {'A', 'Z'}) or
+            util::in_range(ch, {'0', '9'}) or
             ch == '_';
         });
 }
-
 
 } // namespace util
 

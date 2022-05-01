@@ -25,17 +25,25 @@ union launch_configuration_type {
     cuda::launch_configuration_t cuda;
     raw_opencl_launch_config opencl;
 
-    launch_configuration_type() {  }
+    launch_configuration_type()  { }
 //    launch_configuration_type() { std::memset(this, 0, sizeof(*this)); }
+DISABLE_WARNING_PUSH
+DISABLE_WARNING_CLASS_MEMACCESS
     launch_configuration_type(const launch_configuration_type& other) { std::memcpy(this, &other, sizeof(other)); }
+DISABLE_WARNING_POP
+
     launch_configuration_type(const raw_opencl_launch_config& config) : opencl(config) { }
     launch_configuration_type(const cuda::launch_configuration_t& config) : cuda(config) { }
-    launch_configuration_type(const optional_launch_config_components& config);
+//    launch_configuration_type(const optional_launch_config_components& config);
 
-    ~launch_configuration_type() { }
+    ~launch_configuration_type()  {};
 
+    launch_configuration_type& operator=(const launch_configuration_type& other) = default;
+    launch_configuration_type& operator=(launch_configuration_type&& other) = default;
     launch_configuration_type& operator=(const raw_opencl_launch_config& other) { opencl = other; return *this; }
+    launch_configuration_type& operator=(raw_opencl_launch_config&& other) { opencl = other; return *this; }
     launch_configuration_type& operator=(const cuda::launch_configuration_t& other) { cuda = other; return *this; }
+    launch_configuration_type& operator=(cuda::launch_configuration_t&& other) { cuda = other; return *this; }
 
 
 };

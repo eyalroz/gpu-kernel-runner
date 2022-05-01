@@ -39,8 +39,11 @@ union device_buffer_type {
     poor_mans_span cuda;
 
     // A brittle and dangerous hack
+DISABLE_WARNING_PUSH
+DISABLE_WARNING_CLASS_MEMACCESS
     device_buffer_type() { std::memset(this, 0, sizeof(*this)); }
     device_buffer_type(const device_buffer_type& other) { std::memcpy(this, &other, sizeof(other)); }
+DISABLE_WARNING_POP
     ~device_buffer_type() { }
 };
 

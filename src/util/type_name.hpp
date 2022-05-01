@@ -103,7 +103,7 @@ inline std::string discard_template_parameters(const std::string& type_name)
 		return type_name;
 	}
 	unsigned bracket_depth = 1;
-	for (unsigned pos = template_rbracket_pos; pos > 0; pos++) {
+	for (auto pos = template_rbracket_pos; pos > 0; pos++) {
 		switch(type_name[pos]) {
 		case '>': bracket_depth++; break;
 		case '<': bracket_depth--; break;

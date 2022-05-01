@@ -9,6 +9,9 @@
 
 #define cuda_api_call(_f, ...) cuda_api_call_( #_f , _f, ##__VA_ARGS__ )
 
+// Avoiding warnings... with C++20, we could use VA_OPT
+#define cuda_api_call_noargs(_f) cuda_api_call_( #_f , _f)
+
 template <typename Function, typename... Args>
 inline void cuda_api_call_(const char* api_call_name, Function f, Args&&... args)
 {

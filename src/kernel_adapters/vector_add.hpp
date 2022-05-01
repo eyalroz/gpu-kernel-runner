@@ -51,7 +51,7 @@ public:
     {
         constexpr const auto input  = parameter_direction_t::input;
         constexpr const auto output = parameter_direction_t::output;
-        constexpr const auto inout  = parameter_direction_t::inout;
+        [[maybe_unused]] constexpr const auto inout  = parameter_direction_t::inout;
 
         static const buffer_details_type buffer_details_ = {
             { "A", input,  "First sequence of addends"},
@@ -96,16 +96,16 @@ public:
     // Note: The actual size might be smaller; this is what we need to allocate
     buffer_sizes output_buffer_sizes(
         const host_buffers_map& input_buffers,
-        const scalar_arguments_map& scalar_arguments,
-        const preprocessor_definitions_t& valueless_definitions,
-        const preprocessor_value_definitions_t& valued_definitions) const override
+        const scalar_arguments_map&,
+        const preprocessor_definitions_t&,
+        const preprocessor_value_definitions_t&) const override
     {
         return {
             { "C", input_buffers.at("A").size() }
         };
     }
 
-    bool extra_validity_checks(const execution_context_t& context) const override
+    bool extra_validity_checks(const execution_context_t&) const override
     {
         return true; // Our checks are covered elsewhere
     }

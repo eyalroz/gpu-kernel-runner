@@ -14,12 +14,13 @@ void maybe_print_compilation_log(
 // TODO: Use the generated PTX for the device index!
 std::string obtain_ptx(const cl::Program &built_program, device_id_t device_id)
 {
+    auto device_id_ = (size_t) device_id;
     const std::vector<size_t> ptx_sizes = built_program.getInfo<CL_PROGRAM_BINARY_SIZES>();
     if (ptx_sizes.empty()) {
         spdlog::error("No PTXes have been generated for the OpenCL program");
         return {};
     }
-    if (ptx_sizes.size() <= (size_t) device_id) {
+    if (ptx_sizes.size() <= device_id_) {
         spdlog::error("No PTX generated for device {}", device_id);
         return {};
     }
@@ -29,7 +30,7 @@ std::string obtain_ptx(const cl::Program &built_program, device_id_t device_id)
 //        }
 //    }
 
-    if (ptx_sizes[device_id] == 0) {
+    if (ptx_sizes[device_id_] == 0) {
         spdlog::error("Generated PTX for device {} is empty", device_id);
         return {};
     }
@@ -39,7 +40,7 @@ std::string obtain_ptx(const cl::Program &built_program, device_id_t device_id)
         spdlog::error("No PTX sources are available");
         return {};
     }
-    return ptxes[device_id];
+    return ptxes[device_id_];
 }
 
 std::string marshal_opencl_compilation_options(
@@ -111,7 +112,6 @@ load_preinclude_files(const include_paths_t& preincludes, const include_paths_t&
             for(const auto& p : include_dir_fs_paths) {
                 auto preinclude_path = p / preinclude_file_path_suffix;
                 if (filesystem::exists(preinclude_path)) {
-                    constexpr const size_t extra_byte_for_nul_char { 1 };
                     spdlog::debug("Loading pre-include \"{}\" from {}", preinclude_file_path_suffix, preinclude_path.native());
                     return read_file_as_null_terminated_string(preinclude_path);
                 }

@@ -275,13 +275,11 @@ void parse_command_line_for_kernel(int argc, char** argv, execution_context_t& c
             spdlog::trace("Filename for output buffer {}: {}", buffer_name, output_filename);
             context.buffers.filenames.outputs[buffer_name] = output_filename;
         }
-        // TODO: Be more careful about inout buffer filenames:
-        // 1. Check for overlap between buffer filenames
-        // 2. Check for an existing filename with that out.
-        // 3. Support other schemes for naming the output files
         for(const auto& buffer_name : ka.buffer_names(parameter_direction_t::inout)  ) {
-            context.buffers.filenames.outputs[buffer_name] = parse_result[buffer_name].as<std::string>() + ".out";
-            spdlog::trace("Got filename for buffer {}", buffer_name);
+            // TODO: Consider support other schemes for naming output versions of inout buffers
+            context.buffers.filenames.outputs[buffer_name] =
+                context.options.buffer_base_paths.output / (buffer_name + ".out");
+            spdlog::trace("Using output file {} for buffer {}", context.buffers.filenames.outputs[buffer_name], buffer_name);
         }
     }
     for(const auto& arg_name : ka.cmdline_required_scalar_argument_names()  ) {

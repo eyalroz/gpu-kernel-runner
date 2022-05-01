@@ -97,13 +97,9 @@ foreach(TARGET ${compiled-targets})
 	    CUDA_STANDARD 14
 	    CUDA_STANDARD_REQUIRED O
 	)
-	target_include_directories(${TARGET}
-		PRIVATE
-		third-party
-		third-party/debug_assert
-		src
-		src/cuda-samples-helpers
-	)
+	# Give some special treatment to libraries we didn't write
+	target_include_directories(${TARGET} SYSTEM PRIVATE third-party)
+	target_include_directories(${TARGET} PRIVATE src src/cuda-samples-helpers)
 	target_warning_options(${TARGET})
 endforeach(TARGET)
 

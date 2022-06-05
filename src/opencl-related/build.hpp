@@ -89,15 +89,17 @@ std::string marshal_opencl_compilation_options(
     return ss.str();
 }
 
+/*
 template <typename InsertIterator>
 void add_preincludes(
-    InsertIterator it,
-    const include_paths_t& include_dir_paths,
-    const include_paths_t& preinclude_files
+    InsertIterator, // iterator,
+    const include_paths_t&, // include_dir_paths,
+    const include_paths_t& // preinclude_files
 )
 {
     return;
 }
+*/
 
 std::vector<host_buffer_type>
 load_preinclude_files(const include_paths_t& preincludes, const include_paths_t& include_dirs)

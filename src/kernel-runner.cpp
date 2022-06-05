@@ -745,7 +745,8 @@ execution_context_t initialize_execution_context(kernel_inspecific_cmdline_optio
         cl_context_properties properties[] = { CL_CONTEXT_PLATFORM, (cl_context_properties) (platforms[0])(), 0 };
         execution_context.opencl.context = cl::Context{CL_DEVICE_TYPE_GPU, properties};
         std::vector<cl::Device> devices = execution_context.opencl.context.getInfo<CL_CONTEXT_DEVICES>();
-        execution_context.opencl.device = devices[parsed_options.gpu_device_id];
+		// Device IDs happen to be ordinals into the devices array.
+        execution_context.opencl.device = devices[(size_t) parsed_options.gpu_device_id];
         constexpr const cl_command_queue_properties queue_properties { CL_QUEUE_PROFILING_ENABLE } ;
         execution_context.opencl.queue =
             cl::CommandQueue(execution_context.opencl.context, execution_context.opencl.device, queue_properties);

@@ -71,7 +71,7 @@ std::string type_name()
  * @return the string type name of typeof(v)
  */
 template <typename T, bool WithCVCorrections = false>
-std::string type_name_of(const T& v) { return util::type_name<T, WithCVCorrections>(); }
+std::string type_name_of(const T&) { return util::type_name<T, WithCVCorrections>(); }
 
 
 template <typename... Ts>

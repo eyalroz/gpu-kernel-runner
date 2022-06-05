@@ -23,7 +23,7 @@ auto map_values(const Map<Key,Value>& map, const F& value_mapper)
     using mapped_value_type = decltype(value_mapper(std::declval<Value>()));
     Map<Key, mapped_value_type> mapped;
     std::transform(map.cbegin(), map.cend(), std::inserter(mapped, mapped.begin()),
-        [&value_mapper](const auto& pair) {
+        [&value_mapper](const auto& pair) -> std::pair<Key,mapped_value_type> {
             const auto& key = pair.first;
             const auto& value = pair.second;
             return {key, value_mapper(value)};

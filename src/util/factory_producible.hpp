@@ -80,7 +80,7 @@ public:
 		return produce_subclass(subclass_key, args...);
 	}
 
-    static bool can_produce_subclass(const Key& subclass_key, ConstructionArgs... args) {
+    static bool can_produce_subclass(const Key& subclass_key, ConstructionArgs...) {
         return get_subclass_factory().can_produce(subclass_key);
     }
 
@@ -89,7 +89,7 @@ public:
 		return can_produce_subclass(subclass_key, args...);
 	}
 
-	factory_producible(const factory_producible& other) = delete;
+	factory_producible(const factory_producible& other) = default;
 	factory_producible() = default;
 	~factory_producible() = default;
 };

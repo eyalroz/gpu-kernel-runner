@@ -320,7 +320,7 @@ static const char* preinclude_jitsafe_header_names[] = {
 };
 */
 
-static auto& get_zipped_jitsafe_headers() {
+static auto& get_standard_header_substitutes() {
   static const std::vector<std::pair<const char*, const char*>> jitsafe_headers_map = {
       {"kernel_runner_preinclude.h", kernel_runner_preinclude_h},
 //      {"jitify_preinclude.h", jitsafe_header_preinclude_h},
@@ -359,20 +359,6 @@ static auto& get_zipped_jitsafe_headers() {
 //      {"ctime", jitsafe_header_time_h},
   };
   return jitsafe_headers_map;
-}
-
-auto get_standard_header_substitutes() {
-    // This is a sort of an unzip function - vector-of-pairs into pair-of-vectors
-    const auto& zipped = get_zipped_jitsafe_headers();
-    std::vector<const char*> header_names;
-    std::vector<const char*> header_sources;
-    header_names.reserve(zipped.size());
-    header_sources.reserve(zipped.size());
-    for(const auto& pair : zipped) {
-        header_names.push_back(pair.first);
-        header_sources.push_back(pair.second);
-    }
-    return std::make_pair(header_names, header_sources);
 }
 
 #endif // KERNEL_RUNNER_STANDARD_HEADER_SUBSTITUTES_HPP_

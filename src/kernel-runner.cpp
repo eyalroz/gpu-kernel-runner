@@ -5,7 +5,6 @@
 #include "buffer_io.hpp"
 
 #include <nvrtc-related/build.hpp>
-#include <nvrtc-related/miscellany.hpp>
 #include <nvrtc-related/execution.hpp>
 #include <opencl-related/build.hpp>
 #include <opencl-related/execution.hpp>
@@ -17,7 +16,6 @@
 
 #include <cxxopts/cxxopts.hpp>
 #include <cxx-prettyprint/prettyprint.hpp>
-#include <nvrtc-related/build.hpp>
 
 #include <spdlog/spdlog.h>
 #include <spdlog/cfg/helpers.h>
@@ -726,20 +724,13 @@ execution_context_t initialize_execution_context(kernel_inspecific_cmdline_optio
     execution_context.ecosystem = parsed_options.gpu_ecosystem;
 
     if (parsed_options.gpu_ecosystem == execution_ecosystem_t::cuda) {
-        constexpr const auto no_flags { 0u };
-
-        cuda_api_call(cuInit, no_flags);
-        cuda_api_call(cuDeviceGet, &execution_context.cuda.driver_device_id, parsed_options.gpu_device_id);
-
-        spdlog::trace("The device handle we got for specified index {} is {}", parsed_options.gpu_device_id, execution_context.cuda.driver_device_id);
-        cuda_api_call(cuCtxCreate, &(execution_context.cuda.context), no_flags, execution_context.cuda.driver_device_id);
+        auto device = cuda::device::get(parsed_options.gpu_device_id);
+        execution_context.cuda.context = device.create_context();
+        spdlog::trace("Created a CUDA context on device {} ", execution_context.cuda.context->device_id());
     }
-    else {
-        //OpenCL
-
+    else { // OpenCL
         std::vector<cl::Platform> platforms;
         cl::Platform::get(&platforms);
-
         // Get list of devices on default platform and create context
         cl_context_properties properties[] = { CL_CONTEXT_PLATFORM, (cl_context_properties) (platforms[0])(), 0 };
         execution_context.opencl.context = cl::Context{CL_DEVICE_TYPE_GPU, properties};
@@ -758,17 +749,6 @@ execution_context_t initialize_execution_context(kernel_inspecific_cmdline_optio
     return execution_context;
 }
 
-// TODO: Consider making this a destructor; or better yet -
-// use RAII wrappers for modules and contexts.
-void free_resources(execution_context_t& context)
-{
-    if(context.ecosystem == execution_ecosystem_t::cuda) {
-      // free any non-RAII buffers
-      cuda_api_call(cuModuleUnload, context.cuda.module);
-      cuda_api_call(cuCtxDestroy, context.cuda.context);
-   }
-}
-
 void copy_buffer_to_device(
     const execution_context_t& context,
     const string&              buffer_name,
@@ -779,6 +759,7 @@ void copy_buffer_to_device(
         spdlog::debug("Copying buffer {} (size {} bytes) from host-side copy at {} to device side copy at {}",
             buffer_name, host_side_buffer.size(), (void *) host_side_buffer.data(),
             (void *) device_side_buffer.cuda.data());
+        cuda::context::current::scoped_override_t scoped_context_override{ *context.cuda.context };
         cuda::memory::copy(device_side_buffer.cuda.data(), host_side_buffer.data(), host_side_buffer.size());
     } else { // OpenCL
         const constexpr auto blocking { CL_TRUE };
@@ -856,20 +837,20 @@ void copy_outputs_from_device(execution_context_t& context)
             device_side_buffer,
             host_side_buffer);
     }
-    cuda::device::get(context.cuda.driver_device_id).synchronize();
+    context.cuda.context->synchronize();
 }
 
 device_buffer_type create_device_side_buffer(
     const std::string& name,
     std::size_t size,
     execution_ecosystem_t ecosystem,
-    cuda::device_t cuda_device,
+    const optional<cuda::context_t>& cuda_context,
     optional<cl::Context> opencl_context,
     const host_buffers_map&)
 {
     device_buffer_type result;
     if (ecosystem == execution_ecosystem_t::cuda) {
-        auto region = cuda::memory::device::allocate(cuda_device, size);
+        auto region = cuda::memory::device::allocate(*cuda_context, size);
         poor_mans_span sp { static_cast<byte_type*>(region.data()), region.size() };
         spdlog::trace("Created buffer at address {} with size {} for kernel parameter {}", (void*) sp.data(), sp.size(), name);
         result.cuda = sp;
@@ -885,12 +866,11 @@ device_buffer_type create_device_side_buffer(
 }
 
 device_buffers_map create_device_side_buffers(
-    execution_ecosystem_t ecosystem,
-    device_id_t device_id,
-    optional<cl::Context> opencl_context,
-    const host_buffers_map& host_side_buffers)
+    execution_ecosystem_t            ecosystem,
+    const optional<cuda::context_t>& cuda_context,
+    optional<cl::Context>            opencl_context,
+    const host_buffers_map&          host_side_buffers)
 {
-    auto cuda_device = cuda::device::get(device_id);
     device_buffers_map result;
     // TODO: Use map() from functional
 
@@ -905,7 +885,7 @@ device_buffers_map create_device_side_buffers(
             auto buffer = create_device_side_buffer(
                 name, size,
                 ecosystem,
-                cuda_device,
+                cuda_context,
                 opencl_context,
                 host_side_buffers);
             return device_buffers_map::value_type { name, std::move(buffer) };
@@ -914,13 +894,15 @@ device_buffers_map create_device_side_buffers(
 }
 
 void zero_output_buffer(
-    execution_ecosystem_t ecosystem,
-    const device_buffer_type buffer,
-    cl::CommandQueue* opencl_queue,
-    const std::string &buffer_name)
+    execution_ecosystem_t     ecosystem,
+    const device_buffer_type  buffer,
+    const optional<cuda::context_t>& cuda_context, // Maybe use a stream?
+    cl::CommandQueue*         opencl_queue,
+    const std::string &       buffer_name)
 {
     spdlog::trace("Zeroing output buffer '{}'", buffer_name);
     if (ecosystem == execution_ecosystem_t::cuda) {
+        cuda::context::current::scoped_override_t scoped_context_override{ *cuda_context };
         cuda::memory::zero(buffer.cuda.data(), buffer.cuda.size());
     } else {
         // OpenCL
@@ -943,7 +925,7 @@ void zero_output_buffers(execution_context_t& context)
     spdlog::debug("Zeroing output-only buffers.");
     for(const auto& buffer_name : output_only_buffers) {
         const auto& buffer = context.buffers.device_side.outputs.at(buffer_name);
-        zero_output_buffer(context.ecosystem, buffer, &context.opencl.queue, buffer_name);
+        zero_output_buffer(context.ecosystem, buffer, context.cuda.context, &context.opencl.queue, buffer_name);
     }
     spdlog::debug("Output-only buffers filled with zeros.");
 }
@@ -953,13 +935,13 @@ void create_device_side_buffers(execution_context_t& context)
     spdlog::debug("Creating device buffers.");
     context.buffers.device_side.inputs = create_device_side_buffers(
         context.ecosystem,
-        context.device_id,
+        context.cuda.context,
         context.opencl.context,
         context.buffers.host_side.inputs);
     spdlog::debug("Input device buffers created.");
     context.buffers.device_side.outputs = create_device_side_buffers(
         context.ecosystem,
-        context.device_id,
+        context.cuda.context,
         context.opencl.context,
         context.buffers.host_side.outputs);
             // ... and remember the behavior regarding in-out buffers: For each in-out buffers, a buffer
@@ -1034,8 +1016,8 @@ void build_kernel(execution_context_t& context)
     auto kernel_source = static_cast<const char*>(kernel_source_buffer.data());
 
     if (context.ecosystem == execution_ecosystem_t::cuda) {
-        std::tie(context.cuda.module, context.cuda.built_kernel, context.compiled_ptx) = build_cuda_kernel(
-            cuda::device::get(context.cuda.driver_device_id),
+        std::tie(context.cuda.module, context.compiled_ptx, context.cuda.mangled_kernel_signature) = build_cuda_kernel(
+            *context.cuda.context,
             source_file.c_str(),
             kernel_source,
             context.options.kernel.function_name.c_str(),
@@ -1075,11 +1057,11 @@ void verify_input_arguments(execution_context_t& context)
     auto& ka = *context.kernel_adapter_;
 
     auto in_and_inout_names = buffer_names(ka, parameter_direction_t::input, parameter_direction_t::inout);
-    auto obtaine_in_buffers = util::keys(context.buffers.host_side.inputs);
-    if (obtaine_in_buffers != in_and_inout_names)
+    auto obtained_in_buffers = util::keys(context.buffers.host_side.inputs);
+    if (obtained_in_buffers != in_and_inout_names)
     {
         std::stringstream ss;
-        auto names_of_missing_buffers = util::difference(in_and_inout_names, obtaine_in_buffers);
+        auto names_of_missing_buffers = util::difference(in_and_inout_names, obtained_in_buffers);
         for (auto buffer_name : names_of_missing_buffers) { ss << buffer_name << " "; }
         spdlog::debug("Missing input/inout buffers: {}", ss.str());
         exit(EXIT_FAILURE);
@@ -1139,7 +1121,7 @@ void reset_working_copy_of_inout_buffers(execution_context_t& context)
             work_copy, pristine_copy);
 
     }
-    cuda::device::get(context.cuda.driver_device_id).synchronize();
+    context.cuda.context->synchronize();
 }
 
 void perform_single_run(execution_context_t& context, run_index_t run_index)
@@ -1231,8 +1213,6 @@ int main(int argc, char** argv)
         copy_outputs_from_device(context);
         write_buffers_to_files(context);
     }
-
-    free_resources(context);
 
     spdlog::info("All done.");
 }

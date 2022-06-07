@@ -11,7 +11,6 @@
 #include <util/warning_suppression.hpp>
 
 #include <cuda/api.hpp>
-#include <cuda.h> // the CUDA driver API
 
 #define __CL_ENABLE_EXCEPTIONS
 DISABLE_WARNING_PUSH
@@ -79,14 +78,12 @@ struct execution_context_t {
         // instead.
     device_id_t device_id;
     execution_ecosystem_t ecosystem;
-    struct {
-        int             driver_device_id;
-        // With the CUDA driver, there are two kinds/two levels of device IDs. it's a bit
-        // defat but that's just the way it is.
-        CUcontext       context;
-        CUfunction      built_kernel;
-        CUmodule        module;
-    } cuda;
+    struct cuda_specific_t {
+        optional<cuda::context_t>  context;
+        optional<cuda::module_t>   module; // in the context
+        optional<std::string>      mangled_kernel_signature;
+    };
+    cuda_specific_t cuda;
     struct {
         cl::Context       context;
         cl::Device        device;

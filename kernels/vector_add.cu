@@ -27,9 +27,6 @@
 
 // Add the values in A and B into C, elementwise 
 
-#include <stddef.h>
-#include <stdio.h>
-
 __global__ void vectorAdd(
         unsigned char* __restrict        C,
         const unsigned char* __restrict  A,
@@ -39,7 +36,6 @@ __global__ void vectorAdd(
     size_t i = blockDim.x * blockIdx.x + threadIdx.x;
     if (i < length) {
         C[i] = A[i] + B[i] + A_LITTLE_EXTRA;
-//        printf("%d = %d + %d + %d\n", C[i], A[i], B[i], A_LITTLE_EXTRA);
     }
 }
 

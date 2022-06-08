@@ -16,6 +16,7 @@ using std::experimental::optional;
 using std::experimental::nullopt;
 using std::experimental::any;
 using std::experimental::any_cast;
+using std::experimental::in_place;
 #endif
 
 #endif // UTIL_OPTIONAL_AND_ANY_HPP_

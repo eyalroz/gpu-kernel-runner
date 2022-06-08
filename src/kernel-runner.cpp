@@ -89,7 +89,7 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
         ("o,overall-grid-dimensions", "Set grid dimensions in threads (OpenCL: global work size); a comma-separated list", cxxopts::value<std::vector<unsigned>>() )
         ("S,dynamic-shared-memory-size", "Force specific amount of dynamic shared memory", cxxopts::value<unsigned>() )
         ("ptx-output-file", "File to which to write the kernel's intermediate representation", cxxopts::value<string>())
-        ("W,overwrite-allowed", "Overwrite the files for buffer and/or PTX output if they already exists", cxxopts::value<string>()->default_value("false"))
+        ("W,overwrite-allowed", "Overwrite the files for buffer and/or PTX output if they already exists", cxxopts::value<bool>()->default_value("false"))
         ("i,include", "Include a specific file into the kernels' translation unit", cxxopts::value<std::vector<string>>())
         ("I,include-path", "Add a directory to the search paths for header files included by the kernel (can be used repeatedly)", cxxopts::value<std::vector<string>>())
         ("s,kernel-source", "Path to CUDA source file with the kernel function to compile; may be absolute or relative to the sources dir", cxxopts::value<string>())
@@ -546,10 +546,9 @@ kernel_inspecific_cmdline_options_t parse_command_line_initially(int argc, char*
 
     // The following can't fail due to defaults
 
-    if (parse_result["num-runs"].as<int>() <= 0) {
-        die("Number of runs {} is not a positive integer", parse_result["num-runs"].as<int>());
-    }
     parsed_options.num_runs = parse_result["num-runs"].as<unsigned>();
+
+    parsed_options.overwrite_allowed = parse_result["overwrite-allowed"].as<bool>();
 
     parsed_options.buffer_base_paths.input = parse_result["input-buffer-dir"].as<string>();
     parsed_options.buffer_base_paths.output = parse_result["output-buffer-dir"].as<string>();

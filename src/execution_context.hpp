@@ -93,7 +93,8 @@ struct execution_context_t {
         std::vector<std::size_t> finalized_argument_sizes;
             // TODO: Consider moving these out of the OpenCL-specific structure
     } opencl;
-    std::string compiled_ptx; // PTX or whatever OpenCL becomes.
+    optional<std::string> compiled_ptx; // PTX or whatever OpenCL becomes.
+    optional<std::string> compilation_log;
     struct {
         string_map raw; // the strings passed on the command-line for the arguments
         scalar_arguments_map typed; // the parsed values for each scalar, after type-erasure

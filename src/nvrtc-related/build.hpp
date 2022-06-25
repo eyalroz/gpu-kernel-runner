@@ -34,7 +34,6 @@
 #include <cuda/nvrtc.hpp>
 
 #include <util/miscellany.hpp>
-
 #include <util/spdlog-extra.hpp>
 #include <spdlog/spdlog.h>
 #include <spdlog/cfg/helpers.h>
@@ -60,17 +59,35 @@ using preprocessor_value_definitions_t = std::unordered_map<std::string, std::st
 using preprocessor_definitions_t = std::unordered_set<std::string>;
 using include_dir_paths_t = std::vector<std::string>;
 
+bool check_potential_cuda_include_dir(filesystem::path candidate_dir)
+{
+    return (filesystem::exists(candidate_dir) and has_permission(candidate_dir, for_recursion));
+}
+
 // This is a stub. It's not terribly hard to do, but it's more than a few lines
 // of code - certainly if you want it to work on MacOs Windows as well as Linux.
 optional<std::string> locate_cuda_include_directory()
 {
-    constexpr const char* cuda_root_env_var_name = "CUDA_PATH";
-    optional<std::string> cuda_root = util::get_env(cuda_root_env_var_name);
-    if (not cuda_root) {
-        spdlog::warn("Environment variable {} is not set", cuda_root_env_var_name);
-        return nullopt;
+
+    filesystem::path candidate;
+#ifdef CUDA_INCLUDE_DIR
+    candidate = CUDA_INCLUDE_DIR;
+    if (check_potential_cuda_include_dir(candidate)) {
+        return candidate.native();
     }
-    return filesystem::path(cuda_root.value()) / "include";
+#endif
+    constexpr const char *cuda_root_env_var_names[] = { "CUDA_ROOT", "CUDA_PATH", "CUDA_DIR" };
+    for (auto env_var_name : cuda_root_env_var_names) {
+        auto cuda_root_env_dir = util::get_env(env_var_name);
+        if (cuda_root_env_dir) {
+            candidate = filesystem::path(cuda_root_env_dir.value()) / "include";
+            if (check_potential_cuda_include_dir(candidate)) {
+                return candidate.native();
+            }
+        }
+    }
+    // TODO: Check the PATH for the CUDA binaries dir
+    return nullopt;
 }
 
 struct compilation_result_t {

@@ -1,8 +1,45 @@
 #include <buffer_io.hpp>
 #include <spdlog/spdlog.h>
 
-host_buffer_type read_input_file(filesystem::path src, size_t extra_buffer_size)
+
+void verify_path(const filesystem::path& path, path_check_kind check_kind, bool allow_overwrite)
 {
+    // TODO: Consider checking path execution permissions down to the parent directory
+    if (filesystem::exists(path)) {
+        if (is_directory(path)) {
+            throw std::invalid_argument("Path is a directory, not a (readable) path: " + path.native());
+        }
+       if (check_kind == for_writing and not allow_overwrite) {
+           throw std::invalid_argument("File already exists, and overwrite is not allowed: " + path.native());
+       }
+        if (not has_permission(path, check_kind))
+        {
+            throw std::invalid_argument("No read permissions for path: " + path.native());
+        }
+    }
+    else {
+        if (check_kind != for_writing)
+        {
+            throw std::invalid_argument("File does not exist: " + path.native());
+        }
+        auto parent = path.parent_path();
+        if (not parent.empty() and not is_directory(parent)) {
+            throw std::invalid_argument("Parent path of intended file is not a directory: " + path.native());
+        }
+        if (parent.empty()) {
+            parent = filesystem::current_path();
+        }
+        if (not has_permission(parent, for_writing))
+        {
+            throw std::invalid_argument("No write permissions for directory " + parent.native()
+                + " , where it is necessary to write the new file " + path.filename().native());
+        }
+    }
+}
+
+host_buffer_type read_input_file(const filesystem::path& src, size_t extra_buffer_size)
+{
+    verify_input_path(src);
     auto file_size = filesystem::file_size(src);
     auto buffer_size = file_size + extra_buffer_size;
     std::ifstream file(src, std::ios::binary | std::ios::ate);
@@ -24,8 +61,15 @@ host_buffer_type read_file_as_null_terminated_string(const filesystem::path& sou
     return buffer;
 }
 
-void write_data_to_file(std::string kind, std::string name, poor_mans_span data, filesystem::path destination, spdlog::level::level_enum level)
+void write_data_to_file(
+    std::string kind,
+    std::string name,
+    poor_mans_span data,
+    filesystem::path destination,
+    bool allow_overwrite,
+    spdlog::level::level_enum level)
 {
+    verify_path(destination, for_writing, allow_overwrite);
     spdlog::log(level, "Writing {} '{}' to file {}", kind, name, destination.c_str());
     auto file = std::fstream(destination, std::ios::out | std::ios::binary);
     file.write(data.data(), (std::streamsize) data.size());
@@ -36,8 +80,13 @@ void write_data_to_file(std::string kind, std::string name, poor_mans_span data,
     file.close();
 }
 
-void write_buffer_to_file(std::string buffer_name, const host_buffer_type& buffer, filesystem::path destination)
+void write_buffer_to_file(
+    std::string buffer_name,
+    const host_buffer_type& buffer,
+    filesystem::path destination,
+    bool overwrite_allowed)
 {
-    write_data_to_file("output buffer", buffer_name, poor_mans_span{const_cast<byte_type*>(buffer.data()),
-        buffer.size()}, destination, spdlog::level::debug);
+    write_data_to_file("output buffer", buffer_name,
+        poor_mans_span{const_cast<byte_type*>(buffer.data()), buffer.size()},
+        destination, overwrite_allowed, spdlog::level::debug);
 }

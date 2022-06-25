@@ -90,7 +90,7 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
         ("g,grid-dimensions", "Set grid dimensions in blocks; a comma-separated list", cxxopts::value<std::vector<unsigned>>() )
         ("o,overall-grid-dimensions", "Set grid dimensions in threads (OpenCL: global work size); a comma-separated list", cxxopts::value<std::vector<unsigned>>() )
         ("S,dynamic-shared-memory-size", "Force specific amount of dynamic shared memory", cxxopts::value<unsigned>() )
-        ("W,overwrite-allowed", "Overwrite the files for buffer and/or PTX output if they already exists", cxxopts::value<bool>()->default_value("false"))
+        ("W,overwrite", "When writing output buffers, PTX and/or logs, overwrite any existing files", cxxopts::value<bool>()->default_value("false"))
         ("i,include", "Include a specific file into the kernels' translation unit", cxxopts::value<std::vector<string>>())
         ("I,include-path", "Add a directory to the search paths for header files included by the kernel (can be used repeatedly)", cxxopts::value<std::vector<string>>())
         ("s,kernel-source", "Path to CUDA source file with the kernel function to compile; may be absolute or relative to the sources dir", cxxopts::value<string>())
@@ -549,7 +549,8 @@ kernel_inspecific_cmdline_options_t parse_command_line_initially(int argc, char*
 
     parsed_options.num_runs = parse_result["num-runs"].as<unsigned>();
 
-    parsed_options.overwrite_allowed = parse_result["overwrite-allowed"].as<bool>();
+    parsed_options.overwrite_allowed = parse_result["overwrite"].as<bool>();
+    spdlog::info("Existing output files will be overwritten.");
 
     parsed_options.buffer_base_paths.input = parse_result["input-buffer-dir"].as<string>();
     parsed_options.buffer_base_paths.output = parse_result["output-buffer-dir"].as<string>();
@@ -704,7 +705,7 @@ void write_buffers_to_files(execution_context_t& context)
         auto write_destination = maybe_prepend_base_dir(
                context.options.buffer_base_paths.output,
                context.buffers.filenames.outputs[buffer_name]);
-        write_buffer_to_file(buffer_name, buffer, write_destination);
+        write_buffer_to_file(buffer_name, buffer, write_destination, context.options.overwrite_allowed);
     }
 }
 
@@ -1222,10 +1223,12 @@ void maybe_print_or_write_log(bool compilation_succeeded, execution_context_t& c
     if (context.options.write_compilation_log and context.compilation_log) {
         auto log { context.compilation_log.value() };
         write_data_to_file(
-            "compilation log", context.options.kernel.key,
+            "compilation log for", context.options.kernel.key,
             // TODO: Get rid of this, use a proper span and const span...
             poor_mans_span{ const_cast<byte_type*>(log.data()), log.size() },
-            context.options.compilation_log_file, spdlog::level::info);
+            context.options.compilation_log_file,
+            context.options.overwrite_allowed,
+            spdlog::level::info);
     }
 }
 
@@ -1236,7 +1239,9 @@ void maybe_write_intermediate_representation(execution_context_t& context)
     write_data_to_file(
         "generated PTX for kernel", context.options.kernel.key,
         poor_mans_span{ const_cast<byte_type *>(ptx.data()), ptx.length() },
-        context.options.ptx_output_file, spdlog::level::info);
+        context.options.ptx_output_file,
+        context.options.overwrite_allowed,
+        spdlog::level::info);
 }
 
 int main(int argc, char** argv)

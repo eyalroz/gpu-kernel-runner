@@ -7,9 +7,7 @@
 #include <util/spdlog-extra.hpp>
 #include <buffer_io.hpp>
 
-void maybe_print_compilation_log(
-    const std::string& compilation_log,
-    bool compilation_failed);
+#include <string>
 
 // TODO: Use the generated PTX for the device index!
 std::string obtain_ptx(const cl::Program &built_program, device_id_t device_id)
@@ -124,7 +122,15 @@ load_preinclude_files(const include_paths_t& preincludes, const include_paths_t&
     return loaded_preincludes;
 }
 
-auto build_opencl_kernel(
+struct opencl_compilation_result_t {
+    bool succeeded;
+    optional<std::string> log;
+    cl::Program program; // Don't need this to be optional, since it's not a RAII type
+    cl::Kernel kernel; // Don't need this to be optional, since it's not a RAII type
+    optional<std::string> ptx;
+};
+
+opencl_compilation_result_t build_opencl_kernel(
     cl::Context context,
     cl::Device  device,
     device_id_t device_id,
@@ -162,20 +168,22 @@ auto build_opencl_kernel(
         valueless_definitions,
         valued_definitions);
 
-    constexpr const bool build_failure { true };
     try {
         program.build(wrapped_device, build_options.c_str());
-        std::string compilation_log = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
-        maybe_print_compilation_log(compilation_log, not build_failure);
     } catch(cl::Error& e) {
         cl_build_status status = program.getBuildInfo<CL_PROGRAM_BUILD_STATUS>(device);
-        if (status == CL_BUILD_ERROR) {
-            std::string compilation_log = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
-            maybe_print_compilation_log(compilation_log, build_failure);
+        if (status == CL_BUILD_NONE or status == CL_BUILD_IN_PROGRESS) {
+            throw std::logic_error("Unexpected OpenCL build status encountered: Expected either success or failure");
         }
-        throw e;
+        if (status == CL_BUILD_SUCCESS) {
+            throw std::logic_error("OpenCL build threw an error, but the build status indicated success");
+        }
+        std::string log = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
+        auto compilation_failed { false };
+        return { compilation_failed, log, {}, {}, nullopt };
     }
     spdlog::trace("OpenCL program built successfully.");
+    std::string compilation_log = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
 
     std::string ptx = need_ptx ? obtain_ptx(program, device_id) : std::string{};
     if (need_ptx) {
@@ -186,7 +194,8 @@ auto build_opencl_kernel(
     try {
         cl::Kernel kernel(program, kernel_name);
         spdlog::trace("OpenCL kernel object created.");
-        return std::make_tuple(std::move(program), std::move(kernel), std::move(ptx));
+        auto compilation_succeeded { true };
+        return { compilation_succeeded, compilation_log, std::move(program), std::move(kernel), std::move(ptx) };
     } catch(cl::Error& ex) {
         spdlog::error("Failed creating kernel; OpenCL error: {}",  clGetErrorString(ex.err()));
         throw ex;

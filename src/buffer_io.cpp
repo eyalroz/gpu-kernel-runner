@@ -31,7 +31,7 @@ void write_data_to_file(std::string kind, std::string name, poor_mans_span data,
     file.write(data.data(), (std::streamsize) data.size());
     if (file.fail()) {
         throw std::system_error(errno, std::generic_category(),
-            "trying to write " + kind + "'" + name + "' to file " + destination.native());
+            "trying to write " + kind + " '" + name + "' to file " + destination.native());
     }
     file.close();
 }

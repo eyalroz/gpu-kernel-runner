@@ -80,13 +80,16 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
         ("D,define", "Set a preprocessor definition for NVRTC (can be used repeatedly; specify either DEFINITION or DEFINITION=VALUE)", cxxopts::value<std::vector<string>>())
         ("c,compile-only", "Compile the kernel, but don't actually run it", cxxopts::value<bool>()->default_value("false"))
         ("G,debug-mode", "Have the NVRTC compile the kernel in debug mode (no optimizations)", cxxopts::value<bool>()->default_value("false"))
-        ("P,write-ptx", "Write the intermediate representation code (PTX) resulting from the kernel compilation", cxxopts::value<bool>()->default_value("false"))
+        ("P,write-ptx", "Write the intermediate representation code (PTX) resulting from the kernel compilation, to a file", cxxopts::value<bool>()->default_value("false"))
+        ("ptx-output-file", "File to which to write the kernel's intermediate representation", cxxopts::value<string>())
+        ("print-compilation-log", "Print the compilation log to the standard output", cxxopts::value<bool>()->default_value("false"))
+        ("write-compilation-log", "Write the compilation log to a file", cxxopts::value<bool>()->default_value("false"))
+        ("compilation-log-file", "Save the compilation log to the specified file (regardless of whether it's printed)", cxxopts::value<string>())
         ("generate-line-info", "Add source line information to the intermediate representation code (PTX)", cxxopts::value<bool>()->default_value("true"))
         ("b,block-dimensions", "Set grid block dimensions in threads  (OpenCL: local work size); a comma-separated list", cxxopts::value<std::vector<unsigned>>() )
         ("g,grid-dimensions", "Set grid dimensions in blocks; a comma-separated list", cxxopts::value<std::vector<unsigned>>() )
         ("o,overall-grid-dimensions", "Set grid dimensions in threads (OpenCL: global work size); a comma-separated list", cxxopts::value<std::vector<unsigned>>() )
         ("S,dynamic-shared-memory-size", "Force specific amount of dynamic shared memory", cxxopts::value<unsigned>() )
-        ("ptx-output-file", "File to which to write the kernel's intermediate representation", cxxopts::value<string>())
         ("W,overwrite-allowed", "Overwrite the files for buffer and/or PTX output if they already exists", cxxopts::value<bool>()->default_value("false"))
         ("i,include", "Include a specific file into the kernels' translation unit", cxxopts::value<std::vector<string>>())
         ("I,include-path", "Add a directory to the search paths for header files included by the kernel (can be used repeatedly)", cxxopts::value<std::vector<string>>())
@@ -550,8 +553,8 @@ kernel_inspecific_cmdline_options_t parse_command_line_initially(int argc, char*
 
     parsed_options.buffer_base_paths.input = parse_result["input-buffer-dir"].as<string>();
     parsed_options.buffer_base_paths.output = parse_result["output-buffer-dir"].as<string>();
-    parsed_options.write_ptx_to_file = contains(parse_result, "write-ptx") and parse_result["write-ptx"].as<bool>();
-    parsed_options.generate_line_info = (not contains(parse_result, "generate-line-info")) or parse_result["generate-line-info"].as<bool>();
+    parsed_options.write_ptx_to_file = parse_result["write-ptx"].as<bool>();
+    parsed_options.generate_line_info = parse_result["generate-line-info"].as<bool>();
     if (parsed_options.write_ptx_to_file) {
         if (contains(parse_result, "ptx-output-file")) {
             parsed_options.ptx_output_file = parse_result["ptx-output-file"].as<string>();
@@ -565,6 +568,23 @@ kernel_inspecific_cmdline_options_t parse_command_line_initially(int argc, char*
             }
         }
     }
+    parsed_options.always_print_compilation_log = parse_result["print-compilation-log"].as<bool>();
+    parsed_options.write_compilation_log = parse_result["write-compilation-log"].as<bool>();
+    if (parsed_options.write_compilation_log) {
+        // Note: DRY with PTX file
+        if (contains(parse_result, "compilation-log-file")) {
+            parsed_options.compilation_log_file = parse_result["compilation-log-file"].as<string>();
+            if (filesystem::exists(parsed_options.compilation_log_file)) {
+                if (not parsed_options.overwrite_allowed) {
+                    throw std::invalid_argument("Specified compilation log file "
+                        + parsed_options.compilation_log_file.native() + " exists, and overwrite is not allowed.");
+                }
+                // Note that there could theoretically be a race condition in which the file gets created
+                // between our checking for its existence and our wanting to write to it after compilation.
+            }
+        }
+    }
+
 
     for (const auto& path : {
              parsed_options.buffer_base_paths.input,
@@ -578,6 +598,9 @@ kernel_inspecific_cmdline_options_t parse_command_line_initially(int argc, char*
 
     parsed_options.write_output_buffers_to_files = parse_result["write-output"].as<bool>();
     parsed_options.write_ptx_to_file = parse_result["write-ptx"].as<bool>();
+    parsed_options.always_print_compilation_log = parse_result["print-compilation-log"].as<bool>();
+
+
     parsed_options.compile_only = parse_result["compile-only"].as<bool>();
 
     if (parse_result.count("language-standard") > 0) {
@@ -683,28 +706,6 @@ void write_buffers_to_files(execution_context_t& context)
                context.buffers.filenames.outputs[buffer_name]);
         write_buffer_to_file(buffer_name, buffer, write_destination);
     }
-}
-
-void maybe_print_compilation_log(
-    const std::string& compilation_log,
-    bool compilation_failed)
-{
-    auto end = compilation_log.end() - ((not compilation_log.empty() and compilation_log.back() == '\0') ? 1 : 0);
-    bool print_the_log = compilation_failed or std::all_of(compilation_log.begin(),end,isspace) == false;
-
-    if (not print_the_log) { return; }
-
-    spdlog::level::level_enum level = compilation_failed ? spdlog::level::err : spdlog::level::debug;
-
-    if (compilation_log.empty() and print_the_log) {
-        spdlog::debug("Kernel compilation log is empty.");
-    }
-    spdlog::log(level, "Kernel compilation log:\n"
-        "-----\n"
-        "{}"
-        "-----", compilation_log);
-//    spdlog::info("std::all_of(compilation_log.begin(),compilation_log.end(),isspace) = {}", std::all_of(compilation_log.begin(),compilation_log.end(),isspace));
-//    for (auto c : compilation_log) { std::cout << (int) c << "\n"; }
 }
 
 // TODO: Yes, make execution_context_t a proper class... and be less lax with the initialization
@@ -1005,18 +1006,26 @@ void finalize_kernel_function_name(execution_context_t& context)
         context.options.kernel.function_name + '.' +
         ptx_file_extension(context.options.gpu_ecosystem);
     }
+
+    if (context.options.write_compilation_log and
+        context.options.compilation_log_file.empty())
+    {
+        context.options.compilation_log_file =
+            context.options.kernel.function_name + ".log";
+    }
 }
 
-void build_kernel(execution_context_t& context)
+bool build_kernel(execution_context_t& context)
 {
     finalize_kernel_function_name(context);
     const auto& source_file = context.options.kernel.source_file;
     spdlog::debug("Reading the kernel from {}", source_file.native());
     auto kernel_source_buffer = read_file_as_null_terminated_string(source_file);
     auto kernel_source = static_cast<const char*>(kernel_source_buffer.data());
+    bool build_succeeded;
 
     if (context.ecosystem == execution_ecosystem_t::cuda) {
-        std::tie(context.cuda.module, context.compiled_ptx, context.cuda.mangled_kernel_signature) = build_cuda_kernel(
+        auto result = build_cuda_kernel(
             *context.cuda.context,
             source_file.c_str(),
             kernel_source,
@@ -1028,9 +1037,16 @@ void build_kernel(execution_context_t& context)
             context.options.preinclude_files,
             context.finalized_preprocessor_definitions.valueless,
             context.finalized_preprocessor_definitions.valued);
+        build_succeeded = result.succeeded;
+        context.compilation_log = std::move(result.log);
+        if (result.succeeded) {
+            context.cuda.module = std::move(result.module);
+            context.compiled_ptx = std::move(result.ptx);
+            context.cuda.mangled_kernel_signature = std::move(result.mangled_signature);
+        }
     }
     else {
-        std::tie(context.opencl.program, context.opencl.built_kernel, context.compiled_ptx) = build_opencl_kernel(
+        auto result = build_opencl_kernel(
             context.opencl.context,
             context.opencl.device,
             context.device_id,
@@ -1043,9 +1059,21 @@ void build_kernel(execution_context_t& context)
             context.options.preinclude_files,
             context.finalized_preprocessor_definitions.valueless,
             context.finalized_preprocessor_definitions.valued);
+        build_succeeded = result.succeeded;
+        context.compilation_log = std::move(result.log);
+        if (result.succeeded) {
+            context.opencl.program = std::move(result.program);
+            context.compiled_ptx = std::move(result.ptx);
+            context.opencl.built_kernel = std::move(result.kernel);
+        }
     }
-
-    spdlog::info("Kernel {} built successfully.", context.options.kernel.key);
+    if (build_succeeded) {
+        spdlog::info("Kernel {} built successfully.", context.options.kernel.key);
+    }
+    else {
+        spdlog::error("Kernel {} build failed.", context.options.kernel.key);
+    }
+    return build_succeeded;
 }
 
 // Note: We could actually do some verification
@@ -1169,12 +1197,45 @@ void configure_launch(execution_context_t& context)
     spdlog::info("Overall dimensions cover full blocks? {}", lc_components.full_blocks());
 }
 
+void maybe_print_or_write_log(bool compilation_succeeded, execution_context_t& context)
+{
+    bool empty_log = context.compilation_log and
+        std::all_of(context.compilation_log.value().cbegin(),context.compilation_log.value().cend(),isspace) == true;
+
+    //        auto end = compilation_log.end() - ((not compilation_log.empty() and compilation_log.back() == '\0') ? 1 : 0);
+//        bool print_the_log = compilation_succeeded or
+
+    spdlog::level::level_enum level = compilation_succeeded ? spdlog::level::debug : spdlog::level::err;
+
+    if (context.options.always_print_compilation_log or not compilation_succeeded) {
+        if (not context.compilation_log or empty_log) {
+            spdlog::log(level, "No compilation log produced.");
+        }
+        else {
+            spdlog::log(level, "Kernel compilation log:");
+            std::cout << context.compilation_log.value();
+            if (context.compilation_log.value().end()[-1] != '\n') {
+                std::cout << '\n';
+            }
+        }
+    }
+    if (context.options.write_compilation_log and context.compilation_log) {
+        auto log { context.compilation_log.value() };
+        write_data_to_file(
+            "compilation log", context.options.kernel.key,
+            // TODO: Get rid of this, use a proper span and const span...
+            poor_mans_span{ const_cast<byte_type*>(log.data()), log.size() },
+            context.options.compilation_log_file, spdlog::level::info);
+    }
+}
+
 void maybe_write_intermediate_representation(execution_context_t& context)
 {
     if (not context.options.write_ptx_to_file) { return; }
+    const auto& ptx = context.compiled_ptx.value();
     write_data_to_file(
         "generated PTX for kernel", context.options.kernel.key,
-        poor_mans_span{ const_cast<byte_type *>(context.compiled_ptx.data()), context.compiled_ptx.length() },
+        poor_mans_span{ const_cast<byte_type *>(ptx.data()), ptx.length() },
         context.options.ptx_output_file, spdlog::level::info);
 }
 
@@ -1188,7 +1249,11 @@ int main(int argc, char** argv)
     execution_context_t context = initialize_execution_context(kernel_inspecific_cmdline_options);
     parse_command_line_for_kernel(argc, argv, context);
 
-    build_kernel(context);
+    auto build_succeeded = build_kernel(context);
+    auto log = context.compilation_log.value();
+    maybe_print_or_write_log(build_succeeded, context);
+    if (not build_succeeded) { return EXIT_FAILURE; }
+
     maybe_write_intermediate_representation(context);
 
     if (context.options.compile_only) { return EXIT_SUCCESS; }

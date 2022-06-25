@@ -73,27 +73,15 @@ optional<std::string> locate_cuda_include_directory()
     return filesystem::path(cuda_root.value()) / "include";
 }
 
-void maybe_print_compilation_log(bool compilation_failed, const cuda::rtc::program_t& program)
-{
-    auto log = program.compilation_log();
-    bool print_the_log = compilation_failed or (log.size() >= 2);
-        // TODO: Why 2?
+struct compilation_result_t {
+    bool succeeded;
+    optional<std::string> log;
+    optional<cuda::module_t> module;
+    optional<std::string> ptx;
+    optional<std::string> mangled_signature;
+};
 
-    if (not print_the_log) { return; }
-
-    spdlog::level::level_enum level = compilation_failed ? spdlog::level::err : spdlog::level::debug ;
-
-    if (log.size() < 2 and print_the_log) {
-        spdlog::debug("Compilation log is empty.");
-    }
-    auto log_view = fmt::string_view(log.data(), log.size());
-    spdlog::log(level, "Compilation log:\n"
-        "-----\n"
-        "{}"
-        "-----", log_view);
-}
-
-auto build_cuda_kernel(
+compilation_result_t build_cuda_kernel(
     const cuda::context_t& context,
     const char* kernel_source_file_path,
     const char* kernel_source,
@@ -132,29 +120,39 @@ auto build_cuda_kernel(
         program.compile(opts);
     }
     catch(std::exception& ex) {
-        bool compilation_failed { true };
-        maybe_print_compilation_log(compilation_failed, program);
-        throw ex;
+        bool compilation_failed { false };
+        auto raw_log = program.compilation_log();
+        // Accounting for a cuda-api-wrappers 0.5.2 gaffe
+        auto log_size = strlen(raw_log.data());
+        std::string log { raw_log.data(), log_size };
+        return { compilation_failed, std::move(log), nullopt, nullopt, nullopt };
     }
-    spdlog::info("Program compiled successfully.");
-    bool compilation_didnt_fail { false };
-    maybe_print_compilation_log(compilation_didnt_fail, program);
+    spdlog::info("Kernel source compiled successfully.");
+    bool compilation_succeeded { true };
+    auto raw_log = program.compilation_log();
+    // Accounting for a cuda-api-wrappers 0.5.2 gaffe
+    auto log_size = strlen(raw_log.data());
+    std::string log { raw_log.data(), log_size };
 
     std::string mangled_kernel_function_signature = program.get_mangling_of(kernel_function_name);
     spdlog::trace("Mangled kernel function signature is: {}", mangled_kernel_function_signature);
 
     if (not program.has_ptx()) {
-        throw std::runtime_error("No PTX in compiled program");
+        throw std::runtime_error("No PTX in compiled kernel CUDA program");
     }
     auto ptx = program.ptx();
     // Yes, it's a copy, the API kind of sucks here
     std::string ptx_as_string = std::string(ptx.data(), ptx.size());
-    spdlog::debug("PTX compilation succeeded, PTX length: {} characters.", ptx.size());
+    spdlog::debug("Compiled PTX length: {} characters.", ptx.size());
     auto module = cuda::module::create(context, program);
     spdlog::debug("Compiled kernel loaded as a CUDA module.");
-    return std::make_tuple( std::move(module), std::move(ptx_as_string), std::move(mangled_kernel_function_signature) );
+    return {
+        compilation_succeeded,
+        std::move(log),
+        std::move(module),
+        std::move(ptx_as_string),
+        std::move(mangled_kernel_function_signature)
+    };
 }
-
-
 
 #endif  // KERNEL_RUNNER_NVRTC_WRAPPER_HPP_

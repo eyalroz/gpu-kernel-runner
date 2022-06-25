@@ -43,11 +43,14 @@ struct kernel_inspecific_cmdline_options_t {
     bool write_output_buffers_to_files;
     bool overwrite_allowed;
     bool write_ptx_to_file;
+    bool always_print_compilation_log;
+    bool write_compilation_log;
     bool generate_line_info;
     bool compile_only;
 //    bool compare_outputs_against_expected;
     bool compile_in_debug_mode;
     filesystem::path ptx_output_file;
+    filesystem::path compilation_log_file;
     std::string language_standard; // At the moment, possible values are: empty, "c++11","c++14", "c++17"
     bool time_with_events;
     optional_launch_config_components forced_launch_config_components;

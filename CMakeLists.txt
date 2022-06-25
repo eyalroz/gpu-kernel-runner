@@ -114,6 +114,8 @@ target_link_libraries(
 	CUDA::OpenCL
 	)
 
+target_compile_definitions(kernel-runner PRIVATE CUDA_INCLUDE_DIR="${CUDAToolkit_INCLUDE_DIRS}")
+
 ####################
 ##  Installation  ##
 ####################

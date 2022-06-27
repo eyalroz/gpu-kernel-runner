@@ -108,9 +108,7 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
     return options;
 }
 
-void ensure_necessary_terms_were_defined(
-    const execution_context_t&   context,
-    const cxxopts::Options&      options)
+void ensure_necessary_terms_were_defined(const execution_context_t& context)
 {
     const auto& ka = *context.kernel_adapter_;
 
@@ -124,9 +122,7 @@ void ensure_necessary_terms_were_defined(
     if (not required_but_undefined.empty()) {
         std::ostringstream oss;
         oss << required_but_undefined;
-        spdlog::critical("The following preprocessor definitions must be specified, but have not been: {}\n", oss.str());
-        std::cerr << options.help() << "\n";
-        exit(EXIT_FAILURE);
+        die("The following preprocessor definitions must be specified, but have not been: {}", oss.str());
     }
 }
 
@@ -215,6 +211,15 @@ void finalize_preprocessor_definitions(execution_context_t& context)
     }
 }
 
+[[noreturn]] void print_help_and_exit(
+    const cxxopts::Options &options,
+    bool user_asked_for_help = true)
+{
+    auto &ostream = user_asked_for_help ? std::cout : std::cerr;
+    ostream << options.help() << "\n";
+    exit(user_asked_for_help ? EXIT_SUCCESS : EXIT_FAILURE);
+}
+
 void parse_command_line_for_kernel(int argc, char** argv, execution_context_t& context)
 {
     spdlog::debug("Parsing the command line for kernel-specific options.");
@@ -229,13 +234,9 @@ void parse_command_line_for_kernel(int argc, char** argv, execution_context_t& c
 
     spdlog::debug("Kernel-inspecific command-line options parsing complete.");
 
-    if (contains(parse_result, "help"))
-    {
-        std::cout << options.help() << "\n";
-        // TODO: List those options which have to be specified
-        exit(EXIT_SUCCESS);
+    if (contains(parse_result, "help")) {
+        print_help_and_exit(options);
     }
-
 
     // TODO: It's possible that the kernel's buffer names will coincide with other option names (especially
     // for the case of single-character names). When this is the case, we should disambiguate. In fact, it might
@@ -309,7 +310,7 @@ void parse_command_line_for_kernel(int argc, char** argv, execution_context_t& c
         spdlog::trace("Got preprocessor argument {}={} through specific option", arg_name, arg_value);
     }
 
-    ensure_necessary_terms_were_defined(context, options);
+    ensure_necessary_terms_were_defined(context);
 
     finalize_preprocessor_definitions(context);
 }
@@ -366,15 +367,6 @@ void print_registered_kernel_keys() {
     }
 }
 
-[[noreturn]] void print_help_and_exit(
-    const cxxopts::Options &options,
-    bool user_asked_for_help)
-{
-    auto &ostream = user_asked_for_help ? std::cout : std::cerr;
-    ostream << options.help() << "\n";
-    exit(user_asked_for_help ? EXIT_SUCCESS : EXIT_FAILURE);
-}
-
 kernel_inspecific_cmdline_options_t parse_command_line_initially(int argc, char** argv)
 {
     auto program_name = argv[0];
@@ -388,8 +380,10 @@ kernel_inspecific_cmdline_options_t parse_command_line_initially(int argc, char*
 
     kernel_inspecific_cmdline_options_t parsed_options;
 
-//    bool have_kernel_key = contains(parse_result, "kernel-key");
     bool user_asked_for_help = contains(parse_result, "help");
+        // Note that we will not immediately provide the help, because if we can figure
+        // out what kernel was asked for, we will want to provide help regarding
+        // the kernel-specific command-line arguments
     bool user_asked_for_list_of_kernels = contains(parse_result, "list-kernels");
     struct { bool key, function_name, source_file_path; } got;
 
@@ -406,11 +400,11 @@ kernel_inspecific_cmdline_options_t parse_command_line_initially(int argc, char*
 
     if (not (got.key or got.function_name or got.source_file_path)) {
         if (user_asked_for_help) {
-            print_help_and_exit(options, user_asked_for_help);
+            print_help_and_exit(options);
         }
-        std::cerr << "You must specify a kernel key, or otherwise provide enough "
-            "information to determine the key, filename and name of kernel function\n";
-        print_help_and_exit(options, user_asked_for_help);
+        else die(
+            "No kernel key was specified, nor enough information provided "
+            "to deduce the kernel key, source filename and kernel function name");
     }
 
     // No need to exit (at least not until second parsing), let's
@@ -532,7 +526,7 @@ kernel_inspecific_cmdline_options_t parse_command_line_initially(int argc, char*
             (user_asked_for_help ? ", so kernel-specific help cannot be provided" : "") + ": {}",
             parsed_options.kernel.source_file.native());
         if (user_asked_for_help) {
-            print_help_and_exit(options, user_asked_for_help);
+            print_help_and_exit(options);
         }
         else die();
     }

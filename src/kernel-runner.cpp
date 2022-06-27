@@ -139,9 +139,9 @@ cxxopts::Options create_command_line_options_for_kernel(const char* program_name
         // We're adding them parse and then ignore; and also possibly for printing usage information
 
     options.allow_unrecognised_options();
-		// This is useful for when you play with removing some of a kernel's parameters or compile-time definitions,
-		// so that the same command-line would still work even though it may have some unused options.
-		// TODO: Consider reporting the unrecognized options, at least in the log.
+        // This is useful for when you play with removing some of a kernel's parameters or compile-time definitions,
+        // so that the same command-line would still work even though it may have some unused options.
+        // TODO: Consider reporting the unrecognized options, at least in the log.
 
     // This splits up the buffers into sections in the options display, each with a "section title"
 
@@ -373,8 +373,8 @@ void print_registered_kernel_keys() {
     const cxxopts::Options &options,
     bool user_asked_for_help)
 {
-    auto &stream = user_asked_for_help ? std::cout : std::cerr;
-    stream << options.help() << "\n";
+    auto &ostream = user_asked_for_help ? std::cout : std::cerr;
+    ostream << options.help() << "\n";
     exit(user_asked_for_help ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
@@ -737,7 +737,7 @@ execution_context_t initialize_execution_context(kernel_inspecific_cmdline_optio
         cl_context_properties properties[] = { CL_CONTEXT_PLATFORM, (cl_context_properties) (platforms[0])(), 0 };
         execution_context.opencl.context = cl::Context{CL_DEVICE_TYPE_GPU, properties};
         std::vector<cl::Device> devices = execution_context.opencl.context.getInfo<CL_CONTEXT_DEVICES>();
-		// Device IDs happen to be ordinals into the devices array.
+        // Device IDs happen to be ordinals into the devices array.
         execution_context.opencl.device = devices[(size_t) parsed_options.gpu_device_id];
         constexpr const cl_command_queue_properties queue_properties { CL_QUEUE_PROFILING_ENABLE } ;
         execution_context.opencl.queue =
@@ -1089,11 +1089,10 @@ void verify_input_arguments(execution_context_t& context)
     auto obtained_in_buffers = util::keys(context.buffers.host_side.inputs);
     if (obtained_in_buffers != in_and_inout_names)
     {
-        std::stringstream ss;
+        std::ostringstream ss;
         auto names_of_missing_buffers = util::difference(in_and_inout_names, obtained_in_buffers);
         for (auto buffer_name : names_of_missing_buffers) { ss << buffer_name << " "; }
-        spdlog::debug("Missing input/inout buffers: {}", ss.str());
-        exit(EXIT_FAILURE);
+        die("Missing input/inout buffers: {}", ss.str());
     }
 
     std::stringstream ss;
@@ -1106,25 +1105,21 @@ void verify_input_arguments(execution_context_t& context)
 
     for(const auto& required : required_args) {
         if (not util::contains(available_args, required)) {
-            spdlog::error("Required scalar argument {} not provided", required);
-            exit(EXIT_FAILURE);
+            die("Required scalar argument {} not provided", required);
         }
     }
 
     if (not ka.input_sizes_are_valid(context)) {
-        spdlog::error("Inputs are invalid, cannot execute kernel");
-        // TODO: Should I throw instead?
-        exit(EXIT_FAILURE);
+        or die("Inputs are invalid, cannot execute kernel");
     }
 
     if (not context.kernel_adapter_->extra_validity_checks(context)) {
         // TODO: Have the kernel adapter report an error instead of just a boolean;
         // but we don't want it to know about spdlog, so it should probably
         // return a runtime_error (?)
-        spdlog::error("The combination of input arguments (scalars and buffers) and preprocessor definitions is invalid.");
-        // TODO: Should I throw instead?
-        exit(EXIT_FAILURE);
+        die("The combination of input arguments (scalars and buffers) and preprocessor definitions is invalid.");
     }
+    spdlog::info("Verified all inputs (scalars and/or buffers, including any inout)");
 }
 
 void generate_additional_scalar_arguments(execution_context_t& context)
@@ -1195,10 +1190,10 @@ void configure_launch(execution_context_t& context)
     if (context.ecosystem == execution_ecosystem_t::cuda) {
         spdlog::info("Launch configuration: Dynamic shared memory:  {} bytes", lc_components.dynamic_shared_memory_size.value_or(0));
     }
-    spdlog::info("Overall dimensions cover full blocks? {}", lc_components.full_blocks());
+    spdlog::debug("Overall dimensions cover full blocks? {}", lc_components.full_blocks());
 }
 
-void maybe_print_or_write_log(bool compilation_succeeded, execution_context_t& context)
+void maybe_print_and_write_log(bool compilation_succeeded, execution_context_t& context)
 {
     bool empty_log = context.compilation_log and
         std::all_of(context.compilation_log.value().cbegin(),context.compilation_log.value().cend(),isspace) == true;
@@ -1256,7 +1251,7 @@ int main(int argc, char** argv)
 
     auto build_succeeded = build_kernel(context);
     auto log = context.compilation_log.value();
-    maybe_print_or_write_log(build_succeeded, context);
+    maybe_print_and_write_log(build_succeeded, context);
     if (not build_succeeded) { return EXIT_FAILURE; }
 
     maybe_write_intermediate_representation(context);
@@ -1267,7 +1262,6 @@ int main(int argc, char** argv)
     // TODO: Consider verifying before reading the buffers, but obtaining the sizes
     // for the verification
     verify_input_arguments(context);
-    spdlog::info("Input (and inout) arguments verified - both buffers and scalars.");
     create_host_side_output_buffers(context);
     create_device_side_buffers(context);
     generate_additional_scalar_arguments(context);

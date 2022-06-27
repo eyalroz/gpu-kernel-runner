@@ -32,7 +32,7 @@ using std::size_t;
 using std::string;
 
 template <typename... Ts>
-inline void die(
+[[noreturn]] inline bool die(
     std::string message_format_string = "",
     Ts&&... args)
 {
@@ -122,9 +122,9 @@ void ensure_necessary_terms_were_defined(
     auto terms_required_to_be_defined = ka.cmdline_required_preprocessor_definition_terms();
     auto required_but_undefined = util::difference(terms_required_to_be_defined, all_defined_terms);
     if (not required_but_undefined.empty()) {
-        std::cerr
-            << "The following preprocessor definitions must be specified, but have not been: "
-            << required_but_undefined << "\n\n";
+        std::ostringstream oss;
+        oss << required_but_undefined;
+        spdlog::critical("The following preprocessor definitions must be specified, but have not been: {}\n", oss.str());
         std::cerr << options.help() << "\n";
         exit(EXIT_FAILURE);
     }
@@ -284,10 +284,8 @@ void parse_command_line_for_kernel(int argc, char** argv, execution_context_t& c
         }
     }
     for(const auto& arg_name : ka.cmdline_required_scalar_argument_names()  ) {
-        if (not contains(parse_result, arg_name)) {
-            std::cerr << "Scalar argument '" << arg_name  << "' must be specified, but wasn't.\n\n";
-            exit(EXIT_FAILURE);
-        }
+        contains(parse_result, arg_name)
+            or die("Scalar argument '{}' must be specified, but wasn't.\n\n", arg_name);
         // TODO: Consider not parsing anything at this stage, and just marshaling all the scalar arguments together.
         spdlog::trace("Parsing scalar argument {}", arg_name);
         auto& arg_value = parse_result[arg_name].as<std::string>();
@@ -330,10 +328,9 @@ void ensure_gpu_device_validity(
         auto actual_platform_id = platform_id.value_or(OpenCLDefaultPlatformID);
         std::vector<cl::Platform> platforms;
         cl::Platform::get(&platforms);
-        if (platforms.empty())
-            die("No OpenCL platforms found.");
-        if(platforms.size() <= actual_platform_id)
-            die ("No OpenCL platform exists with ID {}", actual_platform_id);
+        not platforms.empty() or die("No OpenCL platforms found.");
+        platforms.size() > actual_platform_id
+            or die ("No OpenCL platform exists with ID {}", actual_platform_id);
         auto& platform = platforms[actual_platform_id];
         if (spdlog::level_is_at_least(spdlog::level::debug)) {
             spdlog::debug("Using OpenCL platform {}: {}", actual_platform_id, get_name(platform));
@@ -347,7 +344,7 @@ void ensure_gpu_device_validity(
         };
         cl::Context context(CL_DEVICE_TYPE_GPU, properties);
         std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
-        if(devices.empty()) die("No OpenCL devices found on the platform {}", actual_platform_id);
+        if (devices.empty()) { die("No OpenCL devices found on the platform {}", actual_platform_id); }
         device_count = (std::size_t) devices.size();
         break;
     }
@@ -613,8 +610,7 @@ kernel_inspecific_cmdline_options_t parse_command_line_initially(int argc, char*
             parsed_options.language_standard = language_standard;
         }
         else {
-            std::cerr << "Unsupported language standard for kernel compilation: " << language_standard << std::endl;
-            exit(EXIT_FAILURE);
+            die("Unsupported language standard for kernel compilation: {}", language_standard);
         }
     }
     parsed_options.compile_in_debug_mode = parse_result["debug-mode"].as<bool>();
@@ -1104,14 +1100,11 @@ void verify_input_arguments(execution_context_t& context)
     spdlog::trace("Required scalar arguments: {}", ss.str()); ss.str("");
 
     for(const auto& required : required_args) {
-        if (not util::contains(available_args, required)) {
-            die("Required scalar argument {} not provided", required);
-        }
+        util::contains(available_args, required)
+            or die("Required scalar argument {} not provided", required);
     }
 
-    if (not ka.input_sizes_are_valid(context)) {
-        or die("Inputs are invalid, cannot execute kernel");
-    }
+    ka.input_sizes_are_valid(context) or die("Inputs are invalid, cannot execute kernel");
 
     if (not context.kernel_adapter_->extra_validity_checks(context)) {
         // TODO: Have the kernel adapter report an error instead of just a boolean;
@@ -1252,7 +1245,7 @@ int main(int argc, char** argv)
     auto build_succeeded = build_kernel(context);
     auto log = context.compilation_log.value();
     maybe_print_and_write_log(build_succeeded, context);
-    if (not build_succeeded) { return EXIT_FAILURE; }
+    build_succeeded or die();
 
     maybe_write_intermediate_representation(context);
 

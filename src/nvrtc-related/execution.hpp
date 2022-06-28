@@ -8,6 +8,7 @@ void initialize_execution_context<execution_ecosystem_t::cuda>(execution_context
 {
     auto device = cuda::device::get(execution_context.options.gpu_device_id);
     execution_context.cuda.context = device.create_context();
+    execution_context.cuda.stream.emplace(execution_context.cuda.context->create_stream(cuda::stream::async));
     spdlog::trace("Created a CUDA context on device {} ", execution_context.cuda.context->device_id());
 }
 
@@ -21,7 +22,6 @@ void launch_time_and_sync_cuda_kernel(execution_context_t& execution_context, ru
                  execution_context.options.kernel.key,
                  execution_context.options.kernel.function_name);
 
-    auto stream = cuda_context.create_stream(cuda::stream::async);
     spdlog::debug("Created a non-blocking CUDA stream on device {}", cuda_context.device_id());
     struct event_pair_t {
         cuda::event_t before, after;
@@ -33,7 +33,7 @@ void launch_time_and_sync_cuda_kernel(execution_context_t& execution_context, ru
             cuda_context.create_event(cuda::event::sync_by_blocking),
             cuda_context.create_event(cuda::event::sync_by_blocking)
         };
-        stream.enqueue.event(timing_events->before);
+        execution_context.cuda.stream->enqueue.event(timing_events->before);
     }
     auto mangled_kernel_signature = execution_context.cuda.mangled_kernel_signature->c_str();
     auto kernel = execution_context.cuda.module->get_kernel(mangled_kernel_signature);
@@ -42,12 +42,16 @@ void launch_time_and_sync_cuda_kernel(execution_context_t& execution_context, ru
         execution_context.finalized_arguments.pointers.size() - 1,
         execution_context.options.kernel.function_name.c_str());
 
-    cuda::launch_type_erased(kernel, stream, lc, execution_context.finalized_arguments.pointers);
+    cuda::launch_type_erased(
+        kernel,
+       execution_context.cuda.stream.value(),
+       lc,
+       execution_context.finalized_arguments.pointers);
 
     if (execution_context.options.time_with_events) {
-        stream.enqueue.event(timing_events->after);
+        execution_context.cuda.stream->enqueue.event(timing_events->after);
     }
-    stream.synchronize();
+    execution_context.cuda.stream->synchronize();
 
     if (execution_context.options.time_with_events) {
         auto duration = cuda::event::time_elapsed_between(timing_events->before, timing_events->after);

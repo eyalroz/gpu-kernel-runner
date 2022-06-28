@@ -46,6 +46,21 @@ T fold(const Container& container, const T& initial_value, BinaryOp folder)
     return std::accumulate(container.cbegin(), container.cend(), initial_value, folder);
 }
 
+template <typename InputIterator, typename OutputIterator, typename Predicate, typename UnaryOperator>
+OutputIterator transform_if(
+    InputIterator first1, InputIterator last1, OutputIterator d_first, Predicate pred, UnaryOperator op)
+{
+    for(; first1 != last1; ++first1) {
+        const auto& e = *first1;
+        if (not pred(e)) {
+            continue;
+        }
+        *d_first = op(e);
+        d_first++;
+    }
+    return d_first;
+}
+
 } // namespace util
 
 #endif // UTIL_FUNCTIONAL_HPP_

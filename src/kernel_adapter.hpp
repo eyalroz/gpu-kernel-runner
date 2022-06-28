@@ -61,6 +61,9 @@ public:
     using mixin_type::get_subclass_factory;
     using mixin_type::register_in_factory;
 
+public:
+    enum : bool { is_required = true,  isnt_required = false };
+
 public: // constructors & destructor
     kernel_adapter() = default;
     kernel_adapter(const kernel_adapter&) = default;
@@ -68,9 +71,11 @@ public: // constructors & destructor
     kernel_adapter& operator=(kernel_adapter&) = default;
     kernel_adapter& operator=(kernel_adapter&&) = default;
 
+
     struct single_argument_details {
         const char* name;
         const char* description;
+        bool required;
     };
 
     struct single_buffer_details {
@@ -84,9 +89,6 @@ public: // constructors & destructor
         const char* name;
         const char* description;
         bool required;
-
-        static constexpr const bool is_required { true };
-        static constexpr const bool is_not_required { false };
     };
 
     // TODO: This should really be a span (and then we wouldn't
@@ -94,7 +96,6 @@ public: // constructors & destructor
     using buffer_details_type = std::vector<single_buffer_details>;
     using scalar_details_type = std::vector<single_argument_details>;
     using preprocessor_definitions_type = std::vector<single_preprocessor_definition_details>;
-
 
 public:
     /**
@@ -157,9 +158,7 @@ public:
         return buffer_names_from_details(requested_dir_only);
     }
 
-    virtual parameter_name_set cmdline_required_scalar_argument_names() const = 0;
     virtual any parse_cmdline_scalar_argument(const std::string& argument_name, const std::string& argument) const = 0;
-    virtual parameter_name_set cmdline_required_preprocessor_definition_terms() const { return {}; }
     virtual scalar_arguments_map generate_additional_scalar_arguments(execution_context_t&) const { return {}; }
 
     // Notes:

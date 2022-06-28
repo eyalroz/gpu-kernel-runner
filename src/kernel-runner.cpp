@@ -108,6 +108,29 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
     return options;
 }
 
+std::vector<const char*> get_required_arg_names(const kernel_adapter& ka) {
+    auto sads = ka.scalar_argument_details();
+    std::vector<const char*> result;
+    util::transform_if(
+        std::cbegin(sads), std::cend(sads), std::back_inserter(result),
+        [](const auto& sad) { return sad.required; },
+        [](const auto& sad) { return sad.name;});
+    return result;
+}
+
+
+// TODO: DRY with get_required_scalar_arguments :-(
+// Also check if we can't use `util::difference` with strings vs const char*'s after all
+std::unordered_set<std::string> get_required_preprocessor_definition_terms(const kernel_adapter& ka) {
+    auto pdds = ka.preprocessor_definition_details();
+    std::unordered_set<std::string> result;
+    util::transform_if(
+        std::cbegin(pdds), std::cend(pdds), std::inserter(result, result.begin()),
+        [](const auto& sad) { return sad.required; },
+        [](const auto& sad) { return std::string{sad.name};});
+    return result;
+}
+
 void ensure_necessary_terms_were_defined(const execution_context_t& context)
 {
     const auto& ka = *context.kernel_adapter_;
@@ -117,7 +140,7 @@ void ensure_necessary_terms_were_defined(const execution_context_t& context)
     parameter_name_set terms_defined_by_specific_options =
         util::keys(context.options.preprocessor_value_definitions);
     auto all_defined_terms = util::union_(terms_defined_by_define_options, terms_defined_by_specific_options);
-    auto terms_required_to_be_defined = ka.cmdline_required_preprocessor_definition_terms();
+    auto terms_required_to_be_defined = get_required_preprocessor_definition_terms(ka);
     auto required_but_undefined = util::difference(terms_required_to_be_defined, all_defined_terms);
     if (not required_but_undefined.empty()) {
         std::ostringstream oss;
@@ -284,7 +307,8 @@ void parse_command_line_for_kernel(int argc, char** argv, execution_context_t& c
             spdlog::trace("Using output file {} for buffer {}", context.buffers.filenames.outputs[buffer_name], buffer_name);
         }
     }
-    for(const auto& arg_name : ka.cmdline_required_scalar_argument_names()  ) {
+    auto required_scalar_names = get_required_arg_names(ka);
+    for(const auto& arg_name : required_scalar_names ) {
         contains(parse_result, arg_name)
             or die("Scalar argument '{}' must be specified, but wasn't.\n\n", arg_name);
         // TODO: Consider not parsing anything at this stage, and just marshaling all the scalar arguments together.
@@ -296,18 +320,19 @@ void parse_command_line_for_kernel(int argc, char** argv, execution_context_t& c
         spdlog::trace("Successfully parsed scalar argument {}", arg_name);
     }
 
-    for(const auto& arg_name : ka.cmdline_required_preprocessor_definition_terms()  ) {
-        if (not contains(parse_result, arg_name)) {
+    auto required_defs = get_required_preprocessor_definition_terms(ka);
+    for(const auto& def_name : required_defs ) {
+        if (not contains(parse_result, def_name)) {
             // we'll check this later; maybe it was otherwise specified
             spdlog::trace("Preprocessor term {} not passed using a specific option; "
                 "hopefully it has been manually-defined.");
             continue;
         }
         // TODO: Consider not parsing anything at this stage, and just marshaling all the scalar arguments together.
-        // context.scalar_input_arguments.raw[arg_name] = parse_result[arg_name].as<std::string>();
-        const auto& arg_value = parse_result[arg_name].as<std::string>();
-        context.options.preprocessor_value_definitions[arg_name] = arg_value;
-        spdlog::trace("Got preprocessor argument {}={} through specific option", arg_name, arg_value);
+        // context.scalar_input_arguments.raw[def_name] = parse_result[def_name].as<std::string>();
+        const auto& arg_value = parse_result[def_name].as<std::string>();
+        context.options.preprocessor_value_definitions[def_name] = arg_value;
+        spdlog::trace("Got preprocessor argument {}={} through specific option", def_name, arg_value);
     }
 
     ensure_necessary_terms_were_defined(context);
@@ -1077,7 +1102,7 @@ void verify_input_arguments(execution_context_t& context)
     const auto& available_args = util::keys(context.scalar_input_arguments.raw);
     ss << available_args;
     spdlog::trace("Available scalar arguments: {}", ss.str()); ss.str("");
-    const auto required_args = ka.cmdline_required_scalar_argument_names();
+    const auto required_args = get_required_arg_names(ka);
     ss << required_args;
     spdlog::trace("Required scalar arguments: {}", ss.str()); ss.str("");
 

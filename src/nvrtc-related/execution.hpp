@@ -3,6 +3,14 @@
 
 #include <common_types.hpp>
 
+template <>
+void initialize_execution_context<execution_ecosystem_t::cuda>(execution_context_t& execution_context)
+{
+    auto device = cuda::device::get(execution_context.options.gpu_device_id);
+    execution_context.cuda.context = device.create_context();
+    spdlog::trace("Created a CUDA context on device {} ", execution_context.cuda.context->device_id());
+}
+
 void launch_time_and_sync_cuda_kernel(execution_context_t& execution_context, run_index_t run_index)
 {
     auto& cuda_context = *execution_context.cuda.context;

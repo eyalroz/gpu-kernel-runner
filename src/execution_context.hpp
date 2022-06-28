@@ -129,4 +129,7 @@ inline bool execution_context_t::get_defined_value<bool>(const std::string& s)
     return ::get_defined_value<bool>(finalized_preprocessor_definitions.valued, s);
 }
 
+template <execution_ecosystem_t Ecosystem>
+void initialize_execution_context(execution_context_t& context);
+
 #endif /* EXECUTION_CONTEXT_HPP_ */

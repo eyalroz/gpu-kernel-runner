@@ -716,22 +716,10 @@ execution_context_t initialize_execution_context(kernel_inspecific_cmdline_optio
     execution_context.ecosystem = parsed_options.gpu_ecosystem;
 
     if (parsed_options.gpu_ecosystem == execution_ecosystem_t::cuda) {
-        auto device = cuda::device::get(parsed_options.gpu_device_id);
-        execution_context.cuda.context = device.create_context();
-        spdlog::trace("Created a CUDA context on device {} ", execution_context.cuda.context->device_id());
+        initialize_execution_context<execution_ecosystem_t::cuda>(execution_context);
     }
     else { // OpenCL
-        std::vector<cl::Platform> platforms;
-        cl::Platform::get(&platforms);
-        // Get list of devices on default platform and create context
-        cl_context_properties properties[] = { CL_CONTEXT_PLATFORM, (cl_context_properties) (platforms[0])(), 0 };
-        execution_context.opencl.context = cl::Context{CL_DEVICE_TYPE_GPU, properties};
-        std::vector<cl::Device> devices = execution_context.opencl.context.getInfo<CL_CONTEXT_DEVICES>();
-        // Device IDs happen to be ordinals into the devices array.
-        execution_context.opencl.device = devices[(size_t) parsed_options.gpu_device_id];
-        constexpr const cl_command_queue_properties queue_properties { CL_QUEUE_PROFILING_ENABLE } ;
-        execution_context.opencl.queue =
-            cl::CommandQueue(execution_context.opencl.context, execution_context.opencl.device, queue_properties);
+        initialize_execution_context<execution_ecosystem_t::opencl>(execution_context);
     }
     execution_context.kernel_adapter_ =
         kernel_adapter::produce_subclass(std::string(parsed_options.kernel.key));

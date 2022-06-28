@@ -64,18 +64,9 @@ public:
     const scalar_details_type& scalar_argument_details() const override
     {
         static const scalar_details_type scalar_argument_details_ = {
-        	{"length", "Length of each of A, B and C" }
+        	{"length", "Length of each of A, B and C", isnt_required}
         };
         return scalar_argument_details_;
-    }
-
-    parameter_name_set cmdline_required_scalar_argument_names() const override {
-        return {};
-    }
-
-    parameter_name_set cmdline_required_preprocessor_definition_terms() const override
-    {
-        return { "A_LITTLE_EXTRA" };
     }
 
     scalar_arguments_map generate_additional_scalar_arguments(execution_context_t& context) const override
@@ -150,8 +141,6 @@ public:
 
     virtual const preprocessor_definitions_type& preprocessor_definition_details() const override
     {
-        constexpr const bool is_required = single_preprocessor_definition_details::is_required;
-
         static const preprocessor_definitions_type preprocessor_definitions = {
             { "A_LITTLE_EXTRA", "Something extra to add to the result", is_required }
         };

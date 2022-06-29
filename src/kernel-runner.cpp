@@ -901,14 +901,13 @@ device_buffers_map create_device_side_buffers(
 void zero_output_buffer(
     execution_ecosystem_t     ecosystem,
     const device_buffer_type  buffer,
-    const optional<cuda::context_t>& cuda_context, // Maybe use a stream?
-    cl::CommandQueue*         opencl_queue,
+    optional<cuda::stream_t>  cuda_stream,
+    const cl::CommandQueue*   opencl_queue,
     const std::string &       buffer_name)
 {
     spdlog::trace("Zeroing output buffer '{}'", buffer_name);
     if (ecosystem == execution_ecosystem_t::cuda) {
-        cuda::context::current::scoped_override_t scoped_context_override{ *cuda_context };
-        cuda::memory::zero(buffer.cuda.data(), buffer.cuda.size());
+        cuda_stream->enqueue.memzero(buffer.cuda.data(), buffer.cuda.size());
     } else {
         // OpenCL
         const constexpr unsigned char zero_pattern { 0 };
@@ -930,7 +929,7 @@ void zero_output_buffers(execution_context_t& context)
     spdlog::debug("Zeroing output-only buffers.");
     for(const auto& buffer_name : output_only_buffers) {
         const auto& buffer = context.buffers.device_side.outputs.at(buffer_name);
-        zero_output_buffer(context.ecosystem, buffer, context.cuda.context, &context.opencl.queue, buffer_name);
+        zero_output_buffer(context.ecosystem, buffer, context.cuda.stream, &context.opencl.queue, buffer_name);
     }
     spdlog::debug("Output-only buffers filled with zeros.");
 }

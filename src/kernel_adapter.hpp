@@ -61,8 +61,15 @@ public:
     using mixin_type::get_subclass_factory;
     using mixin_type::register_in_factory;
 
-public:
-    enum : bool { is_required = true,  isnt_required = false };
+protected:
+    // This will make it easier for subclasses to implement the parameter_details function
+    static constexpr const auto input  = parameter_direction_t::input;
+    static constexpr const auto output = parameter_direction_t::output;
+    static constexpr const auto buffer = kernel_parameters::kind_t::buffer;
+    static constexpr const auto scalar = kernel_parameters::kind_t::scalar;
+    static constexpr const auto inout  = parameter_direction_t::inout;
+    static constexpr const bool is_required = kernel_parameters::is_required;
+    static constexpr const bool isnt_required = kernel_parameters::isnt_required;
 
 public: // constructors & destructor
     kernel_adapter() = default;
@@ -72,17 +79,12 @@ public: // constructors & destructor
     kernel_adapter& operator=(kernel_adapter&&) = default;
 
 
-    struct single_argument_details {
+    struct single_parameter_details {
         const char* name;
-        const char* description;
+        kernel_parameters::kind_t kind;
+        parameter_direction_t direction; // always in for scalars
         bool required;
-    };
-
-    struct single_buffer_details {
-        const char* name;
-        parameter_direction_t direction;
         const char* description;
-        // TODO: Consider adding a default path field
     };
 
     struct single_preprocessor_definition_details {
@@ -93,8 +95,7 @@ public: // constructors & destructor
 
     // TODO: This should really be a span (and then we wouldn't
     // need to use const-refs to it)
-    using buffer_details_type = std::vector<single_buffer_details>;
-    using scalar_details_type = std::vector<single_argument_details>;
+    using parameter_details_type = std::vector<single_parameter_details>;
     using preprocessor_definitions_type = std::vector<single_preprocessor_definition_details>;
 
 public:
@@ -114,22 +115,31 @@ public:
     // Note: Inheriting classes must define a key_type key_ static member -
     // or else they cannot be registered in the factory.
 
-    virtual const buffer_details_type& buffer_details() const = 0;
-    virtual const scalar_details_type& scalar_argument_details() const = 0;
+    virtual const parameter_details_type & parameter_details() const = 0;
+    virtual parameter_details_type scalar_parameter_details() const
+    {
+        parameter_details_type all_params = parameter_details();
+        return util::filter(all_params, [](const single_parameter_details& param) { return param.kind == scalar; });
+    }
+    virtual parameter_details_type buffer_details() const
+    {
+        parameter_details_type all_params = parameter_details();
+        return util::filter(all_params, [](const single_parameter_details& param) { return param.kind == buffer; });
+    }
     virtual const preprocessor_definitions_type& preprocessor_definition_details() const = 0;
 
 
     virtual void add_buffer_cmdline_options(cxxopts::OptionAdder adder) const
     {
-        for(const auto& buffer : buffer_details() ) {
-            adder(buffer.name, buffer.description,  cxxopts::value<std::string>()->default_value(buffer.name));
+        for(const auto& buffer_ : buffer_details() ) {
+            adder(buffer_.name, buffer_.description,  cxxopts::value<std::string>()->default_value(buffer_.name));
         }
     }
 
     virtual void add_scalar_arguments_cmdline_options(cxxopts::OptionAdder option_adder) const {
-    	for(const auto& sad : scalar_argument_details()) {
-    		option_adder(sad.name, sad.description, cxxopts::value<std::string>());
-    	}
+        for(const auto& sad : scalar_parameter_details()) {
+            option_adder(sad.name, sad.description, cxxopts::value<std::string>());
+        }
     }
 
     virtual void add_preprocessor_definition_cmdline_options(cxxopts::OptionAdder option_adder) const {
@@ -139,13 +149,13 @@ public:
     }
 
 protected:
-    static parameter_name_set buffer_names_from_details(const buffer_details_type& bds)
+    static parameter_name_set buffer_names_from_details(const parameter_details_type& param_details)
     {
         parameter_name_set names;
         std::transform(
-            bds.cbegin(), bds.cend(),
+            param_details.cbegin(), param_details.cend(),
             std::inserter(names, names.begin()),
-            [](const single_buffer_details& details) { return details.name; }
+            [](const single_parameter_details& details) { return details.name; }
         );
         return names;
     }
@@ -153,9 +163,14 @@ protected:
 public:
     virtual parameter_name_set buffer_names(parameter_direction_t direction) const
     {
-        auto& bds = buffer_details();
-        auto requested_dir_only = util::filter(bds, [&direction](const auto& sbd) { return sbd.direction == direction; } );
-        return buffer_names_from_details(requested_dir_only);
+        auto& all_params = parameter_details();
+        auto requested_dir_buffers_only =
+            util::filter(all_params,
+                [&direction](const single_parameter_details& spd) {
+                    return spd.direction == direction and spd.kind == buffer;
+                }
+            );
+        return buffer_names_from_details(requested_dir_buffers_only);
     }
 
     virtual any parse_cmdline_scalar_argument(const std::string& argument_name, const std::string& argument) const = 0;
@@ -210,9 +225,9 @@ public:
         marshalled_arguments_type argument_ptrs_and_maybe_sizes;
         marshal_kernel_arguments_inner(argument_ptrs_and_maybe_sizes, context);
         if (context.ecosystem == execution_ecosystem_t::cuda) {
-        	argument_ptrs_and_maybe_sizes.pointers.push_back(nullptr);
+            argument_ptrs_and_maybe_sizes.pointers.push_back(nullptr);
                 // cuLaunchKernels uses a termination by NULL rather than a length parameter.
-        	    // Note: Remember that sizes is unused in this case
+                // Note: Remember that sizes is unused in this case
         }
         return argument_ptrs_and_maybe_sizes;
     }
@@ -252,18 +267,18 @@ inline void push_back_buffer(
     marshalled_arguments_type& argument_ptrs,
     const execution_context_t& context,
     parameter_direction_t dir,
-    const char* buffer_argument_name)
+    const char* buffer_parameter_name)
 {
     const auto& buffer_map = (dir == parameter_direction_t::in) ?
         context.buffers.device_side.inputs:
         context.buffers.device_side.outputs;
-    	// Note: We use outputs here for inout buffers as well.
+        // Note: We use outputs here for inout buffers as well.
     if (context.ecosystem == execution_ecosystem_t::cuda) {
-    	argument_ptrs.pointers.push_back(& buffer_map.at(buffer_argument_name).cuda.data());
+        argument_ptrs.pointers.push_back(& buffer_map.at(buffer_parameter_name).cuda.data());
     }
     else {
-        argument_ptrs.pointers.push_back(& buffer_map.at(buffer_argument_name).opencl);
-    	argument_ptrs.sizes.push_back(sizeof(cl::Buffer));
+        argument_ptrs.pointers.push_back(& buffer_map.at(buffer_parameter_name).opencl);
+        argument_ptrs.sizes.push_back(sizeof(cl::Buffer));
     }
 }
 
@@ -271,9 +286,9 @@ template <typename Scalar>
 inline void push_back_scalar(
     marshalled_arguments_type& argument_ptrs,
     const execution_context_t& context,
-    const char* scalar_argument_name)
+    const char* scalar_parameter_name)
 {
-    argument_ptrs.pointers.push_back(& any_cast<const Scalar&>(context.scalar_input_arguments.typed.at(scalar_argument_name)));
+    argument_ptrs.pointers.push_back(& any_cast<const Scalar&>(context.scalar_input_arguments.typed.at(scalar_parameter_name)));
     if (context.ecosystem == execution_ecosystem_t::opencl) {
         argument_ptrs.sizes.push_back(sizeof(Scalar));
     }

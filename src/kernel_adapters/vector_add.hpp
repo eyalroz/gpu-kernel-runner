@@ -17,10 +17,6 @@ public:
     constexpr static const char* kernel_function_name_ { "vectorAdd" };
     constexpr static const char* key_ { "bundled_with_runner/vector_add" };
 
-    vector_add() : kernel_adapter() { }
-    vector_add(const vector_add& other) = default;
-    ~vector_add() = default;
-
     std::string kernel_function_name() const override { return kernel_function_name_; }
     std::string key() const override { return key_; }
 
@@ -71,11 +67,6 @@ public:
         return {
             { "C", input_buffers.at("A").size() }
         };
-    }
-
-    bool extra_validity_checks(const execution_context_t&) const override
-    {
-        return true; // Our checks are covered elsewhere
     }
 
     virtual bool input_sizes_are_valid(const execution_context_t& context) const override

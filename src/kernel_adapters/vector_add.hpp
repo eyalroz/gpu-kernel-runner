@@ -7,29 +7,6 @@
 #include <cstdlib>
 #include <array>
 
-// TODO:
-// 1. To make adapters simpler to write and avoid DRY,
-// we should have a single descriptor structure for all parameters, in order,
-// which, for each of them, indicates its direction, whether it's a scalar or buffer,
-// perhaps its constness, its name and its description. By filtering and projecting this
-// structure, we can obtain various structures we return or iterate-over in different
-// methods of a kernel adapter class.
-// 2. Similar arrangement for preprocessor definitions: With/without value, optional/required,
-//    name/term and description.
-//
-// Doing the above should allow us to stick to base-class implementations of:
-//
-//   input_buffer_names()
-//   output_buffer_names()
-//   cmdline_required_preprocessor_definition_terms()
-//   output_buffer_sizes()
-//   input_buffer_details()
-//   output_buffer_details()
-//   add_scalar_arguments_cmdline_options()
-//   marshal_kernel_arguments_inner()
-//
-// and perhaps even parse_cmdline_scalar_argument
-
 namespace kernel_adapters {
 
 class vector_add final : public kernel_adapter {

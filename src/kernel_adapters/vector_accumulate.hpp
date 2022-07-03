@@ -11,6 +11,7 @@ namespace kernel_adapters {
 class vector_accumulate final : public kernel_adapter {
 public:
     using parent = kernel_adapter;
+    using length_type = size_t;
 
     constexpr static const char* kernel_function_name_ { "vectorAccumulate" };
     constexpr static const char* key_ { "bundled_with_runner/vector_accumulate" };
@@ -42,15 +43,15 @@ public:
 
     scalar_arguments_map generate_additional_scalar_arguments(execution_context_t& context) const override
     {
-        const auto& A = context.buffers.host_side.inputs.at("A");
+        const auto& a = context.buffers.host_side.inputs.at("A");
         scalar_arguments_map generated;
-        generated["length"] = any(A.size());
+        generated["length"] = any(a.size());
         return generated;
     }
 
     any parse_cmdline_scalar_argument(const std::string& argument_name, const std::string& argument) const override {
         if (argument_name == "length") {
-            return { std::stoul(argument) };
+            return { static_cast<length_type>(std::stoull(argument)) };
         }
         throw std::invalid_argument("No scalar argument " + argument_name);
     }
@@ -74,9 +75,9 @@ public:
 
     virtual bool input_sizes_are_valid(const execution_context_t& context) const override
     {
-        const auto& A = context.buffers.host_side.inputs.at("A");
-        const auto& B = context.buffers.host_side.inputs.at("B");
-        if (A.size() != B.size()) {
+        const auto& a = context.buffers.host_side.inputs.at("A");
+        const auto& b = context.buffers.host_side.inputs.at("B");
+        if (a.size() != b.size()) {
             return false;
         }
         // TODO: Implement a contains() function
@@ -84,8 +85,8 @@ public:
             context.scalar_input_arguments.typed.cend())
         {
             const auto& length_any = context.scalar_input_arguments.typed.at("length");
-            auto length = any_cast<std::size_t>(length_any);
-            if (A.size() != length) { return false; }
+            auto length = any_cast<length_type>(length_any);
+            if (a.size() != length) { return false; }
         }
         return true;
     }
@@ -96,7 +97,7 @@ public:
     {
         push_back_buffer(args, context, parameter_direction_t::inout, "A");
         push_back_buffer(args, context, parameter_direction_t::input, "B");
-        push_back_scalar<std::size_t>(args, context, "length");
+        push_back_scalar<length_type>(args, context, "length");
     }
 
     virtual optional_launch_config_components deduce_launch_config(const execution_context_t& context) const override

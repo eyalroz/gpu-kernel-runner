@@ -28,10 +28,10 @@
 // Add the values in A and B into C, elementwise 
 
 __global__ void vectorAdd(
-        unsigned char* __restrict        C,
-        const unsigned char* __restrict  A,
-        const unsigned char* __restrict  B,
-        unsigned int length)
+        unsigned char       * __restrict  C,
+        unsigned char const * __restrict  A,
+        unsigned char const * __restrict  B,
+        size_t length)
 {
     size_t i = blockDim.x * blockIdx.x + threadIdx.x;
     if (i < length) {

@@ -1,10 +1,7 @@
 #ifndef VECTOR_ACCUMULATE_KERNEL_ADAPTER_HPP_
 #define VECTOR_ACCUMULATE_KERNEL_ADAPTER_HPP_
 
-
 #include "kernel_adapter.hpp"
-#include "util/optional_and_any.hpp"
-#include <cstdlib>
 
 namespace kernel_adapters {
 
@@ -31,6 +28,7 @@ public:
         return pd;
     }
 
+    // Note: If we marked "length" as being required, we would not need to implement this
     scalar_arguments_map generate_additional_scalar_arguments(execution_context_t& context) const override
     {
         const auto& a = context.buffers.host_side.inputs.at("A");
@@ -65,7 +63,7 @@ public:
         if (a.size() != b.size()) {
             return false;
         }
-        // TODO: Implement a contains() function
+        // Note: If we marked "length" as being required, we would not need to check this
         if (context.scalar_input_arguments.typed.find("length") !=
             context.scalar_input_arguments.typed.cend())
         {
@@ -85,6 +83,7 @@ public:
         push_back_scalar<length_type>(args, context, "length");
     }
 
+    // Note: We don't have to implement this method - it is merely a convenience
     virtual optional_launch_config_components deduce_launch_config(const execution_context_t& context) const override
     {
         optional_launch_config_components result;

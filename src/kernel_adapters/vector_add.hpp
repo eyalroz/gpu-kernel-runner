@@ -1,11 +1,7 @@
 #ifndef VECTOR_ADD_KERNEL_ADAPTER_HPP_
 #define VECTOR_ADD_KERNEL_ADAPTER_HPP_
 
-
 #include "kernel_adapter.hpp"
-#include "util/optional_and_any.hpp"
-#include <cstdlib>
-#include <array>
 
 namespace kernel_adapters {
 
@@ -28,17 +24,9 @@ public:
             {  "C",      buffer,  output,    is_required,   "Sequence of sums"             },
             {  "A",      buffer,  input,     is_required,   "First sequence of addends"    },
             {  "B",      buffer,  input,     is_required,   "Second sequence of addends"   },
-            {  "length", scalar,  input,     isnt_required, "Length of each of A, B and C" }
+            {  "length", scalar,  input,     is_required,   "Length of each of A, B and C" }
         };
         return pd;
-    }
-
-    scalar_arguments_map generate_additional_scalar_arguments(execution_context_t& context) const override
-    {
-        const auto& a = context.buffers.host_side.inputs.at("A");
-        scalar_arguments_map generated;
-        generated["length"] = any(static_cast<length_type>(a.size()));
-        return generated;
     }
 
     any parse_cmdline_scalar_argument(const std::string& parameter_name, const std::string& argument) const override {
@@ -48,7 +36,6 @@ public:
         throw std::invalid_argument("No scalar argument " + parameter_name);
     }
 
-    // Note: The actual size might be smaller; this is what we need to allocate
     buffer_sizes output_buffer_sizes(
         const host_buffers_map& input_buffers,
         const scalar_arguments_map&,
@@ -62,19 +49,12 @@ public:
 
     virtual bool input_sizes_are_valid(const execution_context_t& context) const override
     {
+        const auto& length_any = context.scalar_input_arguments.typed.at("length");
+        auto length = any_cast<length_type>(length_any);
         const auto& a = context.buffers.host_side.inputs.at("A");
+        if (a.size() != length) { return false; }
         const auto& b = context.buffers.host_side.inputs.at("B");
-        if (a.size() != b.size()) {
-            return false;
-        }
-        // TODO: Implement a contains() function
-        if (context.scalar_input_arguments.typed.find("length") !=
-            context.scalar_input_arguments.typed.cend())
-        {
-            const auto& length_any = context.scalar_input_arguments.typed.at("length");
-            auto length = any_cast<length_type>(length_any);
-            if (a.size() != length) { return false; }
-        }
+        if (b.size() != length) { return false; }
         return true;
     }
 
@@ -86,16 +66,6 @@ public:
         push_back_buffer(args, context, parameter_direction_t::in,  "A");
         push_back_buffer(args, context, parameter_direction_t::in,  "B");
         push_back_scalar<length_type>(args, context, "length");
-    }
-
-    virtual optional_launch_config_components deduce_launch_config(const execution_context_t& context) const override
-    {
-        optional_launch_config_components result;
-        auto length = any_cast<length_type>(context.scalar_input_arguments.typed.at("length"));
-        result.block_dimensions = std::array<std::size_t,3>{256, 1, 1};
-        result.overall_grid_dimensions = std::array<std::size_t,3>{length, 1, 1};
-        result.dynamic_shared_memory_size = 0;
-        return result;
     }
 
     virtual const preprocessor_definitions_type& preprocessor_definition_details() const override

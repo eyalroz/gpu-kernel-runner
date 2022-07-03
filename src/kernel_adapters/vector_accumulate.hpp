@@ -16,10 +16,6 @@ public:
     constexpr static const char* kernel_function_name_ { "vectorAccumulate" };
     constexpr static const char* key_ { "bundled_with_runner/vector_accumulate" };
 
-    vector_accumulate() : kernel_adapter() { }
-    vector_accumulate(const vector_accumulate& other) = default;
-    ~vector_accumulate() = default;
-
     std::string kernel_function_name() const override { return kernel_function_name_; }
     std::string key() const override { return key_; }
 
@@ -66,11 +62,6 @@ public:
         return {
             { "A", input_buffers.at("A").size() }
         };
-    }
-
-    bool extra_validity_checks(const execution_context_t&) const override
-    {
-        return true; // Our checks are covered elsewhere
     }
 
     virtual bool input_sizes_are_valid(const execution_context_t& context) const override

@@ -233,8 +233,16 @@ public:
         return argument_ptrs_and_maybe_sizes;
     }
 
-    virtual optional_launch_config_components deduce_launch_config(const execution_context_t&) const
+    virtual optional_launch_config_components deduce_launch_config(const execution_context_t& context) const
     {
+        auto components = context.options.forced_launch_config_components;
+        if (not components.dynamic_shared_memory_size) {
+            components.dynamic_shared_memory_size = 0;
+        }
+        if (components.is_sufficient()) {
+            return components;
+        }
+
         throw std::runtime_error(
             "Unable to deduce launch configuration - please specify all launch configuration components "
             "explicitly using the command-line");

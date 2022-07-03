@@ -35,7 +35,7 @@ namespace kernel_adapters {
 class vector_add final : public kernel_adapter {
 public:
     using parent = kernel_adapter;
-    using length_type = unsigned int;
+    using length_type = size_t;
 
     constexpr static const char* kernel_function_name_ { "vectorAdd" };
     constexpr static const char* key_ { "bundled_with_runner/vector_add" };
@@ -56,7 +56,7 @@ public:
         static const buffer_details_type buffer_details_ = {
             { "A", input,  "First sequence of addends"},
             { "B", input,  "Second sequence of addends"},
-            { "C", output, "Sequence of two-element sums"},
+            { "C", output, "Sequence of sums"},
         };
         return buffer_details_;
     }
@@ -64,16 +64,16 @@ public:
     const scalar_details_type& scalar_argument_details() const override
     {
         static const scalar_details_type scalar_argument_details_ = {
-        	{"length", "Length of each of A, B and C", isnt_required}
+            {"length", "Length of each of A, B and C", isnt_required }
         };
         return scalar_argument_details_;
     }
 
     scalar_arguments_map generate_additional_scalar_arguments(execution_context_t& context) const override
     {
-        const auto& A = context.buffers.host_side.inputs.at("A");
+        const auto& a = context.buffers.host_side.inputs.at("A");
         scalar_arguments_map generated;
-        generated["length"] = any(static_cast<length_type>(A.size()));
+        generated["length"] = any(static_cast<length_type>(a.size()));
         return generated;
     }
 
@@ -103,9 +103,9 @@ public:
 
     virtual bool input_sizes_are_valid(const execution_context_t& context) const override
     {
-        const auto& A = context.buffers.host_side.inputs.at("A");
-        const auto& B = context.buffers.host_side.inputs.at("B");
-        if (A.size() != B.size()) {
+        const auto& a = context.buffers.host_side.inputs.at("A");
+        const auto& b = context.buffers.host_side.inputs.at("B");
+        if (a.size() != b.size()) {
             return false;
         }
         // TODO: Implement a contains() function
@@ -114,7 +114,7 @@ public:
         {
             const auto& length_any = context.scalar_input_arguments.typed.at("length");
             auto length = any_cast<length_type>(length_any);
-            if (A.size() != length) { return false; }
+            if (a.size() != length) { return false; }
         }
         return true;
     }

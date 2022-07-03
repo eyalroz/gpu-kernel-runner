@@ -20,26 +20,17 @@ public:
     std::string kernel_function_name() const override { return kernel_function_name_; }
     std::string key() const override { return key_; }
 
-    const buffer_details_type& buffer_details() const override
+    const parameter_details_type& parameter_details() const override
     {
-        constexpr const auto input  = parameter_direction_t::input;
-        constexpr const auto output = parameter_direction_t::output;
-        [[maybe_unused]] constexpr const auto inout  = parameter_direction_t::inout;
-
-        static const buffer_details_type buffer_details_ = {
-            { "A", input,  "First sequence of addends"},
-            { "B", input,  "Second sequence of addends"},
-            { "C", output, "Sequence of sums"},
+        static const parameter_details_type pd = {
+            // Name      Kind     Direction  Required       Description
+            //----------------------------------------------------------------------------
+            {  "C",      buffer,  output,    is_required,   "Sequence of sums"             },
+            {  "A",      buffer,  input,     is_required,   "First sequence of addends"    },
+            {  "B",      buffer,  input,     is_required,   "Second sequence of addends"   },
+            {  "length", scalar,  input,     isnt_required, "Length of each of A, B and C" }
         };
-        return buffer_details_;
-    }
-
-    const scalar_details_type& scalar_argument_details() const override
-    {
-        static const scalar_details_type scalar_argument_details_ = {
-            {"length", "Length of each of A, B and C", isnt_required }
-        };
-        return scalar_argument_details_;
+        return pd;
     }
 
     scalar_arguments_map generate_additional_scalar_arguments(execution_context_t& context) const override
@@ -50,11 +41,11 @@ public:
         return generated;
     }
 
-    any parse_cmdline_scalar_argument(const std::string& argument_name, const std::string& argument) const override {
-        if (argument_name == "length") {
+    any parse_cmdline_scalar_argument(const std::string& parameter_name, const std::string& argument) const override {
+        if (parameter_name == "length") {
             return { static_cast<length_type>(std::stoull(argument)) };
         }
-        throw std::invalid_argument("No scalar argument " + argument_name);
+        throw std::invalid_argument("No scalar argument " + parameter_name);
     }
 
     // Note: The actual size might be smaller; this is what we need to allocate

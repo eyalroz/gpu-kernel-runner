@@ -19,23 +19,17 @@ public:
     std::string kernel_function_name() const override { return kernel_function_name_; }
     std::string key() const override { return key_; }
 
-    const buffer_details_type& buffer_details() const override
+    const parameter_details_type& parameter_details() const override
     {
-		static const buffer_details_type buffer_details = {
-			{ "A", parameter_direction_t::inout,  "Accumulator sequence (initialized with a second sequence of addends)"},
-			{ "B", parameter_direction_t::input,  "First sequence of addends"},
-		};
-		return buffer_details;
-    }
-
-    const scalar_details_type& scalar_argument_details() const override
-    {
-        static const scalar_details_type scalar_argument_details_ = {
-            {"length", "Length of each of A and B",  is_required}
+        static const parameter_details_type pd = {
+            // Name      Kind     Direction  Required       Description
+            //------------------------------------------------------------------------------
+            {  "A",      buffer,  inout,     is_required,   "Accumulator sequence (initialized with a second sequence of addends)" },
+            {  "B",      buffer,  input,     is_required,   "First sequence of addends" },
+            {  "length", scalar,  input,     isnt_required, "Length of each of A and B" }
         };
-        return scalar_argument_details_;
+        return pd;
     }
-
 
     scalar_arguments_map generate_additional_scalar_arguments(execution_context_t& context) const override
     {

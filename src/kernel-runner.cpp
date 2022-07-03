@@ -109,7 +109,7 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
 }
 
 std::vector<const char*> get_required_arg_names(const kernel_adapter& ka) {
-    auto sads = ka.scalar_argument_details();
+    auto sads = ka.scalar_parameter_details();
     std::vector<const char*> result;
     util::transform_if(
         std::cbegin(sads), std::cend(sads), std::back_inserter(result),
@@ -167,7 +167,7 @@ cxxopts::Options create_command_line_options_for_kernel(const char* program_name
     static constexpr const auto all_directions = { parameter_direction_t::input, parameter_direction_t::output, parameter_direction_t::inout};
     for(parameter_direction_t dir : all_directions) {
         auto adder = options.add_options(ka.key() + std::string(" (") + parameter_direction_name(dir) + " buffers)");
-        kernel_adapter::buffer_details_type dir_buffers =
+        auto dir_buffers =
             util::filter(ka.buffer_details(), [dir](const auto& bd) { return bd.direction == dir; } );
         for(const auto& buffer : dir_buffers ) {
             adder(buffer.name, buffer.description, cxxopts::value<std::string>()->default_value(buffer.name));
@@ -308,16 +308,16 @@ void parse_command_line_for_kernel(int argc, char** argv, execution_context_t& c
         }
     }
     auto required_scalar_names = get_required_arg_names(ka);
-    for(const auto& arg_name : required_scalar_names ) {
-        contains(parse_result, arg_name)
-            or die("Scalar argument '{}' must be specified, but wasn't.\n\n", arg_name);
+    for(const auto& param_name : required_scalar_names ) {
+        contains(parse_result, param_name)
+            or die("Scalar argument '{}' must be specified, but wasn't.\n\n", param_name);
         // TODO: Consider not parsing anything at this stage, and just marshaling all the scalar arguments together.
-        spdlog::trace("Parsing scalar argument {}", arg_name);
-        auto& arg_value = parse_result[arg_name].as<std::string>();
-        context.scalar_input_arguments.raw[arg_name] = arg_value;
-        context.scalar_input_arguments.typed[arg_name] =
-             ka.parse_cmdline_scalar_argument(arg_name, arg_value);
-        spdlog::trace("Successfully parsed scalar argument {}", arg_name);
+        spdlog::trace("Parsing scalar argument {}", param_name);
+        auto& arg_value = parse_result[param_name].as<std::string>();
+        context.scalar_input_arguments.raw[param_name] = arg_value;
+        context.scalar_input_arguments.typed[param_name] =
+             ka.parse_cmdline_scalar_argument(param_name, arg_value);
+        spdlog::trace("Successfully parsed scalar argument {}", param_name);
     }
 
     auto required_defs = get_required_preprocessor_definition_terms(ka);

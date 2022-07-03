@@ -43,6 +43,14 @@ constexpr const char* ecosystem_name(execution_ecosystem_t e)
     return names[(int) e];
 }
 
+namespace kernel_parameters {
+
+enum : bool { is_required = true,  isnt_required = false };
+enum class kind_t { buffer, scalar };
+
+} // namespace kernel_parameters
+
+
 inline constexpr const char* kernel_source_file_suffix(execution_ecosystem_t ecosystem)
 {
     return ecosystem == execution_ecosystem_t::cuda ? "cu" : "cl";

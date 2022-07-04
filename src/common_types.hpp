@@ -69,7 +69,17 @@ enum class parameter_direction_t {
     io = inout,
 };
 
-constexpr const char* parameter_direction_name(parameter_direction_t dir)
+inline bool is_input(parameter_direction_t dir)
+{
+    return dir == parameter_direction_t::in or dir == parameter_direction_t::inout;
+}
+
+inline bool is_output(parameter_direction_t dir)
+{
+    return dir == parameter_direction_t::inout or dir == parameter_direction_t::out;
+}
+
+inline constexpr const char* parameter_direction_name(parameter_direction_t dir)
 {
     constexpr const char* names[] = { "input", "output", "inout" };
     return names[(int) dir];

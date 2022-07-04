@@ -16,11 +16,11 @@ public:
     const parameter_details_type& parameter_details() const override
     {
         static const parameter_details_type pd = {
-            // Name      Kind     Direction  Required       Description
-            //------------------------------------------------------------------------------
-            {  "A",      buffer,  inout,     is_required,   "Accumulator sequence (initialized with a second sequence of addends)" },
-            {  "B",      buffer,  input,     is_required,   "First sequence of addends" },
-            {  "length", scalar,  input,     isnt_required, "Length of each of A and B" }
+            // Name      Kind     Parser               Size calculator Direction  Required       Description
+            //------------------------------------------------------------------------------------------------------------------
+            {  "A",      buffer,  no_parser,           no_size_calc,   inout,     is_required,   "Accumulator sequence (initialized with a second sequence of addends)" },
+            {  "B",      buffer,  no_parser,           no_size_calc,   input,     is_required,   "Second sequence of addends"   },
+            {  "length", scalar,  parser<length_type>, no_size_calc,   input,     is_required,   "Length of each of A and B" }
         };
         return pd;
     }
@@ -32,25 +32,6 @@ public:
         scalar_arguments_map generated;
         generated["length"] = any(a.size());
         return generated;
-    }
-
-    any parse_cmdline_scalar_argument(const std::string& argument_name, const std::string& argument) const override {
-        if (argument_name == "length") {
-            return { static_cast<length_type>(std::stoull(argument)) };
-        }
-        throw std::invalid_argument("No scalar argument " + argument_name);
-    }
-
-    // Note: The actual size might be smaller; this is what we need to allocate
-    buffer_sizes output_buffer_sizes(
-        const host_buffers_map& input_buffers,
-        const scalar_arguments_map&,
-        const preprocessor_definitions_t&,
-        const preprocessor_value_definitions_t&) const override
-    {
-        return {
-            { "A", input_buffers.at("A").size() }
-        };
     }
 
     virtual bool input_sizes_are_valid(const execution_context_t& context) const override

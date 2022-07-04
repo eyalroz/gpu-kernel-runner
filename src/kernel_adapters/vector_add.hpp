@@ -17,34 +17,20 @@ public:
     const parameter_details_type& parameter_details() const override
     {
         static const parameter_details_type pd = {
-            // Name      Kind     Direction  Required       Description
-            //----------------------------------------------------------------------------
-            {  "C",      buffer,  output,    is_required,   "Sequence of sums"             },
-            {  "A",      buffer,  input,     is_required,   "First sequence of addends"    },
-            {  "B",      buffer,  input,     is_required,   "Second sequence of addends"   },
-            {  "length", scalar,  input,     is_required,   "Length of each of A, B and C" }
+            // Name      Kind     Parser               Size calculator Direction  Required       Description
+            //------------------------------------------------------------------------------------------------------------------
+            {  "C",      buffer,  no_parser,           size_of_A,      output,    is_required,   "Sequence of sums"             },
+            {  "A",      buffer,  no_parser,           no_size_calc,   input,     is_required,   "First sequence of addends"    },
+            {  "B",      buffer,  no_parser,           no_size_calc,   input,     is_required,   "Second sequence of addends"   },
+            {  "length", scalar,  parser<length_type>, no_size_calc,   input,     is_required,   "Length of each of A, B and C" }
         };
         return pd;
     }
 
-    any parse_cmdline_scalar_argument(const std::string& parameter_name, const std::string& argument) const override {
-        if (parameter_name == "length") {
-            return { static_cast<length_type>(std::stoull(argument)) };
-        }
-        throw std::invalid_argument("No scalar argument " + parameter_name);
-    }
+protected:
+    static KA_SIZE_CALCULATOR_BY_INPUT_BUFFER(size_of_A, A);
 
-    buffer_sizes output_buffer_sizes(
-        const host_buffers_map& input_buffers,
-        const scalar_arguments_map&,
-        const preprocessor_definitions_t&,
-        const preprocessor_value_definitions_t&) const override
-    {
-        return {
-            { "C", input_buffers.at("A").size() }
-        };
-    }
-
+public:
     virtual bool input_sizes_are_valid(const execution_context_t& context) const override
     {
         const auto& length_any = context.scalar_input_arguments.typed.at("length");

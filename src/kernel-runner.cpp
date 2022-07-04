@@ -307,16 +307,17 @@ void parse_command_line_for_kernel(int argc, char** argv, execution_context_t& c
             spdlog::trace("Using output file {} for buffer {}", context.buffers.filenames.outputs[buffer_name], buffer_name);
         }
     }
-    auto required_scalar_names = get_required_arg_names(ka);
-    for(const auto& param_name : required_scalar_names ) {
+    auto required_scalars = util::filter(ka.scalar_parameter_details(), [](const auto& spd) { return spd.required == true; });
+    for(const auto& spd : required_scalars ) {
+        auto param_name = spd.name;
         contains(parse_result, param_name)
-            or die("Scalar argument '{}' must be specified, but wasn't.\n\n", param_name);
+            or die("Required scalar parameter {} for kernel {} was not specified.\n\n", param_name, ka.key());
         // TODO: Consider not parsing anything at this stage, and just marshaling all the scalar arguments together.
-        spdlog::trace("Parsing scalar argument {}", param_name);
+        spdlog::trace("Parsing argument for scalar parameter {}", param_name);
         auto& arg_value = parse_result[param_name].as<std::string>();
         context.scalar_input_arguments.raw[param_name] = arg_value;
         context.scalar_input_arguments.typed[param_name] =
-             ka.parse_cmdline_scalar_argument(param_name, arg_value);
+             ka.parse_cmdline_scalar_argument(spd, arg_value);
         spdlog::trace("Successfully parsed scalar argument {}", param_name);
     }
 
@@ -862,7 +863,7 @@ device_buffer_type create_device_side_buffer(
     if (ecosystem == execution_ecosystem_t::cuda) {
         auto region = cuda::memory::device::allocate(*cuda_context, size);
         poor_mans_span sp { static_cast<byte_type*>(region.data()), region.size() };
-        spdlog::trace("Created buffer at address {} with size {} for kernel parameter {}", (void*) sp.data(), sp.size(), name);
+        spdlog::trace("Created GPU-side buffer at address {} with size {} for kernel parameter {}", (void*) sp.data(), sp.size(), name);
         result.cuda = sp;
     }
     else { // OpenCL
@@ -961,23 +962,32 @@ void create_device_side_buffers(execution_context_t& context)
 // Note: Will create buffers also for each inout buffers
 void create_host_side_output_buffers(execution_context_t& context)
 {
-    spdlog::debug("Creating host-side output buffers");
-    auto output_buffer_sizes = context.kernel_adapter_->output_buffer_sizes(
-        context.buffers.host_side.inputs,
-        context.scalar_input_arguments.typed,
-        context.finalized_preprocessor_definitions.valueless,
-        context.finalized_preprocessor_definitions.valued);
-
     // TODO: Double-check that all output and inout buffers have entries in the map we've received.
 
+    auto& all_params = context.kernel_adapter_->parameter_details();
+    auto output_buffer_details = util::filter(all_params,
+        [&](const auto& param_details) {
+            return is_output(param_details.direction) and param_details.kind == kernel_parameters::kind_t::buffer;
+        }
+    );
+    spdlog::debug("Creating {} host-side output buffers", output_buffer_details.size());
+
     std::transform(
-        output_buffer_sizes.begin(),
-        output_buffer_sizes.end(),
+        output_buffer_details.begin(),
+        output_buffer_details.end(),
         std::inserter(context.buffers.host_side.outputs, context.buffers.host_side.outputs.end()),
-        [](const auto& pair) {
-            const auto& name = pair.first;
-            const auto& size = pair.second;
-            return std::make_pair(name, host_buffer_type(size));
+        [&](const kernel_adapter::single_parameter_details& buffer_details) {
+            auto buffer_name = buffer_details.name;
+            auto buffer_size = (buffer_details.direction == parameter_direction_t::inout) ?
+                context.buffers.host_side.inputs.at(buffer_name).size() :
+                buffer_details.size_calculator(
+                    context.buffers.host_side.inputs,
+                    context.scalar_input_arguments.typed,
+                    context.finalized_preprocessor_definitions.valueless,
+                    context.finalized_preprocessor_definitions.valued);
+            auto host_side_output_buffer = host_buffer_type(buffer_size);
+            spdlog::trace("Created a host-side output buffer of size {} for kernel parameter {}", buffer_size,  buffer_name);
+            return std::make_pair(buffer_details.name, std::move(host_side_output_buffer));
         }
     );
 }

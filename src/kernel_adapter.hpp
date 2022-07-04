@@ -2,6 +2,7 @@
 #define KERNEL_ADAPTER_HPP_
 
 #include "execution_context.hpp"
+#include "parsers.hpp"
 
 #include <util/miscellany.hpp>
 #include <util/functional.hpp>
@@ -26,6 +27,14 @@ inline std::ostream& operator<<(std::ostream& os, cuda::grid::dimensions_t dims)
 {
     return os << '(' << dims.x << " x " << dims.y << " x " << dims.z << " x " << ')';
 }
+
+using size_calculator_type = std::size_t (*)(
+    const host_buffers_map& input_buffers,
+    const scalar_arguments_map& scalar_arguments,
+    const preprocessor_definitions_t& valueless_preprocessor_definitions,
+    const preprocessor_value_definitions_t& value_preprocessor_definitions);
+
+static constexpr const size_calculator_type no_size_calc = nullptr;
 
 
 namespace kernel_adapters {
@@ -83,6 +92,8 @@ public: // constructors & destructor
     struct single_parameter_details {
         const char* name;
         kernel_parameters::kind_t kind;
+        parser_type parser;
+        size_calculator_type size_calculator;
         parameter_direction_t direction; // always in for scalars
         bool required;
         const char* description;
@@ -174,19 +185,14 @@ public:
         return buffer_names_from_details(requested_dir_buffers_only);
     }
 
-    virtual any parse_cmdline_scalar_argument(const std::string& argument_name, const std::string& argument) const = 0;
-    virtual scalar_arguments_map generate_additional_scalar_arguments(execution_context_t&) const { return {}; }
+    virtual any parse_cmdline_scalar_argument(
+        const single_parameter_details& parameter_details,
+        const std::string& value_str) const
+    {
+        return parameter_details.parser(value_str);
+    }
 
-    // Notes:
-    // 1. Sizes are in bytes
-    // 2. The actual size may be smaller; this is what we need to allocate
-    // 3. The output will include the inout buffer sizes, even though those must be known in advance
-    //    and passed as part of the input.
-    virtual buffer_sizes output_buffer_sizes(
-        const host_buffers_map& input_buffers,
-        const scalar_arguments_map& scalar_arguments,
-        const preprocessor_definitions_t& valueless_definitions,
-        const preprocessor_value_definitions_t& valued_definitions) const = 0;
+    virtual scalar_arguments_map generate_additional_scalar_arguments(execution_context_t&) const { return {}; }
 
     // Try not to require the whole context
 
@@ -324,5 +330,20 @@ inline parameter_name_set buffer_names(const kernel_adapter& adapter, parameter_
 #define KA_KERNEL_KEY(kk) \
     constexpr static const char* key_ { kk }; \
     std::string key() const override { return key_; }
+
+// Use this macro to succinctly generate a "size calculator" function
+// which returns the size of one of the input parameters. If your
+// size calculation is more complex, just implement your own size
+// calculator
+
+#define KA_SIZE_CALCULATOR_BY_INPUT_BUFFER(function_name, input_buffer) \
+    std::size_t function_name ( \
+        const host_buffers_map& input_buffers, \
+        const scalar_arguments_map&, \
+        const preprocessor_definitions_t&, \
+        const preprocessor_value_definitions_t&) \
+    { \
+        return input_buffers.at(#input_buffer).size(); \
+    }
 
 #endif /* KERNEL_ADAPTER_HPP_ */

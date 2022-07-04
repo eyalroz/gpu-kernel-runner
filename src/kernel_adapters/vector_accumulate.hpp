@@ -10,11 +10,8 @@ public:
     using parent = kernel_adapter;
     using length_type = size_t;
 
-    constexpr static const char* kernel_function_name_ { "vectorAccumulate" };
-    constexpr static const char* key_ { "bundled_with_runner/vector_accumulate" };
-
-    std::string kernel_function_name() const override { return kernel_function_name_; }
-    std::string key() const override { return key_; }
+    KA_KERNEL_FUNCTION_NAME("vectorAccumulate" )
+    KA_KERNEL_KEY("bundled_with_runner/vector_accumulate" )
 
     const parameter_details_type& parameter_details() const override
     {

@@ -60,7 +60,7 @@ add_executable(kernel-runner
 	src/util/optional_and_any.hpp
 	src/util/spdlog-extra.hpp
 	src/util/static_block.hpp
-)
+	src/parsers.hpp)
 
 set(adapter_source_dirs src/kernel_adapters)
 list(APPEND adapter_source_dirs ${EXTRA_ADAPTER_SOURCE_DIRS})

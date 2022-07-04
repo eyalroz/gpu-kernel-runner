@@ -310,6 +310,19 @@ inline parameter_name_set buffer_names(const kernel_adapter& adapter, parameter_
     return util::union_(adapter.buffer_names(dir_1), adapter.buffer_names(dir_2));
 }
 
+// Boilerplate macros for subclasses of kernel_adapter.
+// Each of these needs to be invoked once in any subclass
+// definition
 
+// The name of the kernel function in the source file
+#define KA_KERNEL_FUNCTION_NAME(kfn) \
+    constexpr static const char* kernel_function_name_ { kfn }; \
+    std::string kernel_function_name() const override { return kernel_function_name_; }
+
+// The key to be passed to the kernel-runner executable for using
+// this kernel adapter. Must be unique.
+#define KA_KERNEL_KEY(kk) \
+    constexpr static const char* key_ { kk }; \
+    std::string key() const override { return key_; }
 
 #endif /* KERNEL_ADAPTER_HPP_ */

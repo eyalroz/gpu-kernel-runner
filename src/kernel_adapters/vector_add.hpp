@@ -3,6 +3,7 @@
 
 #include "kernel_adapter.hpp"
 
+
 namespace kernel_adapters {
 
 class vector_add final : public kernel_adapter {
@@ -10,11 +11,8 @@ public:
     using parent = kernel_adapter;
     using length_type = size_t;
 
-    constexpr static const char* kernel_function_name_ { "vectorAdd" };
-    constexpr static const char* key_ { "bundled_with_runner/vector_add" };
-
-    std::string kernel_function_name() const override { return kernel_function_name_; }
-    std::string key() const override { return key_; }
+    KA_KERNEL_FUNCTION_NAME("vectorAdd")
+    KA_KERNEL_KEY("bundled_with_runner/vector_add")
 
     const parameter_details_type& parameter_details() const override
     {

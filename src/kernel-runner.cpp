@@ -842,7 +842,12 @@ void copy_outputs_from_device(execution_context_t& context)
             device_side_buffer,
             host_side_buffer);
     }
-    context.cuda.context->synchronize();
+    if (context.ecosystem == execution_ecosystem_t::cuda) {
+        context.cuda.context->synchronize();
+    }
+    else {
+        context.opencl.queue.finish();
+    }
 }
 
 device_buffer_type create_device_side_buffer(

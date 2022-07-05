@@ -301,7 +301,7 @@ inline void push_back_scalar(
     const execution_context_t& context,
     const char* scalar_parameter_name)
 {
-    argument_ptrs.pointers.push_back(& any_cast<const Scalar&>(context.scalar_input_arguments.typed.at(scalar_parameter_name)));
+    argument_ptrs.pointers.push_back(& get_scalar_argument<Scalar>(context, scalar_parameter_name));
     if (context.ecosystem == execution_ecosystem_t::opencl) {
         argument_ptrs.sizes.push_back(sizeof(Scalar));
     }

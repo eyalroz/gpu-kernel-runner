@@ -133,4 +133,11 @@ inline bool execution_context_t::get_defined_value<bool>(const std::string& s)
 template <execution_ecosystem_t Ecosystem>
 void initialize_execution_context(execution_context_t& context);
 
+template <typename Scalar>
+const Scalar& get_scalar_argument(const execution_context_t& context, const char* scalar_parameter_name)
+{
+    const auto& type_erased_arg = context.scalar_input_arguments.typed.at(scalar_parameter_name);
+    return any_cast<const Scalar&>(type_erased_arg);
+}
+
 #endif /* EXECUTION_CONTEXT_HPP_ */

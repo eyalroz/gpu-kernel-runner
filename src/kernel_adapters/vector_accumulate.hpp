@@ -45,8 +45,7 @@ public:
         if (context.scalar_input_arguments.typed.find("length") !=
             context.scalar_input_arguments.typed.cend())
         {
-            const auto& length_any = context.scalar_input_arguments.typed.at("length");
-            auto length = any_cast<length_type>(length_any);
+            auto length = get_scalar_argument<length_type>(context, "length");
             if (a.size() != length) { return false; }
         }
         return true;

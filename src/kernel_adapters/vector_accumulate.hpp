@@ -16,11 +16,11 @@ public:
     const parameter_details_type& parameter_details() const override
     {
         static const parameter_details_type pd = {
-            // Name      Kind     Parser               Size calculator Direction  Required       Description
-            //------------------------------------------------------------------------------------------------------------------
-            {  "A",      buffer,  no_parser,           no_size_calc,   inout,     is_required,   "Accumulator sequence (initialized with a second sequence of addends)" },
-            {  "B",      buffer,  no_parser,           no_size_calc,   input,     is_required,   "Second sequence of addends"   },
-            {  "length", scalar,  parser<length_type>, no_size_calc,   input,     is_required,   "Length of each of A and B" }
+            // Name      Kind     Parser               Size calculator  Pusher                Direction  Required       Description
+            //-------------------------------------------------------------------------------------------------------------------------
+            {  "A",      buffer,  no_parser,           no_size_calc,    no_pusher,            inout,     is_required,   "Accumulator sequence (initialized with a second sequence of addends)" },
+            {  "B",      buffer,  no_parser,           no_size_calc,    no_pusher,            input,     is_required,   "Second sequence of addends"   },
+            {  "length", scalar,  parser<length_type>, no_size_calc,    pusher<length_type>,  input,     is_required,   "Length of each of A and B" }
         };
         return pd;
     }
@@ -50,15 +50,6 @@ public:
             if (a.size() != length) { return false; }
         }
         return true;
-    }
-
-    void marshal_kernel_arguments_inner(
-        marshalled_arguments_type& args,
-        const execution_context_t& context) const override
-    {
-        push_back_buffer(args, context, parameter_direction_t::inout, "A");
-        push_back_buffer(args, context, parameter_direction_t::input, "B");
-        push_back_scalar<length_type>(args, context, "length");
     }
 
     // Note: We don't have to implement this method - it is merely a convenience

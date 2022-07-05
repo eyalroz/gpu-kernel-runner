@@ -36,6 +36,13 @@ using size_calculator_type = std::size_t (*)(
 
 static constexpr const size_calculator_type no_size_calc = nullptr;
 
+using scalar_pusher_type = void (*)(
+    marshalled_arguments_type& argument_ptrs_and_maybe_sizes,
+    const execution_context_t& context,
+    const char* buffer_argument_name);
+
+static constexpr const scalar_pusher_type no_pusher = nullptr;
+
 
 namespace kernel_adapters {
 
@@ -94,6 +101,7 @@ public: // constructors & destructor
         kernel_parameters::kind_t kind;
         parser_type parser;
         size_calculator_type size_calculator;
+        scalar_pusher_type pusher;
         parameter_direction_t direction; // always in for scalars
         bool required;
         const char* description;
@@ -172,6 +180,13 @@ protected:
         return names;
     }
 
+    template <typename Scalar>
+    static inline void pusher(
+        marshalled_arguments_type& argument_ptrs_and_maybe_sizes,
+        const execution_context_t& context,
+        const char* scalar_parameter_name);
+
+
 public:
     virtual parameter_name_set buffer_names(parameter_direction_t direction) const
     {
@@ -199,13 +214,6 @@ public:
     virtual bool extra_validity_checks(const execution_context_t&) const { return true; }
     virtual bool input_sizes_are_valid(const execution_context_t&) const { return true; }
 
-protected:
-    /**
-     * Same as @ref `marshal_kernel_arguments()`, but not required to be terminated with a `nullptr`;
-     */
-    virtual void marshal_kernel_arguments_inner(
-        marshalled_arguments_type& arguments,
-        const execution_context_t& context) const = 0;
 public:
 
     /**
@@ -227,17 +235,7 @@ public:
      * launching gets the arguments in a type-erased fashion.
      *
      */
-    marshalled_arguments_type marshal_kernel_arguments(const execution_context_t& context) const
-    {
-        marshalled_arguments_type argument_ptrs_and_maybe_sizes;
-        marshal_kernel_arguments_inner(argument_ptrs_and_maybe_sizes, context);
-        if (context.ecosystem == execution_ecosystem_t::cuda) {
-            argument_ptrs_and_maybe_sizes.pointers.push_back(nullptr);
-                // cuLaunchKernels uses a termination by NULL rather than a length parameter.
-                // Note: Remember that sizes is unused in this case
-        }
-        return argument_ptrs_and_maybe_sizes;
-    }
+    marshalled_arguments_type marshal_kernel_arguments(const execution_context_t& context) const;
 
     virtual optional_launch_config_components deduce_launch_config(const execution_context_t& context) const
     {
@@ -276,10 +274,10 @@ static void register_in_factory()
 // 1. Perhaps we should wrap the raw argument vector with methods for pushing back?
 //    and arrange it so that when its used, e.g. for casting into a void**, we also
 //    append the final nullptr?
-// 2. Consider placing the argument_ptrs vector in the test context; not sure why
+// 2. Consider placing the argument_ptrs_and_maybe_sizes vector in the test context; not sure why
 //    it should be outside of it.
 inline void push_back_buffer(
-    marshalled_arguments_type& argument_ptrs,
+    marshalled_arguments_type& argument_ptrs_and_maybe_sizes,
     const execution_context_t& context,
     parameter_direction_t dir,
     const char* buffer_parameter_name)
@@ -289,11 +287,11 @@ inline void push_back_buffer(
         context.buffers.device_side.outputs;
         // Note: We use outputs here for inout buffers as well.
     if (context.ecosystem == execution_ecosystem_t::cuda) {
-        argument_ptrs.pointers.push_back(& buffer_map.at(buffer_parameter_name).cuda.data());
+        argument_ptrs_and_maybe_sizes.pointers.push_back(& buffer_map.at(buffer_parameter_name).cuda.data());
     }
     else {
-        argument_ptrs.pointers.push_back(& buffer_map.at(buffer_parameter_name).opencl);
-        argument_ptrs.sizes.push_back(sizeof(cl::Buffer));
+        argument_ptrs_and_maybe_sizes.pointers.push_back(& buffer_map.at(buffer_parameter_name).opencl);
+        argument_ptrs_and_maybe_sizes.sizes.push_back(sizeof(cl::Buffer));
     }
 }
 
@@ -310,6 +308,37 @@ inline void push_back_scalar(
 }
 
 } // namespace kernel_adapters
+
+template <typename Scalar>
+inline void kernel_adapter::pusher(
+    marshalled_arguments_type& argument_ptrs_and_maybe_sizes,
+    const execution_context_t& context,
+    const char* scalar_parameter_name)
+{
+    return kernel_adapters::push_back_scalar<Scalar>(argument_ptrs_and_maybe_sizes, context, scalar_parameter_name);
+}
+
+
+inline marshalled_arguments_type kernel_adapter::marshal_kernel_arguments(const execution_context_t& context) const
+{
+    marshalled_arguments_type argument_ptrs_and_maybe_sizes;
+
+    for(const auto& spd : parameter_details()) {
+        if (spd.kind == buffer) {
+            kernel_adapters::push_back_buffer(argument_ptrs_and_maybe_sizes, context, spd.direction, spd.name);
+        }
+        else {
+            spd.pusher(argument_ptrs_and_maybe_sizes, context, spd.name);
+        }
+    }
+
+    if (context.ecosystem == execution_ecosystem_t::cuda) {
+        argument_ptrs_and_maybe_sizes.pointers.push_back(nullptr);
+        // cuLaunchKernels uses a termination by NULL rather than a length parameter.
+        // Note: Remember that sizes is unused in this case
+    }
+    return argument_ptrs_and_maybe_sizes;
+}
 
 inline parameter_name_set buffer_names(const kernel_adapter& adapter, parameter_direction_t dir_1, parameter_direction_t dir_2)
 {

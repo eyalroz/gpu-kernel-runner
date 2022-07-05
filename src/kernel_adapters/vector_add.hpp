@@ -33,8 +33,7 @@ protected:
 public:
     virtual bool input_sizes_are_valid(const execution_context_t& context) const override
     {
-        const auto& length_any = context.scalar_input_arguments.typed.at("length");
-        auto length = any_cast<length_type>(length_any);
+        auto length = get_scalar_argument<length_type>(context, "length");
         const auto& a = context.buffers.host_side.inputs.at("A");
         if (a.size() != length) { return false; }
         const auto& b = context.buffers.host_side.inputs.at("B");

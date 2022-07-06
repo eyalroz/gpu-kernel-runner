@@ -289,7 +289,7 @@ void parse_command_line_for_kernel(int argc, char** argv, execution_context_t& c
                 }
             }();
             if (filesystem::exists(output_filename)) {
-                if (not context.options.overwrite_allowed) {
+                if (not context.options.overwrite_allowed and not context.options.compile_only) {
                     throw std::invalid_argument("Writing the contents of output buffer "
                         + buffer_name + " would overwrite an existing file: " + output_filename);
                 }

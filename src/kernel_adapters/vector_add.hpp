@@ -19,7 +19,7 @@ public:
         static const parameter_details_type pd = {
             // Name      Kind     Parser               Size calculator  Pusher                Direction  Required        Description
             //------------------------------------------------------------------------------------------------------------------------------------------
-            {  "C",      buffer,  no_parser,           size_of_A,       no_pusher,            output,    is_required,    "Sequence of sums"             },
+            {  "C",      buffer,  no_parser,           size_by_length,  no_pusher,            output,    is_required,    "Sequence of sums"             },
             {  "A",      buffer,  no_parser,           no_size_calc,    no_pusher,            input,     is_required,    "First sequence of addends"    },
             {  "B",      buffer,  no_parser,           no_size_calc,    no_pusher,            input,     is_required,    "Second sequence of addends"   },
             {  "length", scalar,  parser<length_type>, no_size_calc,    pusher<length_type>,  input,     is_required,    "Length of each of A, B and C" }
@@ -28,7 +28,14 @@ public:
     }
 
 protected:
-    static KA_SIZE_CALCULATOR_BY_INPUT_BUFFER(size_of_A, A);
+    static std::size_t size_by_length(
+        const host_buffers_map&,
+        const scalar_arguments_map& scalars,
+        const preprocessor_definitions_t&,
+        const preprocessor_value_definitions_t&)
+    {
+        return any_cast<length_type>(scalars.at("length"));
+    }
 
 public:
     virtual bool input_sizes_are_valid(const execution_context_t& context) const override

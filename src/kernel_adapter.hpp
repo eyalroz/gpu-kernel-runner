@@ -360,19 +360,4 @@ inline parameter_name_set buffer_names(const kernel_adapter& adapter, parameter_
     constexpr static const char* key_ { kk }; \
     std::string key() const override { return key_; }
 
-// Use this macro to succinctly generate a "size calculator" function
-// which returns the size of one of the input parameters. If your
-// size calculation is more complex, just implement your own size
-// calculator
-
-#define KA_SIZE_CALCULATOR_BY_INPUT_BUFFER(function_name, input_buffer) \
-    std::size_t function_name ( \
-        const host_buffers_map& input_buffers, \
-        const scalar_arguments_map&, \
-        const preprocessor_definitions_t&, \
-        const preprocessor_value_definitions_t&) \
-    { \
-        return input_buffers.at(#input_buffer).size(); \
-    }
-
 #endif /* KERNEL_ADAPTER_HPP_ */

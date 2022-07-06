@@ -28,6 +28,8 @@
 #include <cstdio>
 #include <vector>
 
+void parse_scalars(execution_context_t &context, const kernel_adapter &kernel_adapter, cxxopts::ParseResult &parse_result);
+
 using std::size_t;
 using std::string;
 
@@ -307,18 +309,9 @@ void parse_command_line_for_kernel(int argc, char** argv, execution_context_t& c
             spdlog::trace("Using output file {} for buffer {}", context.buffers.filenames.outputs[buffer_name], buffer_name);
         }
     }
-    auto required_scalars = util::filter(ka.scalar_parameter_details(), [](const auto& spd) { return spd.required == true; });
-    for(const auto& spd : required_scalars ) {
-        auto param_name = spd.name;
-        contains(parse_result, param_name)
-            or die("Required scalar parameter {} for kernel {} was not specified.\n\n", param_name, ka.key());
-        // TODO: Consider not parsing anything at this stage, and just marshaling all the scalar arguments together.
-        spdlog::trace("Parsing argument for scalar parameter {}", param_name);
-        auto& arg_value = parse_result[param_name].as<std::string>();
-        context.scalar_input_arguments.raw[param_name] = arg_value;
-        context.scalar_input_arguments.typed[param_name] =
-             ka.parse_cmdline_scalar_argument(spd, arg_value);
-        spdlog::trace("Successfully parsed scalar argument {}", param_name);
+
+    if (not context.options.compile_only) {
+        parse_scalars(context, ka, parse_result);
     }
 
     auto required_defs = get_required_preprocessor_definition_terms(ka);
@@ -339,6 +332,32 @@ void parse_command_line_for_kernel(int argc, char** argv, execution_context_t& c
     ensure_necessary_terms_were_defined(context);
 
     finalize_preprocessor_definitions(context);
+}
+
+// Note: We need the kernel adapter, and can't just be satisfied with the argument details,
+// because the adapter might have overridden the parsing method with something more complex.
+// If we eventually decide that's not a useful ability to have, we can avoid passing the
+// adapter to this function.
+void parse_scalars(
+    execution_context_t &context,
+    const kernel_adapter &kernel_adapter,
+    cxxopts::ParseResult &parse_result)
+{
+    auto scalars = kernel_adapter.scalar_parameter_details();
+    for(const auto& spd : scalars ) {
+        auto param_name = spd.name;
+        if (not contains(parse_result, param_name)) {
+            if (not spd.required) { continue; }
+            die("Required scalar parameter {} for kernel {} was not specified.\n\n", param_name, kernel_adapter.key());
+        }
+        // TODO: Consider not parsing anything at this stage, and just marshaling all the scalar arguments together.
+        spdlog::trace("Parsing argument for scalar parameter {}", param_name);
+        auto& arg_value = parse_result[param_name].as<std::string>();
+        context.scalar_input_arguments.raw[param_name] = arg_value;
+        context.scalar_input_arguments.typed[param_name] =
+            kernel_adapter.parse_cmdline_scalar_argument(spd, arg_value);
+        spdlog::trace("Successfully parsed scalar argument {}", param_name);
+    }
 }
 
 void ensure_gpu_device_validity(

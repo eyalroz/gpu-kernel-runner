@@ -245,8 +245,8 @@ inline float2 operator-(float2 lhs, float2 rhs) noexcept { return { lhs.x - rhs.
 inline float2 operator*(float2 lhs, float2 rhs) noexcept { return { lhs.x * rhs.x, lhs.x * rhs.y }; }
 inline float2 operator/(float2 lhs, float2 rhs) noexcept { return { lhs.x / rhs.x, lhs.x / rhs.y }; }
 
-inline float2& operator+=(float2 lhs, float2 rhs) noexcept { lhs = lhs + rhs; return lhs; }
-inline float2& operator-=(float2 lhs, float2 rhs) noexcept { lhs = lhs - rhs; return lhs; }
+inline float2& operator+=(float2& lhs, float2 rhs) noexcept { lhs = lhs + rhs; return lhs; }
+inline float2& operator-=(float2& lhs, float2 rhs) noexcept { lhs = lhs - rhs; return lhs; }
 
 // float with float2
 
@@ -262,8 +262,8 @@ inline float2 operator-(float2 lhs, float rhs) noexcept { return { lhs.x - rhs, 
 inline float2 operator*(float2 lhs, float rhs) noexcept { return { lhs.x * rhs, lhs.x * rhs }; }
 inline float2 operator/(float2 lhs, float rhs) noexcept { return { lhs.x / rhs, lhs.x / rhs }; }
 
-inline float2& operator+=(float2 lhs, float rhs) noexcept { lhs = lhs + rhs; return lhs; }
-inline float2& operator-=(float2 lhs, float rhs) noexcept { lhs = lhs - rhs; return lhs; }
+inline float2& operator+=(float2& lhs, float rhs) noexcept { lhs = lhs + rhs; return lhs; }
+inline float2& operator-=(float2& lhs, float rhs) noexcept { lhs = lhs - rhs; return lhs; }
 
 // float4 with float4
 
@@ -294,35 +294,48 @@ inline float4& operator-=(float4& lhs, float rhs) noexcept { lhs = lhs + rhs; re
 
 // float4 with array of 4 floats
 
-inline float4 operator=(float4 lhs, float(& rhs)[4]) noexcept
+inline float4 as_float4(float const(& floats)[4]) noexcept
 {
-    lhs.x = rhs[0];
-    lhs.y = rhs[1];
-    lhs.z = rhs[2];
-    lhs.w = rhs[3];
-    return lhs;
+    float4 result;
+    result.x = floats[0];
+    result.y = floats[1];
+    result.z = floats[2];
+    result.w = floats[3];
+    return result;
 }
 
 // array of 4 floats with float4
 
 typedef float float_array4[4];
 
-inline float_array4& operator=(float_array4& lhs, float4 rhs) noexcept
+inline float_array4& as_float_array(float4& floats) noexcept
 {
-    lhs[0] = rhs.x;
-    lhs[1] = rhs.y;
-    lhs[2] = rhs.z;
-    lhs[3] = rhs.w;
+    return reinterpret_cast<float_array4 &>(floats);
+}
+
+inline float4 operator+(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = as_float4(lhs); return lhs_ + rhs; }
+inline float4 operator-(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = as_float4(lhs); return lhs_ - rhs; }
+inline float4 operator*(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = as_float4(lhs); return lhs_ * rhs; }
+inline float4 operator/(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = as_float4(lhs); return lhs_ / rhs; }
+
+inline float_array4& operator+=(float_array4& lhs, float4 rhs) noexcept
+{
+    lhs[0] += rhs.x;
+    lhs[1] += rhs.y;
+    lhs[2] += rhs.z;
+    lhs[3] += rhs.w;
     return lhs;
 }
 
-inline float4 operator+(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = lhs; return lhs_ + rhs; }
-inline float4 operator-(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = lhs; return lhs_ - rhs; }
-inline float4 operator*(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = lhs; return lhs_ * rhs; }
-inline float4 operator/(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = lhs; return lhs_ / rhs; }
+inline float_array4& operator-=(float_array4& lhs, float4 rhs) noexcept
+{
+    lhs[0] -= rhs.x;
+    lhs[1] -= rhs.y;
+    lhs[2] -= rhs.z;
+    lhs[3] -= rhs.w;
+    return lhs;
+}
 
-inline float_array4& operator+=(float_array4& lhs, float4 rhs) noexcept { return lhs = lhs + rhs; }
-inline float_array4& operator-=(float_array4& lhs, float4 rhs) noexcept { return lhs = lhs - rhs; }
 
 // TODO: Add the operators involving float2's and arrays of 2 floats.
 // TODO: Add operators for other types, or template all of the above on the scalar type

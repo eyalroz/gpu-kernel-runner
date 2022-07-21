@@ -3,6 +3,13 @@
  *
  * @brief OpenCL-flavor definitions for porting OpenCL kernel code to CUDA
  * with minimal required changes
+ *
+ * @copyright (c) 2020-2022, GE Healthcare.
+ * @copyright (c) 2022, Eyal Rozenberg.
+ *
+ * @license BSD 3-clause license; see the `LICENSE` file or
+ * @url https://opensource.org/licenses/BSD-3-Clause
+ *
  */
 #ifndef PORT_FROM_OPENCL_CUH_
 #define PORT_FROM_OPENCL_CUH_
@@ -60,7 +67,7 @@ Is there a header which gets us max and min?
 // These defined terms are used in OpenCL and not part of the C++ language
 #define __global
 #define __private
-#define __kernel __global__
+#define __kernel extern "C" __global__
 #define __constant constexpr const
 #define restrict __restrict
 // and note __local is missing!
@@ -76,12 +83,18 @@ Is there a header which gets us max and min?
 template <typename T>
 T asin(const T& x);
 
-// barrier, select, get_local_id, get_global_id, floor, convert_uint,
-// floor, convert_int, convert_float, native_recip
-
-using std::size_t;
-using uint = std::uint32_t;
+using uchar = std::uint8_t;
 using ushort = std::uint16_t;
+using uint = std::uint32_t;
+using ulong = std::uint64_t;
+
+// Note: CUDA guarantees that the sizes of non-unsigned char, short, int and long 
+// are the same as in OpenCL: 1, 2, 4, 8 bytes respectively.
+
+using std::ptrdiff_t;
+using std::intptr_t;
+using std::uintptr_t;
+using std::size_t;
 
 inline float2 vload2(size_t offset, const float* p)
 {
@@ -115,7 +128,7 @@ inline unsigned get_dim3_element(const dim3& d3, int index)
     }
 }
 
-}
+} // namespace detail
 
 inline uint get_local_id(int dimension_index)
 {
@@ -187,21 +200,17 @@ inline float4 floor(const float4& v)
     return { floorf(v.x), floorf(v.y), floorf(v.z), floorf(v.w) };
 }
 
-template <typename T>
-inline int convert_int(const T& x) { return static_cast<int>(x); }
+template <typename T> inline int   convert_int  (const T& x) { return static_cast<int>(x);   }
+template <typename T> inline float convert_float(const T& x) { return static_cast<float>(x); }
 
-template <typename T>
-inline float convert_float(const T& x) { return static_cast<float>(x); }
+inline float  native_recip(float  x) { return __frcp_rn(x); }
+inline double native_recip(double x) { return __drcp_rn(x); }
 
-inline float native_recip(const float x)
-{
-    return __frcp_rn(x);
-}
+inline float  native_sqrt(float x)   { return sqrtf(x); }
+inline double native_sqrt(double x)  { return sqrt(x);  }
 
-double native_recip(const double x)
-{
-    return __drcp_rn(x);
-}
+inline float  native_rsqrt(float x)  { return rsqrtf(x); }
+inline double native_rsqrt(double x) { return rsqrt(x);  }
 
 //template <typename T, typename Selector>
 //T select(T on_false, T on_true, Selector selector);
@@ -227,113 +236,96 @@ inline Scalar select(
     return selector ? on_true : on_false;
 }
 
-inline float4 operator*(float lhs, float4 rhs) noexcept
+// Arithmetic and assignment operators for vectorized types
+
+// float2 with float2
+
+inline float2 operator+(float2 lhs, float2 rhs) noexcept { return { lhs.x + rhs.x, lhs.y + rhs.y }; }
+inline float2 operator-(float2 lhs, float2 rhs) noexcept { return { lhs.x - rhs.x, lhs.y - rhs.y }; }
+inline float2 operator*(float2 lhs, float2 rhs) noexcept { return { lhs.x * rhs.x, lhs.x * rhs.y }; }
+inline float2 operator/(float2 lhs, float2 rhs) noexcept { return { lhs.x / rhs.x, lhs.x / rhs.y }; }
+
+inline float2& operator+=(float2 lhs, float2 rhs) noexcept { lhs = lhs + rhs; return lhs; }
+inline float2& operator-=(float2 lhs, float2 rhs) noexcept { lhs = lhs - rhs; return lhs; }
+
+// float with float2
+
+inline float2 operator+(float lhs, float2 rhs) noexcept { return { lhs + rhs.x, lhs + rhs.y }; }
+inline float2 operator-(float lhs, float2 rhs) noexcept { return { lhs - rhs.x, lhs - rhs.y }; }
+inline float2 operator*(float lhs, float2 rhs) noexcept { return { lhs * rhs.x, lhs * rhs.y }; }
+inline float2 operator/(float lhs, float2 rhs) noexcept { return { lhs / rhs.x, lhs / rhs.y }; }
+
+// float2 with float
+
+inline float2 operator+(float2 lhs, float rhs) noexcept { return { lhs.x + rhs, lhs.y + rhs }; }
+inline float2 operator-(float2 lhs, float rhs) noexcept { return { lhs.x - rhs, lhs.y - rhs }; }
+inline float2 operator*(float2 lhs, float rhs) noexcept { return { lhs.x * rhs, lhs.x * rhs }; }
+inline float2 operator/(float2 lhs, float rhs) noexcept { return { lhs.x / rhs, lhs.x / rhs }; }
+
+inline float2& operator+=(float2 lhs, float rhs) noexcept { lhs = lhs + rhs; return lhs; }
+inline float2& operator-=(float2 lhs, float rhs) noexcept { lhs = lhs - rhs; return lhs; }
+
+// float4 with float4
+
+inline float4 operator+(float4 lhs, float4 rhs) noexcept { return { lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z, lhs.w + rhs.w }; }
+inline float4 operator-(float4 lhs, float4 rhs) noexcept { return { lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z, lhs.w - rhs.w }; }
+inline float4 operator*(float4 lhs, float4 rhs) noexcept { return { lhs.x * rhs.x, lhs.y * rhs.y, lhs.z * rhs.z, lhs.w * rhs.w }; }
+inline float4 operator/(float4 lhs, float4 rhs) noexcept { return { lhs.x / rhs.x, lhs.y / rhs.y, lhs.z / rhs.z, lhs.w / rhs.w }; }
+
+inline float4& operator+=(float4& lhs, float4 rhs) noexcept { lhs = lhs + rhs; return lhs; }
+inline float4& operator-=(float4& lhs, float4 rhs) noexcept { lhs = lhs + rhs; return lhs; }
+
+// float with float4
+
+inline float4 operator+(float lhs, float4 rhs) noexcept { return { lhs + rhs.x, lhs + rhs.y, lhs + rhs.z, lhs + rhs.w }; }
+inline float4 operator-(float lhs, float4 rhs) noexcept { return { lhs - rhs.x, lhs - rhs.y, lhs - rhs.z, lhs - rhs.w }; }
+inline float4 operator*(float lhs, float4 rhs) noexcept { return { lhs * rhs.x, lhs * rhs.y, lhs * rhs.z, lhs * rhs.w }; }
+inline float4 operator/(float lhs, float4 rhs) noexcept { return { lhs / rhs.x, lhs / rhs.y, lhs / rhs.z, lhs / rhs.w }; }
+
+// float4 with float
+
+inline float4 operator+(float4 lhs, float rhs) noexcept { return { lhs.x + rhs, lhs.y + rhs, lhs.z + rhs, lhs.w + rhs }; }
+inline float4 operator-(float4 lhs, float rhs) noexcept { return { lhs.x - rhs, lhs.y - rhs, lhs.z - rhs, lhs.w - rhs }; }
+inline float4 operator*(float4 lhs, float rhs) noexcept { return { lhs.x * rhs, lhs.y * rhs, lhs.z * rhs, lhs.w * rhs }; }
+inline float4 operator/(float4 lhs, float rhs) noexcept { return { lhs.x / rhs, lhs.y / rhs, lhs.z / rhs, lhs.w / rhs }; }
+
+inline float4& operator+=(float4& lhs, float rhs) noexcept { lhs = lhs + rhs; return lhs; }
+inline float4& operator-=(float4& lhs, float rhs) noexcept { lhs = lhs + rhs; return lhs; }
+
+// float4 with array of 4 floats
+
+inline float4 operator=(float4 lhs, float(& rhs)[4]) noexcept
 {
-    return {
-        rhs.x * lhs,
-        rhs.y * lhs,
-        rhs.z * lhs,
-        rhs.w * lhs
-    };
+    lhs.x = rhs[0];
+    lhs.y = rhs[1];
+    lhs.z = rhs[2];
+    lhs.w = rhs[3];
+    return lhs;
 }
 
-inline float2 operator*(float lhs, float2 rhs) noexcept
+// array of 4 floats with float4
+
+typedef float float_array4[4];
+
+inline float_array4& operator=(float_array4& lhs, float4 rhs) noexcept
 {
-    return {
-        lhs * rhs.x,
-        lhs * rhs.y
-    };
+    lhs[0] = rhs.x;
+    lhs[1] = rhs.y;
+    lhs[2] = rhs.z;
+    lhs[3] = rhs.w;
+    return lhs;
 }
 
-inline float2 operator-(float2 lhs, float2 rhs) noexcept
-{
-    return {
-        lhs.x - rhs.x,
-        lhs.y - rhs.y
-    };
-}
+inline float4 operator+(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = lhs; return lhs_ + rhs; }
+inline float4 operator-(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = lhs; return lhs_ - rhs; }
+inline float4 operator*(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = lhs; return lhs_ * rhs; }
+inline float4 operator/(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = lhs; return lhs_ / rhs; }
 
-inline float2 operator-(float2 lhs, uint2 rhs) noexcept
-{
-    return {
-        lhs.x - rhs.x,
-        lhs.y - rhs.y
-    };
-}
+inline float_array4& operator+=(float_array4& lhs, float4 rhs) noexcept { return lhs = lhs + rhs; }
+inline float_array4& operator-=(float_array4& lhs, float4 rhs) noexcept { return lhs = lhs - rhs; }
 
-
-inline float2 operator*(float2 lhs, float rhs) noexcept
-{
-    return {
-        lhs.x * rhs,
-        lhs.y * rhs
-    };
-}
-
-inline float4 operator+(float4 lhs, float4 rhs) noexcept
-{
-    return {
-        lhs.x + rhs.x,
-        lhs.y + rhs.y,
-        lhs.z + rhs.z,
-        lhs.w + rhs.w
-    };
-}
-
-inline float2 operator+(float2 lhs, float2 rhs) noexcept
-{
-    return {
-        lhs.x + rhs.x,
-        lhs.y + rhs.y
-    };
-}
-
-inline float4 operator+=(float4& lhs, float4 rhs) noexcept
-{
-    return {
-        lhs.x += rhs.x,
-        lhs.y += rhs.y,
-        lhs.z += rhs.z,
-        lhs.w += rhs.w
-    };
-}
-
-inline float4 operator+=(float(& lhs)[4], float4 rhs) noexcept
-{
-    return {
-        lhs[0] += rhs.x,
-        lhs[1] += rhs.y,
-        lhs[2] += rhs.z,
-        lhs[3] += rhs.w
-    };
-}
-
-
-inline float2 operator+=(float2& lhs, float4 rhs) noexcept
-{
-    return {
-        lhs.x += rhs.x,
-        lhs.y += rhs.y
-    };
-}
-
-inline float4 operator-(float4 lhs, float rhs) noexcept
-{
-    return {
-        lhs.x - rhs,
-        lhs.y - rhs,
-        lhs.z - rhs,
-        lhs.w - rhs
-    };
-}
-
-inline float2 operator-(float2 lhs, float rhs) noexcept
-{
-    return {
-        lhs.x - rhs,
-        lhs.y - rhs
-    };
-}
+// TODO: Add the operators involving float2's and arrays of 2 floats.
+// TODO: Add operators for other types, or template all of the above on the scalar type
 
 /**
  * The following macro is intended to allow the same syntax for constructing compound types

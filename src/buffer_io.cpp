@@ -43,14 +43,17 @@ host_buffer_type read_input_file(const filesystem::path& src, size_t extra_buffe
     auto file_size = filesystem::file_size(src);
     auto buffer_size = file_size + extra_buffer_size;
     std::ifstream file(src, std::ios::binary | std::ios::ate);
-    file.seekg(0, std::ios::beg);
-
-    host_buffer_type result(buffer_size);
-    file.read(result.data(), (std::streamsize) file_size);
-    if (file.fail()) {
-        throw std::system_error(errno, std::generic_category());
+    try {
+        file.exceptions(std::ios::failbit | std::ios::badbit);
+        file.seekg(0, std::ios::beg);
+        host_buffer_type result(buffer_size);
+        file.read(result.data(), (std::streamsize) file_size);
+        return result;
+    } catch (std::ios_base::failure& ios_failure) {
+        throw (errno == 0) ? ios_failure :
+            std::system_error(errno, std::generic_category(),
+            "trying to read " + std::to_string(file_size) + " from file " + src.native());
     }
-    return result;
 }
 
 host_buffer_type read_file_as_null_terminated_string(const filesystem::path& source)
@@ -72,12 +75,15 @@ void write_data_to_file(
     verify_path(destination, for_writing, allow_overwrite);
     spdlog::log(level, "Writing {} '{}' to file {}", kind, name, destination.c_str());
     auto file = std::fstream(destination, std::ios::out | std::ios::binary);
-    file.write(data.data(), (std::streamsize) data.size());
-    if (file.fail()) {
-        throw std::system_error(errno, std::generic_category(),
+    try {
+        file.exceptions(std::ios::failbit | std::ios::badbit);
+        file.write(data.data(), (std::streamsize) data.size());
+        file.close();
+    } catch (std::ios_base::failure& ios_failure) {
+        throw (errno == 0) ? ios_failure :
+            std::system_error(errno, std::generic_category(),
             "trying to write " + kind + " '" + name + "' to file " + destination.native());
     }
-    file.close();
 }
 
 void write_buffer_to_file(

@@ -128,6 +128,25 @@ struct optional_launch_config_components {
         else { deduce_overall_dimensions(); }
     }
 
+    void set_block_dims(size_t x, size_t y, size_t z)
+    {
+        block_dimensions.emplace(std::array<size_t, 3>{x, y, z});
+    }
+
+    void set_grid_dims(size_t x, size_t y, size_t z)
+    {
+        grid_dimensions.emplace(std::array<size_t, 3>{x, y, z});
+    }
+
+    void set_overall_dims(size_t x, size_t y, size_t z)
+    {
+        overall_grid_dimensions.emplace(std::array<size_t, 3>{x, y, z});
+    }
+
+    void set_block_dims(dim3 dims)   { set_block_dims  (dims.x, dims.y, dims.z); }
+    void set_grid_dims(dim3 dims)    { set_grid_dims   (dims.x, dims.y, dims.z); }
+    void set_overall_dims(dim3 dims) { set_overall_dims(dims.x, dims.y, dims.z); }
+
     operator cuda::launch_configuration_t() const noexcept(false) {
         if ((bool)grid_dimensions) {
             auto gd = grid_dimensions.value();

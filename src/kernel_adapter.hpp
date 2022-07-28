@@ -102,7 +102,7 @@ public: // constructors & destructor
         parser_type parser;
         size_calculator_type size_calculator;
         scalar_pusher_type pusher;
-        parameter_direction_t direction; // always in for scalars
+        parameter_direction_t direction; // always input for scalars
         bool required;
         const char* description;
     };
@@ -259,7 +259,29 @@ public:
         }
         else return deduce_launch_config(context);
     }
-};
+
+protected:
+    // Convenience functions for construction parameter details within an
+    // implementation of the @ref parameter_details method
+
+    template <typename T>
+    static single_parameter_details scalar_details(const char* name, const char* description = nullptr, bool required = is_required)
+    {
+        return single_parameter_details {name, scalar, parser<T>, no_size_calc, pusher<T>, input, required, description};
+    }
+
+    static single_parameter_details buffer_details(
+        const char*            name,
+        parameter_direction_t  direction,
+        const char*            description = nullptr,
+        size_calculator_type   size_calculator = no_size_calc,
+        bool                   required = is_required)
+    {
+        return single_parameter_details {
+            name, buffer, no_parser, size_calculator,
+            no_pusher, direction, required, description};
+    }
+}; // kernel_adapter
 
 namespace kernel_adapters {
 

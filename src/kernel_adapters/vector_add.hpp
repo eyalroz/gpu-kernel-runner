@@ -17,12 +17,10 @@ public:
     const parameter_details_type& parameter_details() const override
     {
         static const parameter_details_type pd = {
-            // Name      Kind     Parser               Size calculator  Pusher                Direction  Required        Description
-            //------------------------------------------------------------------------------------------------------------------------------------------
-            {  "C",      buffer,  no_parser,           size_by_length,  no_pusher,            output,    is_required,    "Sequence of sums"             },
-            {  "A",      buffer,  no_parser,           no_size_calc,    no_pusher,            input,     is_required,    "First sequence of addends"    },
-            {  "B",      buffer,  no_parser,           no_size_calc,    no_pusher,            input,     is_required,    "Second sequence of addends"   },
-            {  "length", scalar,  parser<length_type>, no_size_calc,    pusher<length_type>,  input,     is_required,    "Length of each of A, B and C" }
+            buffer_details("C", output, "Sequence of sums", size_by_length),
+            buffer_details("A", input, "First sequence of addends"),
+            buffer_details("B", input, "Second sequence of addends"),
+            scalar_details<length_type>("length", "Length of each of A, B and C"),
         };
         return pd;
     }

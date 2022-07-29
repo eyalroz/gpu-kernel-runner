@@ -152,22 +152,15 @@ void ensure_necessary_terms_were_defined(const execution_context_t& context)
 
 std::vector<string_option_spec> as_option_specs(const kernel_adapter::parameter_details_type& scalar_param_details)
 {
-    std::vector<string_option_spec> result;
-    for(const auto& spd : scalar_param_details) {
-        result.emplace_back(string_option_spec{spd.name, spd.description, spd.name});
-    }
-    return result;
+    return util::transform<std::vector<string_option_spec>>(scalar_param_details,
+        [](const auto& spd) { return string_option_spec{spd.name, spd.description, spd.name}; } );
 }
 
 std::vector<string_option_spec> as_option_specs(const kernel_adapter::preprocessor_definitions_type & pp_def_details)
 {
-    std::vector<string_option_spec> result;
-    for(const auto& pp_def : pp_def_details) {
-        result.emplace_back(string_option_spec{pp_def.name, pp_def.description, nullptr});
-    }
-    return result;
+    return util::transform<std::vector<string_option_spec>>(pp_def_details,
+        [](const auto& sppd) { return string_option_spec{sppd.name, sppd.description, nullptr}; } );
 }
-
 
 cxxopts::Options create_command_line_options_for_kernel(const char* program_name, execution_context_t& context)
 {
@@ -177,17 +170,14 @@ cxxopts::Options create_command_line_options_for_kernel(const char* program_name
     cxxopts::Options options = basic_cmdline_options(program_name);
         // We're adding them to parse and then ignore; and also possibly for printing usage information
 
-    // We split up the kernel's buffers into different sections, each with its own title in the usage info
+    // We split up the kernel's buffers into different sections each with its own title in the usage info
     static constexpr const auto all_directions = {
         parameter_direction_t::input, parameter_direction_t::output, parameter_direction_t::inout};
     for(parameter_direction_t dir : all_directions) {
-        auto option_group_name = ka.key() + string(" (") + parameter_direction_name(dir) + " buffers)";
         auto dir_buffers = util::filter(ka.buffer_details(), [dir](const auto& bd) { return bd.direction == dir; } );
-        std::vector<string_option_spec> dir_opts_spec;
-        for(const auto& buffer : dir_buffers) {
-            dir_opts_spec.emplace_back(string_option_spec{buffer.name, buffer.description, buffer.name});
-        }
-        add_string_options(options, option_group_name, dir_opts_spec);
+        add_string_options(options,
+            ka.key() + string(" (") + parameter_direction_name(dir) + " buffers)",
+            as_option_specs(dir_buffers));
     }
     add_string_options(options, ka.key() + string(" (scalar arguments)"),
         as_option_specs(ka.scalar_parameter_details()));
@@ -917,13 +907,8 @@ device_buffers_map create_device_side_buffers(
     optional<cl::Context>            opencl_context,
     const host_buffers_map&          host_side_buffers)
 {
-    device_buffers_map result;
-    // TODO: Use map() from functional
-
-    std::transform(
-        host_side_buffers.cbegin(),
-        host_side_buffers.cend(),
-        std::inserter(result, result.end()),
+    return util::transform<device_buffers_map>(
+        host_side_buffers,
         [&](const auto& p) {
             const auto& name = p.first;
             const auto& size = p.second.size();
@@ -936,7 +921,6 @@ device_buffers_map create_device_side_buffers(
                 host_side_buffers);
             return device_buffers_map::value_type { name, std::move(buffer) };
         } );
-    return result;
 }
 
 void zero_output_buffer(
@@ -1007,10 +991,8 @@ void create_host_side_output_buffers(execution_context_t& context)
     );
     spdlog::debug("Creating {} host-side output buffers", output_buffer_details.size());
 
-    std::transform(
-        output_buffer_details.begin(),
-        output_buffer_details.end(),
-        std::inserter(context.buffers.host_side.outputs, context.buffers.host_side.outputs.end()),
+    context.buffers.host_side.outputs = util::transform<decltype(context.buffers.host_side.outputs)>(
+        output_buffer_details,
         [&](const kernel_adapter::single_parameter_details& buffer_details) {
             auto buffer_name = buffer_details.name;
             auto buffer_size = (buffer_details.direction == parameter_direction_t::inout) ?

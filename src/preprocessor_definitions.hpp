@@ -15,10 +15,8 @@ using parameter_name_set = std::unordered_set<std::string>;
 inline parameter_name_set
 get_defined_terms(const preprocessor_definitions_t definitions)
 {
-    parameter_name_set results;
-    std::transform(
-        definitions.cbegin(), definitions.cend(),
-        std::inserter(results, results.begin()),
+    return util::transform<parameter_name_set>(
+        definitions,
         [](const std::string& definition) {
             auto pos = definition.find('=');
             switch(pos) {
@@ -33,7 +31,6 @@ get_defined_terms(const preprocessor_definitions_t definitions)
             return definition.substr(0, pos);
         }
     );
-    return results;
 }
 
 /**

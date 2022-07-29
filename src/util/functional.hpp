@@ -8,12 +8,12 @@
 
 namespace util {
 
-template<typename Container, typename F>
-Container map(const Container& container, F mapper)
+template<typename DestinationContainer, typename SourceContainer, typename F>
+DestinationContainer transform(const SourceContainer& container, F func)
 {
-    Container mapped;
-    std::transform(container.cbegin(), container.cend(), std::inserter(mapped, mapped.begin()), mapper);
-    return mapped;
+    DestinationContainer transformed;
+    std::transform(container.cbegin(), container.cend(), std::inserter(transformed, transformed.begin()), func);
+    return transformed;
 }
 
 // This applies the functional operator "map" to the C++ data structure Map (e.g. std::map or std::unordered_map)
@@ -21,15 +21,13 @@ template<template<class, class> class Map, typename Key, typename Value , typena
 auto map_values(const Map<Key,Value>& map, const F& value_mapper)
 {
     using mapped_value_type = decltype(value_mapper(std::declval<Value>()));
-    Map<Key, mapped_value_type> mapped;
-    std::transform(map.cbegin(), map.cend(), std::inserter(mapped, mapped.begin()),
+    return transform<Map<Key, mapped_value_type>>(
+        map,
         [&value_mapper](const auto& pair) -> std::pair<Key,mapped_value_type> {
             const auto& key = pair.first;
             const auto& value = pair.second;
             return {key, value_mapper(value)};
-        }
-    );
-    return mapped;
+        } );
 }
 
 template<typename Container, typename F>

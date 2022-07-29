@@ -146,13 +146,8 @@ public:
 protected:
     static parameter_name_set buffer_names_from_details(const parameter_details_type& param_details)
     {
-        parameter_name_set names;
-        std::transform(
-            param_details.cbegin(), param_details.cend(),
-            std::inserter(names, names.begin()),
-            [](const single_parameter_details& details) { return details.name; }
-        );
-        return names;
+        return util::transform<parameter_name_set>(param_details,
+            [](const auto& details) { return details.name; } );
     }
 
     template <typename Scalar>

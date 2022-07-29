@@ -103,11 +103,10 @@ std::vector<host_buffer_type>
 load_preinclude_files(const include_paths_t& preincludes, const include_paths_t& include_dirs)
 {
     // TODO: What about the source file directory?
-    std::vector<filesystem::path> include_dir_fs_paths;
-    std::transform(include_dirs.cbegin(), include_dirs.cend(), std::back_inserter(include_dir_fs_paths),
-        [](const auto& dir) { return filesystem::path{dir}; });
-    std::vector<host_buffer_type> loaded_preincludes;
-    std::transform(preincludes.cbegin(), preincludes.cend(), std::back_inserter(loaded_preincludes),
+    auto include_dir_fs_paths = util::transform<std::vector<filesystem::path>>(
+        include_dirs, [](const auto& dir) { return filesystem::path{dir}; });
+    return util::transform<std::vector<host_buffer_type>>(
+        preincludes,
         [&](const auto& preinclude_file_path_suffix) {
             for(const auto& p : include_dir_fs_paths) {
                 auto preinclude_path = p / preinclude_file_path_suffix;
@@ -119,7 +118,6 @@ load_preinclude_files(const include_paths_t& preincludes, const include_paths_t&
             spdlog::error("Could not locate preinclude \"{}\"", preinclude_file_path_suffix);
 			throw std::invalid_argument("Preinclude loading failed due to missing preinclude"); 
         });
-    return loaded_preincludes;
 }
 
 struct opencl_compilation_result_t {
@@ -148,13 +146,10 @@ opencl_compilation_result_t build_opencl_kernel(
     std::vector<host_buffer_type> loaded_preincludes =
         load_preinclude_files(preinclude_files, finalized_include_dir_paths);
     spdlog::debug("All pre-includes loaded from files.");
-    cl::Program::Sources sources;
-    // The following _should_ work:
-
-    std::transform(loaded_preincludes.cbegin(), loaded_preincludes.cend(), std::back_inserter(sources),
-     [](const auto& loaded_file_buffer){
-         return std::make_pair(loaded_file_buffer.data(), strlen(loaded_file_buffer.data()));
-     });
+    auto sources = util::transform<cl::Program::Sources>(loaded_preincludes,
+        [](const auto& loaded_file_buffer){
+            return std::make_pair(loaded_file_buffer.data(), strlen(loaded_file_buffer.data()));
+        });
     sources.push_back(std::make_pair(kernel_source, strlen(kernel_source)));
     cl::Program program = cl::Program(context, sources);
     spdlog::debug("OpenCL program created.");

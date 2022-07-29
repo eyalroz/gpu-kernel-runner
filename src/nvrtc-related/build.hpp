@@ -129,7 +129,7 @@ compilation_result_t build_cuda_kernel(
     opts.default_execution_space_is_device = true;
     opts.set_target(context.device());
 
-    spdlog::debug("Compilation arguments: \"{}\"", render(opts));
+    spdlog::debug("Kernel compilation generated-command-line arguments: \"{}\"", render(opts));
 
     program.register_global(kernel_function_name);
 

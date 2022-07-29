@@ -34,9 +34,7 @@ using std::size_t;
 using std::string;
 
 template <typename... Ts>
-[[noreturn]] inline bool die(
-    std::string message_format_string = "",
-    Ts&&... args)
+[[noreturn]] inline bool die(string message_format_string = "", Ts&&... args)
 {
     if(not message_format_string.empty()) {
         spdlog::critical(message_format_string, std::forward<Ts>(args)...);
@@ -46,8 +44,8 @@ template <typename... Ts>
 
 host_buffers_map read_buffers_from_files(
     const parameter_name_set& buffer_names,
-    const string_map& filenames,
-    const filesystem::path& buffer_directory)
+    const string_map&         filenames,
+    const filesystem::path&   buffer_directory)
 {
     host_buffers_map result;
 
@@ -123,13 +121,13 @@ std::vector<const char*> get_required_arg_names(const kernel_adapter& ka) {
 
 // TODO: DRY with get_required_scalar_arguments :-(
 // Also check if we can't use `util::difference` with strings vs const char*'s after all
-std::unordered_set<std::string> get_required_preprocessor_definition_terms(const kernel_adapter& ka) {
+std::unordered_set<string> get_required_preprocessor_definition_terms(const kernel_adapter& ka) {
     auto pdds = ka.preprocessor_definition_details();
-    std::unordered_set<std::string> result;
+    std::unordered_set<string> result;
     util::transform_if(
         std::cbegin(pdds), std::cend(pdds), std::inserter(result, result.begin()),
         [](const auto& sad) { return sad.required; },
-        [](const auto& sad) { return std::string{sad.name};});
+        [](const auto& sad) { return string{sad.name};});
     return result;
 }
 
@@ -154,7 +152,7 @@ void ensure_necessary_terms_were_defined(const execution_context_t& context)
 cxxopts::Options create_command_line_options_for_kernel(const char* program_name, execution_context_t& context)
 {
     const auto& ka = *(context.kernel_adapter_.get());
-    std::string kernel_name = ka.key();
+    string kernel_name = ka.key();
     spdlog::debug("Creating a command-line options structured for kernel {}", kernel_name);
     cxxopts::Options options = basic_cmdline_options(program_name);
         // We're adding them parse and then ignore; and also possibly for printing usage information
@@ -168,15 +166,15 @@ cxxopts::Options create_command_line_options_for_kernel(const char* program_name
 
     static constexpr const auto all_directions = { parameter_direction_t::input, parameter_direction_t::output, parameter_direction_t::inout};
     for(parameter_direction_t dir : all_directions) {
-        auto adder = options.add_options(ka.key() + std::string(" (") + parameter_direction_name(dir) + " buffers)");
+        auto adder = options.add_options(ka.key() + string(" (") + parameter_direction_name(dir) + " buffers)");
         auto dir_buffers =
             util::filter(ka.buffer_details(), [dir](const auto& bd) { return bd.direction == dir; } );
         for(const auto& buffer : dir_buffers ) {
-            adder(buffer.name, buffer.description, cxxopts::value<std::string>()->default_value(buffer.name));
+            adder(buffer.name, buffer.description, cxxopts::value<string>()->default_value(buffer.name));
         }
     }
-    ka.add_scalar_arguments_cmdline_options(options.add_options(ka.key() + std::string(" (scalar arguments)")));
-    ka.add_preprocessor_definition_cmdline_options(options.add_options(ka.key() + std::string(" (preprocessor definitions)")));
+    ka.add_scalar_arguments_cmdline_options(options.add_options(ka.key() + string(" (scalar arguments)")));
+    ka.add_preprocessor_definition_cmdline_options(options.add_options(ka.key() + string(" (preprocessor definitions)")));
     return options;
 }
 
@@ -214,7 +212,7 @@ void finalize_preprocessor_definitions(execution_context_t& context)
     for (const auto& definition : context.options.preprocessor_definitions) {
         auto equals_pos = definition.find('=');
         switch(equals_pos) {
-        case std::string::npos:
+        case string::npos:
             context.finalized_preprocessor_definitions.valueless.insert(definition);
             continue;
         case 0:
@@ -271,7 +269,7 @@ void parse_command_line_for_kernel(int argc, char** argv, execution_context_t& c
 
     for(const auto& buffer_name : buffer_names(ka, parameter_direction_t::input, parameter_direction_t::inout) ) {
         if (contains(parse_result, buffer_name)) {
-            context.buffers.filenames.inputs[buffer_name] = parse_result[buffer_name].as<std::string>();
+            context.buffers.filenames.inputs[buffer_name] = parse_result[buffer_name].as<string>();
         }
         else {
             context.buffers.filenames.inputs[buffer_name] = buffer_name;
@@ -283,7 +281,7 @@ void parse_command_line_for_kernel(int argc, char** argv, execution_context_t& c
         for(const auto& buffer_name : ka.buffer_names(parameter_direction_t::output)  ) {
             auto output_filename = [&]() {
                 if (contains(parse_result, buffer_name)) {
-                    return parse_result[buffer_name].as<std::string>();
+                    return parse_result[buffer_name].as<string>();
                 } else {
                     // TODO: Is this a reasonable convention for the output filename?
                     spdlog::debug("Filename for output buffer {0} not specified; defaulting to: \"{0}.out\".", buffer_name);
@@ -323,8 +321,8 @@ void parse_command_line_for_kernel(int argc, char** argv, execution_context_t& c
             continue;
         }
         // TODO: Consider not parsing anything at this stage, and just marshaling all the scalar arguments together.
-        // context.scalar_input_arguments.raw[def_name] = parse_result[def_name].as<std::string>();
-        const auto& arg_value = parse_result[def_name].as<std::string>();
+        // context.scalar_input_arguments.raw[def_name] = parse_result[def_name].as<string>();
+        const auto& arg_value = parse_result[def_name].as<string>();
         context.options.preprocessor_value_definitions[def_name] = arg_value;
         spdlog::trace("Got preprocessor argument {}={} through specific option", def_name, arg_value);
     }
@@ -352,7 +350,7 @@ void parse_scalars(
         }
         // TODO: Consider not parsing anything at this stage, and just marshaling all the scalar arguments together.
         spdlog::trace("Parsing argument for scalar parameter {}", param_name);
-        auto& arg_value = parse_result[param_name].as<std::string>();
+        auto& arg_value = parse_result[param_name].as<string>();
         context.scalar_input_arguments.raw[param_name] = arg_value;
         context.scalar_input_arguments.typed[param_name] =
             kernel_adapter.parse_cmdline_scalar_argument(spd, arg_value);
@@ -455,14 +453,14 @@ kernel_inspecific_cmdline_options_t parse_command_line_initially(int argc, char*
     // No need to exit (at least not until second parsing), let's
     // go ahead and collect the parsed data
 
-    auto log_level_name = parse_result["log-level"].as<std::string>();
+    auto log_level_name = parse_result["log-level"].as<string>();
     auto log_level = spdlog::level::from_str(log_level_name);
     if (spdlog::level_is_at_least(spdlog::level::debug)) {
         spdlog::log(spdlog::level::debug, "Setting log level to {}", log_level_name);
     }
     spdlog::set_level(log_level);
 
-    auto log_flush_threshold_name = parse_result["log-flush-threshold"].as<std::string>();
+    auto log_flush_threshold_name = parse_result["log-flush-threshold"].as<string>();
     auto log_flush_threshold = spdlog::level::from_str(log_flush_threshold_name);
     spdlog::debug("Setting log level flush threshold to \"{}\"", log_flush_threshold_name);
     spdlog::flush_on(log_flush_threshold);
@@ -496,32 +494,32 @@ kernel_inspecific_cmdline_options_t parse_command_line_initially(int argc, char*
 
     //---------------------------------------
 
-    std::string source_file_path;
+    string source_file_path;
 
     if (got.source_file_path) {
-        source_file_path = parse_result["kernel-source"].as<std::string>();
+        source_file_path = parse_result["kernel-source"].as<string>();
     }
 
     if (got.function_name) {
-        parsed_options.kernel.function_name = parse_result["kernel-function"].as<std::string>();
+        parsed_options.kernel.function_name = parse_result["kernel-function"].as<string>();
         if (not util::is_valid_identifier(parsed_options.kernel.function_name)) {
             throw std::invalid_argument("Function name must be non-empty.");
         }
     }
     if (got.key) {
-        parsed_options.kernel.key = parse_result["kernel-key"].as<std::string>();
+        parsed_options.kernel.key = parse_result["kernel-key"].as<string>();
         if (parsed_options.kernel.key.empty()) {
             throw std::invalid_argument("Kernel key may not be empty.");
         }
     }
 
-    std::string clipped_key = [&]() {
+    string clipped_key = [&]() {
         if (got.key) {
             auto pos_of_last_invalid = parsed_options.kernel.key.find_last_of("/-;.[]{}(),");
             return parsed_options.kernel.key.substr(
-                (pos_of_last_invalid == std::string::npos ? 0 : pos_of_last_invalid + 1), std::string::npos);
+                (pos_of_last_invalid == string::npos ? 0 : pos_of_last_invalid + 1), string::npos);
         }
-        return std::string{};
+        return string{};
     }();
 
     if (not got.function_name and got.source_file_path and not got.key) {
@@ -567,7 +565,7 @@ kernel_inspecific_cmdline_options_t parse_command_line_initially(int argc, char*
            parsed_options.kernel_sources_base_path, source_file_path);
     if (not got.source_file_path and not filesystem::exists(parsed_options.kernel.source_file)) {
         spdlog::critical(
-            std::string("No source file specified, and inferred source file path does not exist") +
+            string("No source file specified, and inferred source file path does not exist") +
             (user_asked_for_help ? ", so kernel-specific help cannot be provided" : "") + ": {}",
             parsed_options.kernel.source_file.native());
         if (user_asked_for_help) {
@@ -692,7 +690,7 @@ kernel_inspecific_cmdline_options_t parse_command_line_initially(int argc, char*
             parse_result["dynamic-shared-memory-size"].as<unsigned>();
     }
 
-//    parsed_options.compare_outputs_against_expected = parse_results["compare-outputs"].as<std::string>();
+//    parsed_options.compare_outputs_against_expected = parse_results["compare-outputs"].as<string>();
 
     if (parse_result.count("define") > 0) {
         const auto& parsed_defines = parse_result["define"].as<std::vector<string>>();
@@ -719,7 +717,7 @@ kernel_inspecific_cmdline_options_t parse_command_line_initially(int argc, char*
         }
     }
 
-    if (not kernel_adapter::can_produce_subclass(std::string(parsed_options.kernel.key))) {
+    if (not kernel_adapter::can_produce_subclass(string(parsed_options.kernel.key))) {
         die("No kernel adapter is registered for key {}", parsed_options.kernel.key);
     }
 
@@ -767,7 +765,7 @@ execution_context_t initialize_execution_context(kernel_inspecific_cmdline_optio
         initialize_execution_context<execution_ecosystem_t::opencl>(execution_context);
     }
     execution_context.kernel_adapter_ =
-        kernel_adapter::produce_subclass(std::string(parsed_options.kernel.key));
+        kernel_adapter::produce_subclass(string(parsed_options.kernel.key));
 
     collect_include_paths(execution_context);
 
@@ -794,8 +792,8 @@ void copy_buffer_to_device(
 }
 
 void copy_buffer_on_device(
-    execution_ecosystem_t ecosystem,
-    cl::CommandQueue* queue,
+    execution_ecosystem_t      ecosystem,
+    cl::CommandQueue*          queue,
     const device_buffer_type&  destination,
     const device_buffer_type&  origin)
 {
@@ -871,7 +869,7 @@ void copy_outputs_from_device(execution_context_t& context)
 }
 
 device_buffer_type create_device_side_buffer(
-    const std::string& name,
+    const string& name,
     std::size_t size,
     execution_ecosystem_t ecosystem,
     const optional<cuda::context_t>& cuda_context,
@@ -928,7 +926,7 @@ void zero_output_buffer(
     const device_buffer_type  buffer,
     optional<cuda::stream_t>  cuda_stream,
     const cl::CommandQueue*   opencl_queue,
-    const std::string &       buffer_name)
+    const string &            buffer_name)
 {
     spdlog::trace("Zeroing output buffer '{}'", buffer_name);
     if (ecosystem == execution_ecosystem_t::cuda) {

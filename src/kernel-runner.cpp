@@ -150,32 +150,49 @@ void ensure_necessary_terms_were_defined(const execution_context_t& context)
     }
 }
 
+std::vector<string_option_spec> as_option_specs(const kernel_adapter::parameter_details_type& scalar_param_details)
+{
+    std::vector<string_option_spec> result;
+    for(const auto& spd : scalar_param_details) {
+        result.emplace_back(string_option_spec{spd.name, spd.description, spd.name});
+    }
+    return result;
+}
+
+std::vector<string_option_spec> as_option_specs(const kernel_adapter::preprocessor_definitions_type & pp_def_details)
+{
+    std::vector<string_option_spec> result;
+    for(const auto& pp_def : pp_def_details) {
+        result.emplace_back(string_option_spec{pp_def.name, pp_def.description, nullptr});
+    }
+    return result;
+}
+
+
 cxxopts::Options create_command_line_options_for_kernel(const char* program_name, execution_context_t& context)
 {
     const auto& ka = *(context.kernel_adapter_.get());
     string kernel_name = ka.key();
     spdlog::debug("Creating a command-line options structured for kernel {}", kernel_name);
     cxxopts::Options options = basic_cmdline_options(program_name);
-        // We're adding them parse and then ignore; and also possibly for printing usage information
+        // We're adding them to parse and then ignore; and also possibly for printing usage information
 
-    options.allow_unrecognised_options();
-        // This is useful for when you play with removing some of a kernel's parameters or compile-time definitions,
-        // so that the same command-line would still work even though it may have some unused options.
-        // TODO: Consider reporting the unrecognized options, at least in the log.
-
-    // This splits up the buffers into sections in the options display, each with a "section title"
-
-    static constexpr const auto all_directions = { parameter_direction_t::input, parameter_direction_t::output, parameter_direction_t::inout};
+    // We split up the kernel's buffers into different sections, each with its own title in the usage info
+    static constexpr const auto all_directions = {
+        parameter_direction_t::input, parameter_direction_t::output, parameter_direction_t::inout};
     for(parameter_direction_t dir : all_directions) {
-        auto adder = options.add_options(ka.key() + string(" (") + parameter_direction_name(dir) + " buffers)");
-        auto dir_buffers =
-            util::filter(ka.buffer_details(), [dir](const auto& bd) { return bd.direction == dir; } );
-        for(const auto& buffer : dir_buffers ) {
-            adder(buffer.name, buffer.description, cxxopts::value<string>()->default_value(buffer.name));
+        auto option_group_name = ka.key() + string(" (") + parameter_direction_name(dir) + " buffers)";
+        auto dir_buffers = util::filter(ka.buffer_details(), [dir](const auto& bd) { return bd.direction == dir; } );
+        std::vector<string_option_spec> dir_opts_spec;
+        for(const auto& buffer : dir_buffers) {
+            dir_opts_spec.emplace_back(string_option_spec{buffer.name, buffer.description, buffer.name});
         }
+        add_string_options(options, option_group_name, dir_opts_spec);
     }
-    ka.add_scalar_arguments_cmdline_options(options.add_options(ka.key() + string(" (scalar arguments)")));
-    ka.add_preprocessor_definition_cmdline_options(options.add_options(ka.key() + string(" (preprocessor definitions)")));
+    add_string_options(options, ka.key() + string(" (scalar arguments)"),
+        as_option_specs(ka.scalar_parameter_details()));
+    add_string_options(options, ka.key() + string(" (preprocessor definitions)"),
+        as_option_specs(ka.preprocessor_definition_details()));
     return options;
 }
 

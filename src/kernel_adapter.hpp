@@ -12,11 +12,6 @@
     // This file itself does not use static blocks, but individual kernel adapters may
     // want to use them for registering themselves in the factory.
 
-#include <cxxopts/cxxopts.hpp>
-    // This is necessary, since the adapter injects command-line options
-    // which are specific to the kernel, that can be displayed and parsed
-    // by the generic kernel runner
-
 #include <cxx-prettyprint/prettyprint.hpp>
 
 #include <common_types.hpp>
@@ -147,26 +142,6 @@ public:
         return util::filter(all_params, [](const single_parameter_details& param) { return param.kind == buffer; });
     }
     virtual const preprocessor_definitions_type& preprocessor_definition_details() const = 0;
-
-
-    virtual void add_buffer_cmdline_options(cxxopts::OptionAdder adder) const
-    {
-        for(const auto& buffer_ : buffer_details() ) {
-            adder(buffer_.name, buffer_.description,  cxxopts::value<std::string>()->default_value(buffer_.name));
-        }
-    }
-
-    virtual void add_scalar_arguments_cmdline_options(cxxopts::OptionAdder option_adder) const {
-        for(const auto& sad : scalar_parameter_details()) {
-            option_adder(sad.name, sad.description, cxxopts::value<std::string>());
-        }
-    }
-
-    virtual void add_preprocessor_definition_cmdline_options(cxxopts::OptionAdder option_adder) const {
-        for(const auto& pd : preprocessor_definition_details()) {
-            option_adder(pd.name, pd.description, cxxopts::value<std::string>());
-        }
-    }
 
 protected:
     static parameter_name_set buffer_names_from_details(const parameter_details_type& param_details)

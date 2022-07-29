@@ -9,6 +9,7 @@
 #include <string>
 #include <cctype>
 #include <util/optional_and_any.hpp>
+#include "functional.hpp"
 
 namespace util {
 
@@ -23,12 +24,8 @@ template <typename Map>
 std::unordered_set<typename Map::key_type>
 keys(const Map& map)
 {
-    std::unordered_set<typename Map::key_type> keys;
-    std::transform(map.begin(), map.end(),
-        std::inserter(keys, keys.end()),
-        [](const typename Map::value_type &pair){return pair.first;}
-    );
-    return keys;
+    return util::transform<std::unordered_set<typename Map::key_type>>(
+        map, [](const auto& pair){ return pair.first;} );
 }
 
 template <typename Map>
@@ -43,12 +40,8 @@ keys(Map&& map)
 template <typename Map>
 auto values(const Map& map)
 {
-    std::unordered_set<typename Map::value_type> values;
-    std::transform(map.begin(), map.end(),
-        std::inserter(values, values.end()),
-        [](const typename Map::value_type &pair){return pair.second;}
-    );
-    return values;
+    return util::transform<std::unordered_set<typename Map::value_type>>(map,
+        [](const typename Map::value_type &pair){return pair.second;} );
 }
 
 template <typename Container>

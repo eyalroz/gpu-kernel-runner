@@ -108,6 +108,8 @@ Usage:
   -o, --overall-grid-dimensions arg
                                 Set grid dimensions in threads (OpenCL:
                                 global work size); a comma-separated list
+  -O, --append-compilation-option
+                                Append an arbitrary extra compilation option
   -S, --dynamic-shared-memory-size arg
                                 Force specific amount of dynamic shared
                                 memory

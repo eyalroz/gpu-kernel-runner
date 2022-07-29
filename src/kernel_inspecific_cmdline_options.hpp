@@ -30,6 +30,7 @@ struct kernel_inspecific_cmdline_options_t {
     } buffer_base_paths;
     filesystem::path kernel_sources_base_path;
     preprocessor_definitions_t preprocessor_definitions;
+    std::vector<std::string> extra_compilation_options;
 
     /**
      * Preprocessor definitions specified on the command-line using the

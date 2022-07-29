@@ -46,7 +46,8 @@ std::string marshal_opencl_compilation_options(
     bool                             generate_line_info,
     include_paths_t                  include_paths,
     preprocessor_definitions_t       valueless_definitions,
-    preprocessor_value_definitions_t valued_definitions)
+    preprocessor_value_definitions_t valued_definitions,
+    const std::vector<std::string>   extra_options)
 {
     std::stringstream ss;
 
@@ -77,6 +78,10 @@ std::string marshal_opencl_compilation_options(
     // TODO: Check paths for spaces?
     for(const auto& path : include_paths) {
         ss << " -I " << path;
+    }
+
+    for(const auto& opt : extra_options) {
+        ss << ' ' << opt;
     }
 
     // TODO: Should we add -cl-kernel-arg-info ?
@@ -140,7 +145,8 @@ opencl_compilation_result_t build_opencl_kernel(
     const include_paths_t& finalized_include_dir_paths,
     const include_paths_t& preinclude_files,
     preprocessor_definitions_t       valueless_definitions,
-    preprocessor_value_definitions_t valued_definitions)
+    preprocessor_value_definitions_t valued_definitions,
+    std::vector<std::string>         extra_compilation_options)
 {
     // TODO: Consider moving the preinclude reading out of this function
     std::vector<host_buffer_type> loaded_preincludes =
@@ -161,7 +167,8 @@ opencl_compilation_result_t build_opencl_kernel(
         generate_line_info,
         finalized_include_dir_paths,
         valueless_definitions,
-        valued_definitions);
+        valued_definitions,
+        extra_compilation_options);
 
     try {
         program.build(wrapped_device, build_options.c_str());

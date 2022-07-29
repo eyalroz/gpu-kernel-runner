@@ -109,8 +109,8 @@ compilation_result_t build_cuda_kernel(
     const std::vector<std::string>& include_dir_paths,
     const std::vector<std::string>& preinclude_files,
     const preprocessor_definitions_t& preprocessor_definitions,
-    const preprocessor_value_definitions_t& preprocessor_value_definitions
-    )
+    const preprocessor_value_definitions_t& preprocessor_value_definitions,
+    const std::vector<std::string>& extra_compilation_options)
 {
     // TODO: Consider mentioning the kernel function name in the program name.
     auto program = cuda::rtc::program::create(kernel_source_file_path)
@@ -128,6 +128,7 @@ compilation_result_t build_cuda_kernel(
     opts.valued_defines = preprocessor_value_definitions;
     opts.default_execution_space_is_device = true;
     opts.set_target(context.device());
+    opts.extra_options = extra_compilation_options;
 
     spdlog::debug("Kernel compilation generated-command-line arguments: \"{}\"", render(opts));
 

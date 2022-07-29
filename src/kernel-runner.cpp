@@ -90,6 +90,7 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
         ("b,block-dimensions", "Set grid block dimensions in threads  (OpenCL: local work size); a comma-separated list", cxxopts::value<std::vector<unsigned>>() )
         ("g,grid-dimensions", "Set grid dimensions in blocks; a comma-separated list", cxxopts::value<std::vector<unsigned>>() )
         ("o,overall-grid-dimensions", "Set grid dimensions in threads (OpenCL: global work size); a comma-separated list", cxxopts::value<std::vector<unsigned>>() )
+        ("O,append-compilation-option", "Append an arbitrary extra compilation option", cxxopts::value<std::vector<string>>())
         ("S,dynamic-shared-memory-size", "Force specific amount of dynamic shared memory", cxxopts::value<unsigned>() )
         ("W,overwrite", "Overwrite the files for buffer and/or PTX output if they already exists", cxxopts::value<bool>()->default_value("false"))
         ("i,include", "Include a specific file into the kernels' translation unit", cxxopts::value<std::vector<string>>())
@@ -661,6 +662,10 @@ kernel_inspecific_cmdline_options_t parse_command_line_initially(int argc, char*
             die("Unsupported language standard for kernel compilation: {}", language_standard);
         }
     }
+    if (parse_result.count("append-compilation-option") > 0) {
+        parsed_options.extra_compilation_options = parse_result["append-compilation-option"].as<std::vector<string>>();
+    }
+
     parsed_options.compile_in_debug_mode = parse_result["debug-mode"].as<bool>();
     parsed_options.zero_output_buffers = parse_result["zero-output-buffers"].as<bool>();
     parsed_options.time_with_events = parse_result["time-execution"].as<bool>();
@@ -1073,7 +1078,8 @@ bool build_kernel(execution_context_t& context)
             context.finalized_include_dir_paths,
             context.options.preinclude_files,
             context.finalized_preprocessor_definitions.valueless,
-            context.finalized_preprocessor_definitions.valued);
+            context.finalized_preprocessor_definitions.valued,
+            context.options.extra_compilation_options);
         build_succeeded = result.succeeded;
         context.compilation_log = std::move(result.log);
         if (result.succeeded) {
@@ -1095,7 +1101,8 @@ bool build_kernel(execution_context_t& context)
             context.finalized_include_dir_paths,
             context.options.preinclude_files,
             context.finalized_preprocessor_definitions.valueless,
-            context.finalized_preprocessor_definitions.valued);
+            context.finalized_preprocessor_definitions.valued,
+            context.options.extra_compilation_options);
         build_succeeded = result.succeeded;
         context.compilation_log = std::move(result.log);
         if (result.succeeded) {

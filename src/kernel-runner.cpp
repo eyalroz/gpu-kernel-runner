@@ -48,19 +48,20 @@ host_buffers_map read_buffers_from_files(
     const filesystem::path&   buffer_directory)
 {
     host_buffers_map result;
-
-    auto determine_and_read =
-        [&filenames, &buffer_directory
-        //, expected
-        ](const parameter_name_set::value_type& buffer_name)
-        {
-            filesystem::path buffer_file_path = maybe_prepend_base_dir(buffer_directory, filenames.at(buffer_name));
-            spdlog::debug("Reading buffer '{}' of size {} bytes from: {}", buffer_name, filesystem::file_size(buffer_file_path), buffer_file_path.c_str());
-            host_buffer_type buffer = read_input_file(buffer_file_path);
-            return host_buffers_map::value_type{ buffer_name, std::move(buffer)
-        };
-    };
-    std::transform(buffer_names.begin(), buffer_names.end(), std::inserter(result, result.end()), determine_and_read);
+    std::unordered_map<string, filesystem::path> buffer_paths;
+    for(const auto& name : buffer_names) {
+        auto path = maybe_prepend_base_dir(buffer_directory, filenames.at(name));
+        try {
+            spdlog::debug("Reading buffer '{}' from {}", name, path.native());
+            host_buffer_type buffer = read_input_file(path);
+            spdlog::debug("Have read {} bytes for buffer '{}'", buffer.size(), name, path.native());
+            result.emplace(name, std::move(buffer));
+        }
+        catch(std::exception& ex) {
+            spdlog::critical("Failed reading buffer '{}' from file: {}", name, ex.what());
+            throw;
+        }
+    }
     return result;
 }
 

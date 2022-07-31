@@ -50,8 +50,10 @@ host_buffer_type read_input_file(const filesystem::path& src, size_t extra_buffe
         file.read(result.data(), (std::streamsize) file_size);
         return result;
     } catch (std::ios_base::failure& ios_failure) {
-        throw (errno == 0) ? ios_failure :
-            std::system_error(errno, std::generic_category(),
+        if (errno == 0) {
+            throw ios_failure;
+        }
+        throw std::system_error(errno, std::generic_category(),
             "trying to read " + std::to_string(file_size) + " from file " + src.native());
     }
 }
@@ -80,8 +82,10 @@ void write_data_to_file(
         file.write(data.data(), (std::streamsize) data.size());
         file.close();
     } catch (std::ios_base::failure& ios_failure) {
-        throw (errno == 0) ? ios_failure :
-            std::system_error(errno, std::generic_category(),
+        if (errno == 0) {
+            throw ios_failure;
+        }
+        throw std::system_error(errno, std::generic_category(),
             "trying to write " + kind + " '" + name + "' to file " + destination.native());
     }
 }

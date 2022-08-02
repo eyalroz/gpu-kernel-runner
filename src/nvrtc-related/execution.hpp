@@ -9,7 +9,7 @@ void initialize_execution_context<execution_ecosystem_t::cuda>(execution_context
     auto device = cuda::device::get(execution_context.options.gpu_device_id);
     execution_context.cuda.context = device.create_context();
     execution_context.cuda.stream.emplace(execution_context.cuda.context->create_stream(cuda::stream::async));
-    spdlog::trace("Created a CUDA context on device {} ", execution_context.cuda.context->device_id());
+    spdlog::trace("Created a CUDA context on GPU device {} ", execution_context.cuda.context->device_id());
 }
 
 void launch_time_and_sync_cuda_kernel(execution_context_t& execution_context, run_index_t run_index)

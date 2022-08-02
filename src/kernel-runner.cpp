@@ -1001,7 +1001,8 @@ void create_host_side_output_buffers(execution_context_t& context)
                     context.buffers.host_side.inputs,
                     context.scalar_input_arguments.typed,
                     context.finalized_preprocessor_definitions.valueless,
-                    context.finalized_preprocessor_definitions.valued);
+                    context.finalized_preprocessor_definitions.valued,
+                    context.options.forced_launch_config_components);
             auto host_side_output_buffer = host_buffer_type(buffer_size);
             spdlog::trace("Created a host-side output buffer of size {} for kernel parameter {}", buffer_size,  buffer_name);
             return std::make_pair(buffer_details.name, std::move(host_side_output_buffer));

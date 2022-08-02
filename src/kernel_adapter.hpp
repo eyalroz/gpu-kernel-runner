@@ -27,7 +27,8 @@ using size_calculator_type = std::size_t (*)(
     const host_buffers_map& input_buffers,
     const scalar_arguments_map& scalar_arguments,
     const preprocessor_definitions_t& valueless_preprocessor_definitions,
-    const preprocessor_value_definitions_t& value_preprocessor_definitions);
+    const preprocessor_value_definitions_t& value_preprocessor_definitions,
+    const optional_launch_config_components_t& forced_lc_components);
 
 static constexpr const size_calculator_type no_size_calc = nullptr;
 

@@ -54,11 +54,11 @@ host_buffers_map read_buffers_from_files(
         try {
             spdlog::debug("Reading buffer '{}' from {}", name, path.native());
             host_buffer_type buffer = read_input_file(path);
-            spdlog::debug("Have read {} bytes for buffer '{}'", buffer.size(), name, path.native());
+            spdlog::debug("Have read buffer '{}': {} bytes from {}", name, buffer.size(), path.native());
             result.emplace(name, std::move(buffer));
         }
         catch(std::exception& ex) {
-            spdlog::critical("Failed reading buffer '{}' from file: {}", name, ex.what());
+            spdlog::critical("Failed reading buffer '{}' from {}: {}", name, path.native(), ex.what());
             throw;
         }
     }
@@ -787,7 +787,7 @@ void copy_buffer_to_device(
     const host_buffer_type&    host_side_buffer)
 {
     if (context.ecosystem == execution_ecosystem_t::cuda) {
-        spdlog::debug("Copying buffer {} (size {} bytes) from host-side copy at {} to device side copy at {}",
+        spdlog::debug("Copying buffer '{}' (size {} bytes): host-side {} -> device-side {}",
             buffer_name, host_side_buffer.size(), (void *) host_side_buffer.data(),
             (void *) device_side_buffer.cuda.data());
         cuda::context::current::scoped_override_t scoped_context_override{ *context.cuda.context };
@@ -888,7 +888,7 @@ device_buffer_type create_device_side_buffer(
     if (ecosystem == execution_ecosystem_t::cuda) {
         auto region = cuda::memory::device::allocate(*cuda_context, size);
         poor_mans_span sp { static_cast<byte_type*>(region.data()), region.size() };
-        spdlog::trace("Created GPU-side buffer at address {} with size {} for kernel parameter {}", (void*) sp.data(), sp.size(), name);
+        spdlog::trace("Created GPU-side buffer for '{}': {} bytes at {}", name, sp.size(), (void*) sp.data());
         result.cuda = sp;
     }
     else { // OpenCL
@@ -912,7 +912,7 @@ device_buffers_map create_device_side_buffers(
         [&](const auto& p) {
             const auto& name = p.first;
             const auto& size = p.second.size();
-            spdlog::debug("Creating device buffer of size {} for kernel parameter {}.", size, name);
+            spdlog::debug("Creating GPU-side buffer for '{}' of size {} bytes.", name, size);
             auto buffer = create_device_side_buffer(
                 name, size,
                 ecosystem,

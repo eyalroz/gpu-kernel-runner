@@ -19,7 +19,7 @@
 #include <utility>
 #include <tuple>
 
-struct optional_launch_config_components;
+struct optional_launch_config_components_t;
 
 union launch_configuration_type {
     cuda::launch_configuration_t cuda;
@@ -34,7 +34,7 @@ DISABLE_WARNING_POP
 
     launch_configuration_type(const raw_opencl_launch_config& config) : opencl(config) { }
     launch_configuration_type(const cuda::launch_configuration_t& config) : cuda(config) { }
-//    launch_configuration_type(const optional_launch_config_components& config);
+//    launch_configuration_type(const optional_launch_config_components_t& config);
 
     ~launch_configuration_type()  {};
 
@@ -54,7 +54,7 @@ DISABLE_WARNING_POP
 // floats can be serialized and de-serialized with perfect accuracy if we
 // use 9 decimal digits (17 for double values)
 
-struct optional_launch_config_components {
+struct optional_launch_config_components_t {
     static constexpr const dim3 maximum_possible_grid_dimensions { 0x7FFFFFFF, 0x1111, 0x1111 }; // = 2^31 - 1, 2^16 - 1, 2^16 - 1
 
     optional<std::array<std::size_t, 3>>   grid_dimensions;
@@ -213,7 +213,7 @@ struct optional_launch_config_components {
 };
 
 inline launch_configuration_type realize_launch_config(
-    const optional_launch_config_components& components,
+    const optional_launch_config_components_t& components,
     execution_ecosystem_t                    ecosystem)
 {
     return (ecosystem == execution_ecosystem_t::cuda) ?

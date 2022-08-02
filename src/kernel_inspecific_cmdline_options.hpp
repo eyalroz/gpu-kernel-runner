@@ -53,7 +53,7 @@ struct kernel_inspecific_cmdline_options_t {
     filesystem::path compilation_log_file;
     std::string language_standard; // At the moment, possible values are: empty, "c++11","c++14", "c++17"
     bool time_with_events;
-    optional_launch_config_components forced_launch_config_components;
+    optional_launch_config_components_t forced_launch_config_components;
 };
 
 #endif /* KERNEL_INSPECIFIC_COMMAND_LINE_OPTIONS_HPP_ */

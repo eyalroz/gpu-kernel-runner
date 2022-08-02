@@ -207,7 +207,7 @@ public:
      */
     marshalled_arguments_type marshal_kernel_arguments(const execution_context_t& context) const;
 
-    virtual optional_launch_config_components deduce_launch_config(const execution_context_t& context) const
+    virtual optional_launch_config_components_t deduce_launch_config(const execution_context_t& context) const
     {
         auto components = context.options.forced_launch_config_components;
         if (not components.dynamic_shared_memory_size) {
@@ -222,7 +222,7 @@ public:
             "explicitly using the command-line");
     }
 
-    optional_launch_config_components make_launch_config(const execution_context_t& context) const {
+    optional_launch_config_components_t make_launch_config(const execution_context_t& context) const {
         auto& forced = context.options.forced_launch_config_components;
         if (forced.is_sufficient()) {
             return forced;

@@ -50,9 +50,9 @@ public:
     }
 
     // Note: We don't have to implement this method - it is merely a convenience
-    virtual optional_launch_config_components deduce_launch_config(const execution_context_t& context) const override
+    virtual optional_launch_config_components_t deduce_launch_config(const execution_context_t& context) const override
     {
-        optional_launch_config_components result;
+        optional_launch_config_components_t result;
         result.block_dimensions = std::array<std::size_t,3>{256, 1, 1};
         result.overall_grid_dimensions = std::array<std::size_t,3>{
             any_cast<std::size_t>(context.scalar_input_arguments.typed.at("length")), 1, 1};

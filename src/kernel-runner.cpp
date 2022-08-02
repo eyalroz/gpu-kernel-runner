@@ -322,6 +322,9 @@ void parse_command_line_for_kernel(int argc, char** argv, execution_context_t& c
 
     auto required_defs = get_required_preprocessor_definition_terms(ka);
     for(const auto& def_name : required_defs ) {
+        if (def_name.empty()) {
+            throw std::logic_error("Defined terms may not be empty.");
+        }
         if (not contains(parse_result, def_name)) {
             // we'll check this later; maybe it was otherwise specified
             spdlog::trace("Preprocessor term {} not passed using a specific option; "
@@ -357,8 +360,8 @@ void parse_scalars(
             die("Required scalar parameter {} for kernel {} was not specified.\n\n", param_name, kernel_adapter.key());
         }
         // TODO: Consider not parsing anything at this stage, and just marshaling all the scalar arguments together.
-        spdlog::trace("Parsing argument for scalar parameter {}", param_name);
         auto& arg_value = parse_result[param_name].as<string>();
+        spdlog::trace("Parsing argument for scalar parameter '{}' from \"{}\"", param_name, arg_value);
         context.scalar_input_arguments.raw[param_name] = arg_value;
         context.scalar_input_arguments.typed[param_name] =
             kernel_adapter.parse_cmdline_scalar_argument(spd, arg_value);

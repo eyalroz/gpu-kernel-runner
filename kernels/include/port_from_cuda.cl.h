@@ -51,6 +51,99 @@ inline double __drcp_rn(double x) { return native_recip(x); }
  */
 #define make_compound(_compound_type) (_compound_type)
 
+/**
+ * OpenCL has (non-C-like) overloaded math primitives, while CUDA, ironically,
+ * actually has many C-style non-overloaded such primitives. Let's "implement"
+ * some of them.
+ *
+ * @note Some functions are commented-out. They are available in CUDA, and
+ * apparently not available in OpenCL 3.0.
+ * @note no nanf
+ */
+inline float acosf (float x) { return acos(x); }
+inline float acoshf (float x) { return acosh(x); }
+inline float asinf (float x) { return asin(x); }
+inline float asinhf (float x) { return asinh(x); }
+inline float atan2f (float y, float x) { return atan2(y, x); }
+inline float atanf (float x) { return atan(x); }
+inline float atanhf (float x) { return atanh(x); }
+inline float cbrtf (float x) { return cbrt(x); }
+inline float ceilf (float x) { return ceil(x); }
+inline float copysignf (float x, float y) { return copysign(x, y); }
+inline float cosf (float x) { return cos(x); }
+inline float coshf (float x) { return cosh(x); }
+inline float cospif (float x) { return cospi(x); }
+// inline float cyl_bessel_i0f (float x) { return cyl_bessel_i0(x); }
+// inline float cyl_bessel_i1f (float x) { return cyl_bessel_i1(x); }
+inline float erfcf (float x) { return erfc(x); }
+// inline float erfcinvf (float x) { return erfcinv(x); }
+// inline float erfcxf (float x) { return erfcx(x); }
+inline float erff (float x) { return erf (x); }
+//inline float erfinvf (float x) { return erfinv(x); }
+inline float exp10f (float x) { return exp10(x); }
+inline float exp2f (float x) { return exp2(x); }
+inline float expf (float x) { return exp(x); }
+inline float expm1f (float x) { return expm1(x); }
+inline float fabsf (float x) { return fabs(x); }
+inline float fdimf (float x, float y) { return fdim(x, y); }
+//inline float fdividef (float x, float y) { return fdivide(x, y); }
+inline float floorf (float x) { return floor(x); }
+inline float fmaf (float x, float y, float z) { return fma(x, y, z); }
+inline float fmaxf (float x, float y) { return fmax(x, y); }
+inline float fminf (float x, float y) { return fmin(x, y); }
+inline float fmodf (float x, float y) { return fmod(x, y); }
+inline float frexpf (float x, int* nptr) { return frexp(x, nptr); }
+inline float hypotf (float x, float y) { return hypot(x, y); }
+inline float ilogbf (float x) { return ilogb(x); }
+//inline float j0f (float x) { return j0(x); }
+//inline float j1f (float x) { return j1(x); }
+//inline float jnf (int n, float x) { return jn(n, x); }
+inline float ldexpf (float x, int exp) { return ldexp(x, exp); }
+inline float lgammaf (float x) { return lgamma(x); }
+//inline float llrintf (float x) { return llrint(x); }
+//inline float llroundf (float x) { return llround(x); }
+inline float log10f (float x) { return log10(x); }
+inline float log1pf (float x) { return log1p(x); }
+inline float log2f (float x) { return log2(x); }
+inline float logbf (float x) { return logb(x); }
+inline float logf (float x) { return log(x); }
+//inline float lrintf (float x) { return lrint(x); }
+//inline float lroundf (float x) { return lround(x); }
+inline float modff (float x, float* iptr) { return modf (x, iptr); }
+//inline float nearbyintf (float x) { return nearbyint(x); }
+inline float nextafterf (float x, float y) { return nextafter(x, y); }
+//inline float norm3df (float a, float b, float c) { return norm3d(a, b, c); }
+//inline float norm4df (float a, float b, float c, float d) { return norm4d(a, b, c, d); }
+//inline float normcdff (float x) { return normcdf (x); }
+//inline float normcdfinvf (float x) { return normcdfinv(x); }
+//inline float normf (int dim, const float* p) { return norm(dim, p); }
+inline float powf (float x, float y) { return pow(x, y); }
+//inline float rcbrtf (float x) { return rcbrt(x); }
+inline float remainderf (float x, float y) { return remainder(x, y); }
+inline float remquof (float x, float y, int* quo) { return remquo(x, y, quo); }
+//inline float rhypotf (float x, float y) { return rhypot(x, y); }
+inline float rintf (float x) { return rint(x); }
+//inline float rnorm3df (float a, float b, float c) { return rnorm3d(a, b, c); }
+//inline float rnorm4df (float a, float b, float c, float d) { return rnorm4d(a, b, c, d); }
+//inline float rnormf (int dim, const float* p) { return rnorm(dim, p); }
+inline float roundf (float x) { return round(x); }
+inline float rsqrtf (float x) { return rsqrt(x); }
+//inline float scalblnf (float x, long int n) { return scalbln(x, n); }
+//inline float scalbnf (float x, int n) { return scalbn(x, n); }
+//inline float sincosf (float x, float* sptr, float* cptr) { return sincos(x, sptr, cptr); }
+//inline float sincospif (float x, float* sptr, float* cptr) { return sincospi(x, sptr, cptr); }
+inline float sinf (float x) { return sin(x); }
+inline float sinhf (float x) { return sinh(x); }
+inline float sinpif (float x) { return sinpi(x); }
+inline float sqrtf (float x) { return sqrt(x); }
+inline float tanf (float x) { return tan(x); }
+inline float tanhf (float x) { return tanh(x); }
+inline float tgammaf (float x) { return tgamma(x); }
+inline float truncf (float x) { return trunc(x); }
+//inline float y0f (float x) { return y0(x); }
+//inline float y1f (float x) { return y1(x); }
+//inline float ynf (int n, float x) { return yn(n, x); }
+
 #endif // __CUDA_ARCH__
 
 #endif // PORT_FROM_CUDA_TO_OPENCL_CL_H_

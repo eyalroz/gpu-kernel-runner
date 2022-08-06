@@ -1228,28 +1228,32 @@ void configure_launch(execution_context_t& context)
     spdlog::debug("Overall dimensions cover full blocks? {}", lc_components.full_blocks());
 }
 
-void maybe_print_and_write_log(bool compilation_succeeded, execution_context_t& context)
+void handle_compilation_log(bool compilation_succeeded, execution_context_t& context)
 {
     bool empty_log = context.compilation_log and
         std::all_of(context.compilation_log.value().cbegin(),context.compilation_log.value().cend(),isspace) == true;
 
-    //        auto end = compilation_log.end() - ((not compilation_log.empty() and compilation_log.back() == '\0') ? 1 : 0);
-//        bool print_the_log = compilation_succeeded or
-
-    spdlog::level::level_enum level = compilation_succeeded ? spdlog::level::debug : spdlog::level::err;
-
-    if (context.options.always_print_compilation_log or not compilation_succeeded) {
+    if (not compilation_succeeded) {
         if (not context.compilation_log or empty_log) {
-            spdlog::log(level, "No compilation log produced.");
+            spdlog::error("No compilation log produced.");
         }
         else {
-            spdlog::log(level, "Kernel compilation log:");
-            std::cout << context.compilation_log.value();
-            if (context.compilation_log.value().end()[-1] != '\n') {
-                std::cout << '\n';
-            }
+            spdlog::error("Kernel compilation log:\n{}\n", context.compilation_log.value());
         }
     }
+    if (context.options.always_print_compilation_log) {
+        if (not context.compilation_log or empty_log) {
+            if (compilation_succeeded) {
+                spdlog::error("No compilation log produced.");
+            }
+        }
+        else {
+            spdlog::debug("Printing kernel compilation log:");
+            std::cout << context.compilation_log.value()
+                << util::newline_if_missing(context.compilation_log.value());
+        }
+    }
+
     if (context.options.write_compilation_log and context.compilation_log) {
         auto log { context.compilation_log.value() };
         write_data_to_file(
@@ -1286,7 +1290,7 @@ int main(int argc, char** argv)
 
     auto build_succeeded = build_kernel(context);
     auto log = context.compilation_log.value();
-    maybe_print_and_write_log(build_succeeded, context);
+    handle_compilation_log(build_succeeded, context);
     build_succeeded or die();
 
     maybe_write_intermediate_representation(context);

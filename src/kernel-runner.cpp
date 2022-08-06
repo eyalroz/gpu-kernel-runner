@@ -370,10 +370,10 @@ void parse_scalars(
 }
 
 void ensure_gpu_device_validity(
-    execution_ecosystem_t ecosystem,
-    optional<unsigned> platform_id,
-    int device_id,
-    bool need_ptx)
+    execution_ecosystem_t  ecosystem,
+    optional<unsigned>     platform_id,
+    int                    device_id,
+    bool                   need_ptx)
 {
     std::size_t device_count;
 
@@ -817,7 +817,6 @@ void copy_buffer_on_device(
     }
 }
 
-
 void copy_input_buffers_to_device(const execution_context_t& context)
 {
     spdlog::debug("Copying inputs to device.");
@@ -838,8 +837,7 @@ void copy_input_buffers_to_device(const execution_context_t& context)
 }
 
 void copy_buffer_to_host(
-    execution_ecosystem_t ecosystem,
-    //const execution_context_t& context,
+    execution_ecosystem_t      ecosystem,
     cl::CommandQueue*          opencl_queue,
     const device_buffer_type&  device_side_buffer,
     host_buffer_type&          host_side_buffer)
@@ -880,11 +878,11 @@ void copy_outputs_from_device(execution_context_t& context)
 }
 
 device_buffer_type create_device_side_buffer(
-    const string& name,
-    std::size_t size,
-    execution_ecosystem_t ecosystem,
+    const string&                    name,
+    std::size_t                      size,
+    execution_ecosystem_t            ecosystem,
     const optional<cuda::context_t>& cuda_context,
-    optional<cl::Context> opencl_context,
+    optional<cl::Context>            opencl_context,
     const host_buffers_map&)
 {
     device_buffer_type result;

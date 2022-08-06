@@ -84,8 +84,9 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
         ("P,write-ptx", "Write the intermediate representation code (PTX) resulting from the kernel compilation, to a file", cxxopts::value<bool>()->default_value("false"))
         ("ptx-output-file", "File to which to write the kernel's intermediate representation", cxxopts::value<string>())
         ("print-compilation-log", "Print the compilation log to the standard output", cxxopts::value<bool>()->default_value("false"))
-        ("write-compilation-log", "Write the compilation log to a file", cxxopts::value<bool>()->default_value("false"))
-        ("compilation-log-file", "Save the compilation log to the specified file (regardless of whether it's printed)", cxxopts::value<string>())
+        ("write-compilation-log", "Path of a file into which to write the compilation log (regardless of whether it's printed to standard output)", cxxopts::value<string>()->default_value(""))
+        ("print-execution-durations", "Print the execution duration, in nanoseconds, of each kernel invocation to the standard output", cxxopts::value<bool>()->default_value("false"))
+        ("write-execution-durations", "Path of a file into which to write the execution durations, in nanoseconds, for each kernel invocation (regardless of whether they're printed to standard output)", cxxopts::value<string>()->default_value(""))
         ("generate-line-info", "Add source line information to the intermediate representation code (PTX)", cxxopts::value<bool>()->default_value("true"))
         ("b,block-dimensions", "Set grid block dimensions in threads  (OpenCL: local work size); a comma-separated list", cxxopts::value<std::vector<unsigned>>() )
         ("g,grid-dimensions", "Set grid dimensions in blocks; a comma-separated list", cxxopts::value<std::vector<unsigned>>() )
@@ -100,7 +101,6 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
         ("K,kernel-key", "The key identifying the kernel among all registered runnable kernels", cxxopts::value<string>())
         ("L,list-kernels", "List the (keys of the) kernels which may be run with this program")
         ("z,zero-output-buffers", "Set the contents of output(-only) buffers to all-zeros", cxxopts::value<bool>()->default_value("false"))
-        ("t,time-execution", "Use CUDA/OpenCL events to time the execution of each run of the kernel", cxxopts::value<bool>()->default_value("false"))
         ("language-standard", "Set the language standard to use for CUDA compilation (options: c++11, c++14, c++17)", cxxopts::value<string>())
         ("input-buffer-dir", "Base location for locating input buffers", cxxopts::value<string>()->default_value( filesystem::current_path().native() ))
         ("output-buffer-dir", "Base location for writing output buffers", cxxopts::value<string>()->default_value( filesystem::current_path().native() ))
@@ -615,23 +615,31 @@ kernel_inspecific_cmdline_options_t parse_command_line_initially(int argc, char*
             }
         }
     }
-    parsed_options.always_print_compilation_log = parse_result["print-compilation-log"].as<bool>();
-    parsed_options.write_compilation_log = parse_result["write-compilation-log"].as<bool>();
-    if (parsed_options.write_compilation_log) {
-        // Note: DRY with PTX file
-        if (contains(parse_result, "compilation-log-file")) {
-            parsed_options.compilation_log_file = parse_result["compilation-log-file"].as<string>();
-            if (filesystem::exists(parsed_options.compilation_log_file)) {
-                if (not parsed_options.overwrite_allowed) {
-                    throw std::invalid_argument("Specified compilation log file "
-                        + parsed_options.compilation_log_file.native() + " exists, and overwrite is not allowed.");
-                }
-                // Note that there could theoretically be a race condition in which the file gets created
-                // between our checking for its existence and our wanting to write to it after compilation.
+    parsed_options.print_execution_durations = parse_result["print-execution-durations"].as<bool>();
+    if (contains(parse_result, "write-execution-durations")) {
+        parsed_options.execution_durations_file = parse_result["write-execution-durations"].as<string>();
+        if (filesystem::exists(parsed_options.execution_durations_file)) {
+            if (not parsed_options.overwrite_allowed) {
+                throw std::invalid_argument("Specified execution durations file "
+                    + parsed_options.execution_durations_file.native() + " exists, and overwrite is not allowed.");
             }
+            // Note that there could theoretically be a race condition in which the file gets created
+            // between our checking for its existence and our wanting to write to it after compilation.
         }
     }
 
+    parsed_options.always_print_compilation_log = parse_result["print-compilation-log"].as<bool>();
+    if (contains(parse_result, "write-compilation-log")) {
+        parsed_options.compilation_log_file = parse_result["write-compilation-log"].as<string>();
+        if (filesystem::exists(parsed_options.compilation_log_file)) {
+            if (not parsed_options.overwrite_allowed) {
+                throw std::invalid_argument("Specified compilation log file "
+                    + parsed_options.compilation_log_file.native() + " exists, and overwrite is not allowed.");
+            }
+            // Note that there could theoretically be a race condition in which the file gets created
+            // between our checking for its existence and our wanting to write to it after compilation.
+        }
+    }
 
     for (const auto& path : {
              parsed_options.buffer_base_paths.input,
@@ -668,7 +676,6 @@ kernel_inspecific_cmdline_options_t parse_command_line_initially(int argc, char*
 
     parsed_options.compile_in_debug_mode = parse_result["debug-mode"].as<bool>();
     parsed_options.zero_output_buffers = parse_result["zero-output-buffers"].as<bool>();
-    parsed_options.time_with_events = parse_result["time-execution"].as<bool>();
 
     if (parse_result.count("block-dimensions") > 0) {
         auto dims = parse_result["block-dimensions"].as<std::vector<unsigned>>();
@@ -736,6 +743,10 @@ kernel_inspecific_cmdline_options_t parse_command_line_initially(int argc, char*
     if (not kernel_adapter::can_produce_subclass(string(parsed_options.kernel.key))) {
         die("No kernel adapter is registered for key {}", parsed_options.kernel.key);
     }
+
+    parsed_options.time_with_events =
+        parsed_options.print_execution_durations or (not parsed_options.execution_durations_file.empty())
+        or spdlog::level_is_at_least(spdlog::level::info);
 
     return parsed_options;
 }
@@ -1048,13 +1059,6 @@ void finalize_kernel_function_name(execution_context_t& context)
         context.options.kernel.function_name + '.' +
         ptx_file_extension(context.options.gpu_ecosystem);
     }
-
-    if (context.options.write_compilation_log and
-        context.options.compilation_log_file.empty())
-    {
-        context.options.compilation_log_file =
-            context.options.kernel.function_name + ".log";
-    }
 }
 
 bool build_kernel(execution_context_t& context)
@@ -1259,7 +1263,7 @@ void handle_compilation_log(bool compilation_succeeded, execution_context_t& con
         }
     }
 
-    if (context.options.write_compilation_log and context.compilation_log) {
+    if (context.compilation_log and not context.options.compilation_log_file.empty()) {
         auto log { context.compilation_log.value() };
         write_data_to_file(
             "compilation log for", context.options.kernel.key,
@@ -1281,6 +1285,27 @@ void maybe_write_intermediate_representation(execution_context_t& context)
         context.options.ptx_output_file,
         context.options.overwrite_allowed,
         spdlog::level::info);
+}
+
+void print_execution_durations(std::ostream& os, const durations_type& execution_durations)
+{
+    for (const auto &duration: execution_durations) {
+        os << duration.count() << '\n';
+    }
+    os << std::flush;
+}
+
+void handle_execution_durations(const execution_context_t &context)
+{
+    if (not context.options.time_with_events) { return; }
+    if (context.options.print_execution_durations) {
+        print_execution_durations(std::cout, context.durations);
+    }
+    if (not context.options.execution_durations_file.empty()) {
+        std::ofstream ofs(context.options.execution_durations_file);
+        ofs.exceptions();
+        print_execution_durations(ofs, context.durations);
+    }
 }
 
 int main(int argc, char** argv)
@@ -1317,6 +1342,7 @@ int main(int argc, char** argv)
     for(run_index_t ri = 0; ri < context.options.num_runs; ri++) {
         perform_single_run(context, ri);
     }
+    handle_execution_durations(context);
     if (context.options.write_output_buffers_to_files) {
         copy_outputs_from_device(context);
         write_buffers_to_files(context);

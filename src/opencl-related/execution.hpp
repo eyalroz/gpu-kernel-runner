@@ -79,6 +79,7 @@ void launch_time_and_sync_opencl_kernel(execution_context_t& context, run_index_
         auto time_elapsed = opencl_command_execution_time(kernel_execution);
         spdlog::info("Event-measured time of run {} of kernel {}: {} nsec",
             run_index+1, context.kernel_adapter_->kernel_function_name(), time_elapsed.count());
+        context.durations.push_back(time_elapsed);
     }
     else {
         context.opencl.queue.finish(); // To make sure we catch any possible errors here.

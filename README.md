@@ -95,10 +95,19 @@ Usage:
                                 intermediate representation
       --print-compilation-log   Print the compilation log to the standard
                                 output
-      --write-compilation-log   Write the compilation log to a file
-      --compilation-log-file arg
-                                Save the compilation log to the specified
-                                file (regardless of whether it's printed)
+      --write-compilation-log arg
+                                Path of a file into which to write the
+                                compilation log (regardless of whether it's printed
+                                to standard output)
+      --print-execution-durations
+                                Print the execution duration, in nanoseconds,
+                                of each kernel invocation to the standard
+                                output
+      --write-execution-durations arg
+                                Path of a file into which to write the
+                                execution durations, in nanoseconds, for each kernel
+                                invocation (regardless of whether they're
+                                printed to standard output)
       --generate-line-info      Add source line information to the
                                 intermediate representation code (PTX) (default: true)
   -b, --block-dimensions arg    Set grid block dimensions in threads
@@ -108,7 +117,7 @@ Usage:
   -o, --overall-grid-dimensions arg
                                 Set grid dimensions in threads (OpenCL:
                                 global work size); a comma-separated list
-  -O, --append-compilation-option
+  -O, --append-compilation-option arg
                                 Append an arbitrary extra compilation option
   -S, --dynamic-shared-memory-size arg
                                 Force specific amount of dynamic shared
@@ -132,16 +141,14 @@ Usage:
                                 run with this program
   -z, --zero-output-buffers     Set the contents of output(-only) buffers to
                                 all-zeros
-  -t, --time-execution          Use CUDA/OpenCL events to time the execution
-                                of each run of the kernel
       --language-standard arg   Set the language standard to use for CUDA
                                 compilation (options: c++11, c++14, c++17)
       --input-buffer-dir arg    Base location for locating input buffers
-                                (default: $PWD)
+                                (default: /current/working/dir)
       --output-buffer-dir arg   Base location for writing output buffers
-                                (default: $PWD)
+                                (default: /current/working/dir)
       --kernel-sources-dir arg  Base location for locating kernel source
-                                files (default: $PWD)
+                                files (default: /current/working/dir)
   -h, --help                    Print usage information
 ```
 Additionally, for a given kernel, you can specify its parameters. For example, if the kernel's signature is `__global__ foo(int bar, float* baz)`, you can also specify:

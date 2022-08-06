@@ -108,8 +108,7 @@ struct execution_context_t {
     include_paths_t finalized_include_dir_paths;
     marshalled_arguments_type finalized_arguments;
     launch_configuration_type kernel_launch_configuration;
-
-public:
+    durations_type durations; // The execution durations of each invocation of the kernel
 
     template <typename T>
     T get_defined_value(const std::string& s)

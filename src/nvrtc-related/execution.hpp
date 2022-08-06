@@ -58,6 +58,7 @@ void launch_time_and_sync_cuda_kernel(execution_context_t& execution_context, ru
         spdlog::info("Event-measured time of run {} of kernel {}: {:.0f} nsec",
             run_index+1, execution_context.kernel_adapter_->kernel_function_name(), ((double) duration.count() * 1000000.0));
             // TODO: Maybe there's a nicer way to print durations as nsecs?
+        execution_context.durations.push_back(std::chrono::duration_cast<duration_t>(duration));
     }
 }
 

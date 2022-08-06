@@ -27,6 +27,9 @@ using std::int8_t;
 using device_id_t = int;
 using run_index_t = unsigned;
 
+using duration_t = std::chrono::duration<std::uint64_t, std::nano>;
+using durations_type = std::vector<duration_t>;
+
 using string_map = std::unordered_map<std::string, std::string>;
 using preprocessor_value_definitions_t = std::unordered_map<std::string, std::string>;
 using preprocessor_definitions_t = std::unordered_set<std::string>;

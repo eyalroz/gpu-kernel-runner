@@ -25,7 +25,7 @@ include(CompileWithWarnings)
 find_package(CUDAToolkit 10.1 REQUIRED)
 find_package(spdlog 1.6.0 REQUIRED)
 #find_package(cuda-api-wrappers 0.3.3 REQUIRED)
-find_package(cuda-api-wrappers 0.5.2 REQUIRED)
+find_package(cuda-api-wrappers 0.5.3 REQUIRED)
 
 ###############
 ##  OPTIONS  ##

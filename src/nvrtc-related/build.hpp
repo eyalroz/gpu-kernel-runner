@@ -113,9 +113,9 @@ compilation_result_t build_cuda_kernel(
     )
 {
     // TODO: Consider mentioning the kernel function name in the program name.
-    auto program = cuda::rtc::program::create(
-        kernel_source_file_path, kernel_source,
-        get_standard_header_substitutes());
+    auto program = cuda::rtc::program::create(kernel_source_file_path)
+        .set_source(kernel_source)
+        .set_headers(get_standard_header_substitutes());
 
     cuda::rtc::compilation_options_t opts;
     opts.set_language_dialect(language_standard);
@@ -131,37 +131,28 @@ compilation_result_t build_cuda_kernel(
 
     spdlog::debug("Kernel compilation generated-command-line arguments: \"{}\"", render(opts));
 
-    program.register_global(kernel_function_name);
+    program.add_registered_global(kernel_function_name).set_options(opts);
 
-    try {
-        program.compile(opts);
-    }
-    catch(std::exception& ex) {
-        bool compilation_failed { false };
-        auto raw_log = program.compilation_log();
-        // Accounting for a cuda-api-wrappers 0.5.2 gaffe
-        auto log_size = strlen(raw_log.data());
-        std::string log { raw_log.data(), log_size };
+    auto compilation_output = program.compile();
+    auto raw_log = compilation_output.log();
+    std::string log { raw_log.data(), raw_log.size() };
+    if (not compilation_output.succeeded()) {
+        constexpr const bool compilation_failed { false };
         return { compilation_failed, std::move(log), nullopt, nullopt, nullopt };
     }
     spdlog::info("Kernel source compiled successfully.");
     bool compilation_succeeded { true };
-    auto raw_log = program.compilation_log();
-    // Accounting for a cuda-api-wrappers 0.5.2 gaffe
-    auto log_size = strlen(raw_log.data());
-    std::string log { raw_log.data(), log_size };
-
-    std::string mangled_kernel_function_signature = program.get_mangling_of(kernel_function_name);
+    std::string mangled_kernel_function_signature = compilation_output.get_mangling_of(kernel_function_name);
     spdlog::trace("Mangled kernel function signature is: {}", mangled_kernel_function_signature);
 
-    if (not program.has_ptx()) {
+    if (not compilation_output.has_ptx()) {
         throw std::runtime_error("No PTX in compiled kernel CUDA program");
     }
-    auto ptx = program.ptx();
+    auto ptx = compilation_output.ptx();
     // Yes, it's a copy, the API kind of sucks here
     std::string ptx_as_string = std::string(ptx.data(), ptx.size());
     spdlog::debug("Compiled PTX length: {} characters.", ptx.size());
-    auto module = cuda::module::create(context, program);
+    auto module = cuda::module::create(context, compilation_output);
     spdlog::debug("Compiled kernel loaded as a CUDA module.");
     return {
         compilation_succeeded,

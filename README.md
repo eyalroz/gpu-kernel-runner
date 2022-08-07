@@ -6,7 +6,7 @@ A harness for stand-alone execution of single GPU kernels, for timing, debugging
 
 | Table of contents|
 |:----------------|
-| [Example: Executing a simple kernel to get its output](#example) <br> [Motivation](#motivation)<br>[Command-line interface](#cmdline) <br> [Feedback, bugs, questions etc.](#feedback)|
+| <sub>[Example: Executing a simple kernel to get its output](#example) <br> [Motivation](#motivation)<br>[Command-line interface](#cmdline) <br> [Feedback, bugs, questions etc.](#feedback) </sub>|
 
 ----
 

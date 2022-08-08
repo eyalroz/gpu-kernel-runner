@@ -24,8 +24,8 @@ include(CompileWithWarnings)
 # need to test with that before supporting it. 10.2 has not been tested but should hopefully be fine
 find_package(CUDAToolkit 10.1 REQUIRED)
 find_package(spdlog 1.6.0 REQUIRED)
-#find_package(cuda-api-wrappers 0.3.3 REQUIRED)
 find_package(cuda-api-wrappers 0.5.3 REQUIRED)
+find_package(Python REQUIRED)
 
 ###############
 ##  OPTIONS  ##
@@ -62,28 +62,72 @@ add_executable(kernel-runner
 	src/util/static_block.hpp
 	src/parsers.hpp)
 
-set(adapter_source_dirs src/kernel_adapters)
-list(APPEND adapter_source_dirs ${EXTRA_ADAPTER_SOURCE_DIRS})
-foreach(adapter_source_dir ${adapter_source_dirs})
-	message(STATUS "Using adapters from directory ${adapter_source_dir}")
-	file(GLOB_RECURSE adapter_sources "${adapter_source_dir}/*.cpp")
-#	foreach(adapter_source ${adapter_sources})
-#		message(STATUS "Building adapter ${adapter_source}")
-#	endforeach()
-	target_sources(kernel-runner PRIVATE ${adapter_sources})
+add_library(kernel-adapters OBJECT)
+target_link_libraries(kernel-runner PRIVATE kernel-adapters)
+set(adapter-definition-dirs src/kernel_adapters)
+list(APPEND adapter-definition-dirs ${EXTRA_ADAPTER_SOURCE_DIRS})
+foreach(adapter-source_dir ${adapter-definition-dirs})
+	message(STATUS "Using adapters from directory ${adapter-source_dir}")
+	file(GLOB_RECURSE adapter-definitions "${adapter-source_dir}/*.hpp")
+	file(GLOB_RECURSE adapter-sources "${adapter-source_dir}/*.cpp")
+	foreach(adapter-definition ${adapter-definitions})
+		target_sources(kernel-adapters PRIVATE "${adapter-definition}")
+	endforeach()
+	foreach(adapter-source ${adapter-sources})
+		target_sources(kernel-adapters PRIVATE "${adapter-source}")
+	endforeach()
+	list(LENGTH adapter-sources num-sources-in-dir)
+	math(EXPR num-adapters-with-source "${num-adapters-with-source} + ${num-sources-in-dir}" OUTPUT_FORMAT DECIMAL)
+	set(adapter-definitions-with-sources ${adapter-sources})
+	list(TRANSFORM adapter-definitions-with-sources REPLACE "\\.cpp\$" ".hpp")
+	list(REMOVE_ITEM adapter-definitions ${adapter-definitions-with-sources})
+	list(LENGTH adapter-definitions num-generated-in-dir)
+	math(EXPR num-generated-adapters "${num-generated-adapters} + ${num-generated-in-dir}" OUTPUT_FORMAT DECIMAL)
+	foreach(adapter-definition ${adapter-definitions})
+		file(READ ${adapter-definition} adapter-definition-contents)
+		if(NOT "${adapter-definition-contents}" MATCHES "[ \t]*(struct|class)[ \t]+.*kernel_adapter.*{")
+			math(EXPR num-generated-adapters "${num-generated-adapters} - 1" OUTPUT_FORMAT DECIMAL)
+			continue()
+		endif()
+		get_filename_component(adapter-name ${adapter-definition} NAME_WE)
+		set(adapter-source "src/${adapter-name}.cpp") # Note this will be generated within the build directory
+		if (Python_FOUND)
+			add_custom_command(
+				OUTPUT ${adapter-source}
+				MAIN_DEPENDENCY ${adapter-definition}
+				COMMAND Python::Interpreter ${PROJECT_SOURCE_DIR}/scripts/generate-adapter-cpp.py "${adapter-definition}" "${adapter-source}"
+				COMMENT "Generating source file for adapter ${adapter-name}"
+				VERBATIM
+			)
+		else()
+			add_custom_command(
+				OUTPUT ${adapter-source}
+				MAIN_DEPENDENCY ${adapter-definition}
+				COMMAND ${PROJECT_SOURCE_DIR}/scripts/generate-adapter-cpp.sh "${adapter-definition}" "${adapter-source}"
+				COMMENT "Generating source file for adapter ${adapter-name}"
+				VERBATIM
+			)
+		endif()
+
+		target_sources(kernel-adapters PRIVATE "${adapter-source}")
+	endforeach()
 endforeach()
+
+math(EXPR num-adapters "${num-adapters-with-source} + ${num-generated-adapters}")
+if (num-adapters EQUAL 0)
+	message(FATAL_ERROR "No kernel adapters found")
+endif()
+message(STATUS "Adapter instantiation sources: ${num-adapters-with-source} pre-existing, ${num-generated-adapters} to be auto-generated")
 
 # Note: There's a bit of redundancy in the following loop;
 # but it makes more sense if you want to separate the kernel
 # adapters into a library and have it depend on less stuff.
 
-set(compiled-targets
-	kernel-runner
-)
+set(compiled-targets kernel-adapters kernel-runner)
 
-foreach(TARGET ${compiled-targets})
+foreach(tgt ${compiled-targets})
 	set_target_properties(
-		${TARGET}
+		${tgt}
 		PROPERTIES
 		CXX_STANDARD 14
 			# Not C++17, because we want to be SLES 15-compatible :-(
@@ -96,25 +140,31 @@ foreach(TARGET ${compiled-targets})
 	    CUDA_STANDARD_REQUIRED O
 	)
 	# Give some special treatment to libraries we didn't write
-	target_include_directories(${TARGET} SYSTEM PRIVATE third-party)
-	target_include_directories(${TARGET} PRIVATE src src/cuda-samples-helpers)
-	target_warning_options(${TARGET})
-endforeach(TARGET)
+	target_include_directories(${tgt} SYSTEM PRIVATE third-party)
+	target_include_directories(${tgt} PRIVATE src src/cuda-samples-helpers)
+	target_warning_options(${tgt})
+	target_compile_definitions(${tgt} PRIVATE CUDA_INCLUDE_DIR="${CUDAToolkit_INCLUDE_DIRS}")
+	target_link_libraries(
+		${tgt}
+		PRIVATE
+		spdlog::spdlog
+		cuda-api-wrappers::runtime-and-driver
+		CUDA::OpenCL
+		)
+endforeach(tgt)
 
 target_link_libraries(
 	kernel-runner
 	PRIVATE
 	spdlog::spdlog
-	stdc++fs # For std::filesystem
+	stdc++fs # For std::filesystem / std::experimental::filesystem
 	CUDA::cudart
 	CUDA::cuda_driver
 	CUDA::nvrtc
-	${CUDA_LIBRARIES}
 	cuda-api-wrappers::runtime-and-driver
 	CUDA::OpenCL
 	)
 
-target_compile_definitions(kernel-runner PRIVATE CUDA_INCLUDE_DIR="${CUDAToolkit_INCLUDE_DIRS}")
 
 ####################
 ##  Installation  ##

@@ -19,7 +19,6 @@
 
 #include <spdlog/spdlog.h>
 #include <spdlog/cfg/helpers.h>
-#include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/cfg/env.h>
 
 #include <system_error>

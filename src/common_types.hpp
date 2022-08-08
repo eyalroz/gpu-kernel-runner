@@ -3,17 +3,17 @@
 
 #include <util/filesystem.hpp>
 #include <util/optional_and_any.hpp>
+#include <util/memory_region.hpp>
 
 #include <string>
 #include <cstdint>
 #include <unordered_map>
 #include <unordered_set>
 
-#if __cplusplus >= 201712L
-using byte_type = std::byte;
-#else
-using byte_type = char;
-#endif
+using util::byte_type;
+using util::memory_region;
+using util::const_memory_region;
+using util::as_region;
 
 using std::uint32_t;
 using std::int32_t;
@@ -90,15 +90,5 @@ inline constexpr const char* parameter_direction_name(parameter_direction_t dir)
 
 using host_buffer_type = std::vector<byte_type>;
 using host_buffers_map = std::unordered_map<std::string, host_buffer_type>;
-
-struct poor_mans_span {
-    byte_type* data_;
-    std::size_t size_;
-
-    byte_type * const & data() const { return data_; }
-    byte_type * & data() { return data_; }
-    const std::size_t& size() const { return size_; }
-    std::size_t& size() { return size_; }
-};
 
 #endif /* COMMON_TYPES_HPP_ */

@@ -5,7 +5,7 @@
 #include <opencl-related/ugly_error_handling.hpp>
 #include <spdlog/spdlog.h>
 #include <util/spdlog-extra.hpp>
-#include <buffer_io.hpp>
+#include "util/buffer_io.hpp"
 
 #include <string>
 
@@ -117,7 +117,7 @@ load_preinclude_files(const include_paths_t& preincludes, const include_paths_t&
                 auto preinclude_path = p / preinclude_file_path_suffix;
                 if (filesystem::exists(preinclude_path)) {
                     spdlog::debug("Loading pre-include \"{}\" from {}", preinclude_file_path_suffix, preinclude_path.native());
-                    return read_file_as_null_terminated_string(preinclude_path);
+                    return util::read_file_as_null_terminated_string(preinclude_path);
                 }
             }
             spdlog::error("Could not locate preinclude \"{}\"", preinclude_file_path_suffix);

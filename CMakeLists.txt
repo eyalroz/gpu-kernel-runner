@@ -41,7 +41,7 @@ set(EXTRA_ADAPTER_SOURCE_DIRS CACHE STRING "A semicolon-separated list of direct
 
 add_executable(kernel-runner
 	src/kernel-runner.cpp
-	src/buffer_io.cpp
+	src/util/buffer_io.cpp
 	src/util/cxxopts-extra.hpp
 	src/util/optional_and_any.hpp
 	src/nvrtc-related/execution.hpp

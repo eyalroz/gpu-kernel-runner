@@ -2,7 +2,7 @@
 #include "kernel_inspecific_cmdline_options.hpp"
 #include "execution_context.hpp"
 #include "kernel_adapter.hpp"
-#include "buffer_io.hpp"
+#include "util/buffer_io.hpp"
 
 #include <nvrtc-related/build.hpp>
 #include <nvrtc-related/execution.hpp>
@@ -53,7 +53,7 @@ host_buffers_map read_buffers_from_files(
         auto path = maybe_prepend_base_dir(buffer_directory, filenames.at(name));
         try {
             spdlog::debug("Reading buffer '{}' from {}", name, path.native());
-            host_buffer_type buffer = read_input_file(path);
+            host_buffer_type buffer = util::read_input_file(path);
             spdlog::debug("Have read buffer '{}': {} bytes from {}", name, buffer.size(), path.native());
             result.emplace(name, std::move(buffer));
         }
@@ -765,7 +765,7 @@ void write_buffers_to_files(execution_context_t& context)
         auto write_destination = maybe_prepend_base_dir(
                context.options.buffer_base_paths.output,
                context.buffers.filenames.outputs[buffer_name]);
-        write_buffer_to_file(buffer_name, buffer, write_destination, context.options.overwrite_allowed);
+        util::write_buffer_to_file(buffer_name, as_region(buffer), write_destination, context.options.overwrite_allowed);
     }
 }
 
@@ -904,7 +904,7 @@ device_buffer_type create_device_side_buffer(
     device_buffer_type result;
     if (ecosystem == execution_ecosystem_t::cuda) {
         auto region = cuda::memory::device::allocate(*cuda_context, size);
-        poor_mans_span sp { static_cast<byte_type*>(region.data()), region.size() };
+        memory_region sp {static_cast<byte_type*>(region.data()), region.size() };
         spdlog::trace("Created GPU-side buffer for '{}': {} bytes at {}", name, sp.size(), (void*) sp.data());
         result.cuda = sp;
     }
@@ -1066,7 +1066,7 @@ bool build_kernel(execution_context_t& context)
     finalize_kernel_function_name(context);
     const auto& source_file = context.options.kernel.source_file;
     spdlog::debug("Reading the kernel from {}", source_file.native());
-    auto kernel_source_buffer = read_file_as_null_terminated_string(source_file);
+    auto kernel_source_buffer = util::read_file_as_null_terminated_string(source_file);
     auto kernel_source = static_cast<const char*>(kernel_source_buffer.data());
     bool build_succeeded;
 
@@ -1122,6 +1122,18 @@ bool build_kernel(execution_context_t& context)
         spdlog::error("Kernel {} build failed.", context.options.kernel.key);
     }
     return build_succeeded;
+}
+
+inline void write_data_to_file(
+    std::string kind,
+    std::string name,
+    const_memory_region data,
+    filesystem::path destination,
+    bool overwrite_allowed,
+    spdlog::level::level_enum level)
+{
+    spdlog::log(level, "Writing {} '{}' to file {}", kind, name, destination.c_str());
+    util::write_data_to_file(kind, name, data, destination, overwrite_allowed);
 }
 
 // Note: We could actually do some verification
@@ -1268,7 +1280,7 @@ void handle_compilation_log(bool compilation_succeeded, execution_context_t& con
         write_data_to_file(
             "compilation log for", context.options.kernel.key,
             // TODO: Get rid of this, use a proper span and const span...
-            poor_mans_span{ const_cast<byte_type*>(log.data()), log.size() },
+            as_region(log),
             context.options.compilation_log_file,
             context.options.overwrite_allowed,
             spdlog::level::info);
@@ -1281,7 +1293,7 @@ void maybe_write_intermediate_representation(execution_context_t& context)
     const auto& ptx = context.compiled_ptx.value();
     write_data_to_file(
         "generated PTX for kernel", context.options.kernel.key,
-        poor_mans_span{ const_cast<byte_type *>(ptx.data()), ptx.length() },
+        as_region(ptx),
         context.options.ptx_output_file,
         context.options.overwrite_allowed,
         spdlog::level::info);

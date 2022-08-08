@@ -35,7 +35,7 @@ using buffer_sizes = std::unordered_map<std::string, size_t>;
 // TODO: Switch to a variant, perhaps?
 union device_buffer_type {
     cl::Buffer opencl;
-    poor_mans_span cuda;
+    memory_region cuda;
 
     // A brittle and dangerous hack
 DISABLE_WARNING_PUSH

@@ -8,11 +8,14 @@
 
 import sys;
 import re;
+import os;
 
 assert len(sys.argv) >= 2, "No input file specified"
 assert len(sys.argv) <= 3, "Too many command-line arguments"
 
 if len(sys.argv) == 3:
+    output_dir = os.path.dirname(sys.argv[2])
+    os.makedirs(output_dir, mode=0o755, exist_ok=True)
     sys.stdout = open(sys.argv[2], 'w')
 
 print("#include \"{}\"".format(sys.argv[1]))

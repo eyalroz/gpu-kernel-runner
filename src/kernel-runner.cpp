@@ -305,7 +305,7 @@ void parse_command_line_for_kernel(int argc, char** argv, execution_context_t& c
         if (not contains(parse_result, def_name)) {
             // we'll check this later; maybe it was otherwise specified
             spdlog::trace("Preprocessor term {} not passed using a specific option; "
-                "hopefully it has been manually-defined.");
+                "hopefully it has been manually-defined.", def_name);
             continue;
         }
         // TODO: Consider not parsing anything at this stage, and just marshaling all the scalar arguments together.

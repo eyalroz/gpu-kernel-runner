@@ -139,14 +139,6 @@ bool contains(const Container& container, const Key& key)
     return find(container, key) != std::cend(container);
 }
 
-template <typename Container1, typename Container2>
-bool contains_all(const Container1& subsuming, const Container2& subsumed)
-{
-    return std::all_of(std::cbegin(subsumed), std::cend(subsumed),
-        [&subsuming](const auto& e) { return contains(subsuming, e); }
-    );
-}
-
 inline optional<std::string> get_env ( const char* key )
 {
     const char* ev_val = getenv(key);

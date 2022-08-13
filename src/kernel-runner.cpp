@@ -1,5 +1,5 @@
 #include "common_types.hpp"
-#include "kernel_inspecific_cmdline_options.hpp"
+#include "parsed_cmdline_options.hpp"
 #include "execution_context.hpp"
 #include "kernel_adapter.hpp"
 #include "buffer_ops.hpp"
@@ -36,8 +36,6 @@ template <typename... Ts>
     exit(EXIT_FAILURE);
 }
 
-void parse_scalars(execution_context_t &context, const kernel_adapter &kernel_adapter, cxxopts::ParseResult &parse_result);
-
 using std::size_t;
 using std::string;
 
@@ -53,6 +51,7 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
         ("opencl", "Use OpenCL", cxxopts::value<bool>())
         ("cuda", "Use CUDA", cxxopts::value<bool>())
         ("p,platform-id", "Use the OpenCL platform with the specified index", cxxopts::value<unsigned>())
+        ("a,argument", "Set one of the kernel's argument, keyed by name, with a serialized value for a scalar (e.g. foo=123) or a path to the contents of a buffer (e.g. bar=/path/to/data.bin)", cxxopts::value<std::vector<string>>())
         ("d,device", "Device index", cxxopts::value<int>()->default_value("0"))
         ("D,define", "Set a preprocessor definition for NVRTC (can be used repeatedly; specify either DEFINITION or DEFINITION=VALUE)", cxxopts::value<std::vector<string>>())
         ("c,compile-only", "Compile the kernel, but don't actually run it", cxxopts::value<bool>()->default_value("false"))
@@ -113,54 +112,15 @@ void ensure_necessary_terms_were_defined(const execution_context_t& context)
 {
     const auto& ka = *context.kernel_adapter_;
 
-    parameter_name_set terms_defined_by_define_options =
-        get_defined_terms(context.options.preprocessor_definitions);
-    parameter_name_set terms_defined_by_specific_options =
-        util::keys(context.options.preprocessor_value_definitions);
-    auto all_defined_terms = util::union_(terms_defined_by_define_options, terms_defined_by_specific_options);
-    auto terms_required_to_be_defined = get_required_preprocessor_definition_terms(ka);
-    auto required_but_undefined = util::difference(terms_required_to_be_defined, all_defined_terms);
+    auto required_terms = get_required_preprocessor_definition_terms(ka);
+    auto defined_valued_terms = util::keys(context.options.preprocessor_value_definitions);
+    auto all_defined_terms = util::union_(defined_valued_terms, context.options.preprocessor_definitions);
+    auto required_but_undefined = util::difference(required_terms, all_defined_terms);
     if (not required_but_undefined.empty()) {
         std::ostringstream oss;
         oss << required_but_undefined;
         die("The following preprocessor definitions must be specified, but have not been: {}", oss.str());
     }
-}
-
-std::vector<string_option_spec> as_option_specs(const kernel_adapter::parameter_details_type& scalar_param_details)
-{
-    return util::transform<std::vector<string_option_spec>>(scalar_param_details,
-        [](const auto& spd) { return string_option_spec{spd.name, spd.description, spd.name}; } );
-}
-
-std::vector<string_option_spec> as_option_specs(const kernel_adapter::preprocessor_definitions_type & pp_def_details)
-{
-    return util::transform<std::vector<string_option_spec>>(pp_def_details,
-        [](const auto& sppd) { return string_option_spec{sppd.name, sppd.description, nullptr}; } );
-}
-
-cxxopts::Options create_command_line_options_for_kernel(const char* program_name, execution_context_t& context)
-{
-    const auto& ka = *(context.kernel_adapter_.get());
-    string kernel_name = ka.key();
-    spdlog::debug("Creating a command-line options structured for kernel {}", kernel_name);
-    cxxopts::Options options = basic_cmdline_options(program_name);
-        // We're adding them to parse and then ignore; and also possibly for printing usage information
-
-    // We split up the kernel's buffers into different sections each with its own title in the usage info
-    static constexpr const auto all_directions = {
-        parameter_direction_t::input, parameter_direction_t::output, parameter_direction_t::inout};
-    for(parameter_direction_t dir : all_directions) {
-        auto dir_buffers = util::filter(ka.buffer_details(), [dir](const auto& bd) { return bd.direction == dir; } );
-        add_string_options(options,
-            ka.key() + string(" (") + parameter_direction_name(dir) + " buffers)",
-            as_option_specs(dir_buffers));
-    }
-    add_string_options(options, ka.key() + string(" (scalar arguments)"),
-        as_option_specs(ka.scalar_parameter_details()));
-    add_string_options(options, ka.key() + string(" (preprocessor definitions)"),
-        as_option_specs(ka.preprocessor_definition_details()));
-    return options;
 }
 
 void collect_include_paths(execution_context_t& context)
@@ -189,36 +149,6 @@ void collect_include_paths(execution_context_t& context)
     // What about OpenCL? Should it get some defaulted include directory?
 }
 
-void finalize_preprocessor_definitions(execution_context_t& context)
-{
-    spdlog::debug("Finalizing preprocessor definitions.");
-    context.finalized_preprocessor_definitions.valued = context.options.preprocessor_value_definitions;
-
-    for (const auto& definition : context.options.preprocessor_definitions) {
-        auto equals_pos = definition.find('=');
-        switch(equals_pos) {
-        case string::npos:
-            context.finalized_preprocessor_definitions.valueless.insert(definition);
-            continue;
-        case 0:
-            spdlog::error("Invalid command-line argument \"{}\": Empty defined string",  definition);
-            continue;
-        default:
-            // If the string happens to have "=" at the end, e.g. "FOO=" -
-            // it's an empty definition -  which is fine.
-            auto term = definition.substr(0, equals_pos);
-            auto value = definition.substr(equals_pos+1);
-            context.finalized_preprocessor_definitions.valued.emplace(term, value);
-        }
-    }
-    for (const auto& def : context.finalized_preprocessor_definitions.valued) {
-        spdlog::trace("finalized value preprocessor definition: {}={}", def.first, def.second);
-    }
-    for (const auto& def : context.finalized_preprocessor_definitions.valueless) {
-        spdlog::trace("finalized valueless preprocessor definition: {}", def);
-    }
-}
-
 [[noreturn]] void print_help_and_exit(
     const cxxopts::Options &options,
     bool user_asked_for_help = true)
@@ -228,121 +158,79 @@ void finalize_preprocessor_definitions(execution_context_t& context)
     exit(user_asked_for_help ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
-void parse_command_line_for_kernel(int argc, char** argv, execution_context_t& context)
+void resolve_buffer_filenames(execution_context_t& context)
 {
-    spdlog::debug("Parsing the command line for kernel-specific options.");
-    auto program_name = argv[0];
     // if (context.kernel_adapter_.get() == nullptr) { throw std::runtime_error("Null kernel adapter pointer"); }
     const auto& ka = *(context.kernel_adapter_.get());
-    auto options = create_command_line_options_for_kernel(program_name, context);
 
-    auto parse_result = non_consumptive_parse(options, argc, argv);
-        // Note: parse() will not just change our "local" argc and argv, but will also alter the array of pointers
-        // argv points to. If you don't want that - use a
-
-    spdlog::debug("Kernel-inspecific command-line options parsing complete.");
-
-    if (contains(parse_result, "help")) {
-        print_help_and_exit(options);
-    }
-
-    // TODO: It's possible that the kernel's buffer names will coincide with other option names (especially
-    // for the case of single-character names). When this is the case, we should disambiguate. In fact, it might
-    // be a good idea to disambiguate to begin with by adding prefixes: input_ output_, inout_, scalar_arg_
-    //
-    // TODO: Lots of repetition here... avoid it
-
-    for(const auto& buffer_name : buffer_names(ka, parameter_direction_t::input, parameter_direction_t::inout) ) {
-        if (contains(parse_result, buffer_name)) {
-            context.buffers.filenames.inputs[buffer_name] = parse_result[buffer_name].as<string>();
+    const auto& args = context.options.kernel_arguments;
+    auto params_with_args = util::keys(args);
+//    auto in_and_inout_buffers =  buffer_names(ka, parameter_direction_t::input, parameter_direction_t::inout);
+    for(const auto& buffer : ka.buffer_details()) {
+        const auto &name = buffer.name;
+        auto got_arg = util::contains(params_with_args, name);
+        if (not got_arg) {
+            spdlog::debug("Filename for buffer '{}' not specified; using fallback names.");
         }
-        else {
-            context.buffers.filenames.inputs[buffer_name] = buffer_name;
-            spdlog::debug("Filename for input buffer {} not specified; defaulting to using its name.", buffer_name);
+        if (is_input(buffer)) {
+            const auto default_filename = name;
+            auto filename = got_arg ? args.at(name) : default_filename;
+            spdlog::trace("Filename for input buffer '{}': {}", name, filename);
+            context.buffers.filenames.inputs[name] = filename;
         }
-        spdlog::trace("Filename for input buffer {}: {}", buffer_name, context.buffers.filenames.inputs[buffer_name]);
-    }
-    if (context.options.write_output_buffers_to_files) {
-        for(const auto& buffer_name : ka.buffer_names(parameter_direction_t::output)  ) {
-            auto output_filename = [&]() {
-                if (contains(parse_result, buffer_name)) {
-                    return parse_result[buffer_name].as<string>();
-                } else {
-                    // TODO: Is this a reasonable convention for the output filename?
-                    spdlog::debug("Filename for output buffer {0} not specified; defaulting to: \"{0}.out\".", buffer_name);
-                    return buffer_name + ".out";
-                }
-            }();
-            if (filesystem::exists(output_filename)) {
+        if (context.options.write_output_buffers_to_files and is_output(buffer)) {
+            const auto default_filename = fmt::format("{}.out", name);
+            auto filename = is_input(buffer) ?
+                fmt::format("{}.out", context.buffers.filenames.inputs[name]) :
+                (got_arg ? args.at(name) : default_filename);
+            context.buffers.filenames.outputs[name] = filename;
+
+            // TODO: Move this verification elsewhere
+            if (filesystem::exists(filename)) {
                 if (not context.options.overwrite_allowed and not context.options.compile_only) {
-                    throw std::invalid_argument("Writing the contents of output buffer "
-                        + buffer_name + " would overwrite an existing file: " + output_filename);
+                    die("Writing the contents of output buffer {} would overwrite an existing file: ",
+                        name, filename);
                 }
-                spdlog::info("Output buffer {} will overwrite {}", buffer_name, output_filename);
+                spdlog::info("Output buffer '{}' will overwrite {}", name, filename);
             }
             // Note that if the output file gets created while the kernel runs, we might miss this fact
             // when trying to write to it.
-            spdlog::trace("Filename for output buffer {}: {}", buffer_name, output_filename);
-            context.buffers.filenames.outputs[buffer_name] = output_filename;
-        }
-        for(const auto& buffer_name : ka.buffer_names(parameter_direction_t::inout)  ) {
-            // TODO: Consider support other schemes for naming output versions of inout buffers
-            context.buffers.filenames.outputs[buffer_name] =
-                context.options.buffer_base_paths.output / (buffer_name + ".out");
-            spdlog::trace("Using output file {} for buffer {}", context.buffers.filenames.outputs[buffer_name], buffer_name);
+            spdlog::trace("Filename for output buffer '{}': {}", name, filename);
         }
     }
-
-    if (not context.options.compile_only) {
-        parse_scalars(context, ka, parse_result);
-    }
-
-    auto required_defs = get_required_preprocessor_definition_terms(ka);
-    for(const auto& def_name : required_defs ) {
-        if (def_name.empty()) {
-            throw std::logic_error("Defined terms may not be empty.");
-        }
-        if (not contains(parse_result, def_name)) {
-            // we'll check this later; maybe it was otherwise specified
-            spdlog::trace("Preprocessor term {} not passed using a specific option; "
-                "hopefully it has been manually-defined.", def_name);
-            continue;
-        }
-        // TODO: Consider not parsing anything at this stage, and just marshaling all the scalar arguments together.
-        // context.scalar_input_arguments.raw[def_name] = parse_result[def_name].as<string>();
-        const auto& arg_value = parse_result[def_name].as<string>();
-        context.options.preprocessor_value_definitions[def_name] = arg_value;
-        spdlog::trace("Got preprocessor argument {}={} through specific option", def_name, arg_value);
-    }
-
-    ensure_necessary_terms_were_defined(context);
-
-    finalize_preprocessor_definitions(context);
 }
 
 // Note: We need the kernel adapter, and can't just be satisfied with the argument details,
 // because the adapter might have overridden the parsing method with something more complex.
 // If we eventually decide that's not a useful ability to have, we can avoid passing the
 // adapter to this function.
-void parse_scalars(
-    execution_context_t &context,
-    const kernel_adapter &kernel_adapter,
-    cxxopts::ParseResult &parse_result)
+void parse_scalars(execution_context_t &context)
 {
-    auto scalars = kernel_adapter.scalar_parameter_details();
-    for(const auto& spd : scalars ) {
-        auto param_name = spd.name;
-        if (not contains(parse_result, param_name)) {
-            if (not spd.required) { continue; }
-            die("Required scalar parameter {} for kernel {} was not specified.\n\n", param_name, kernel_adapter.key());
+    const auto& args = context.options.kernel_arguments;
+    const kernel_adapter &kernel_adapter = (*context.kernel_adapter_.get());
+    auto params_with_args = util::keys(args);
+    {
+        std::ostringstream oss;
+        oss << params_with_args;
+        spdlog::trace("Arguments we specified for parameters {}", oss.str());
+    }
+    auto all_scalar_details = kernel_adapter.scalar_parameter_details();
+    for(const auto& spd : all_scalar_details ) {
+        std::string param_name { spd.name };
+        if (not util::contains(params_with_args, param_name)) {
+            if (not spd.required) {
+                spdlog::trace("No argument provided for kernel parameter '{}'.", param_name);
+                continue;
+            }
+            die("Required scalar parameter '{}' for kernel '{}' was not specified.\n\n", param_name, kernel_adapter.key());
         }
         // TODO: Consider not parsing anything at this stage, and just marshaling all the scalar arguments together.
-        auto& arg_value = parse_result[param_name].as<string>();
+        auto& arg_value = args.at(param_name);
         spdlog::trace("Parsing argument for scalar parameter '{}' from \"{}\"", param_name, arg_value);
         context.scalar_input_arguments.raw[param_name] = arg_value;
         context.scalar_input_arguments.typed[param_name] =
             kernel_adapter.parse_cmdline_scalar_argument(spd, arg_value);
-        spdlog::trace("Successfully parsed scalar argument {}", param_name);
+        spdlog::trace("Successfully parsed argument for scalar parameter '{}'.", param_name);
     }
 }
 
@@ -398,8 +286,11 @@ void print_registered_kernel_keys() {
     }
 }
 
-kernel_inspecific_cmdline_options_t parse_command_line_initially(int argc, char** argv)
+parsed_cmdline_options_t parse_command_line(int argc, char** argv)
 {
+    // TODO: Break off lots of smaller functions handling the just-parsed parameters
+    // to populate various data structures
+
     auto program_name = argv[0];
     cxxopts::Options options = basic_cmdline_options(program_name);
     options.allow_unrecognised_options();
@@ -409,7 +300,7 @@ kernel_inspecific_cmdline_options_t parse_command_line_initially(int argc, char*
     spdlog::debug("Parsing the command line for non-kernel-specific options.");
     auto parse_result = non_consumptive_parse(options, argc, argv);
 
-    kernel_inspecific_cmdline_options_t parsed_options;
+    parsed_cmdline_options_t parsed_options;
 
     bool user_asked_for_help = contains(parse_result, "help");
         // Note that we will not immediately provide the help, because if we can figure
@@ -693,16 +584,41 @@ kernel_inspecific_cmdline_options_t parse_command_line_initially(int argc, char*
 
     if (parse_result.count("define") > 0) {
         const auto& parsed_defines = parse_result["define"].as<std::vector<string>>();
-        std::copy(parsed_defines.cbegin(), parsed_defines.cend(),
-            std::inserter(parsed_options.preprocessor_definitions, parsed_options.preprocessor_definitions.begin()));
-            // TODO: This line is kind of brittle, because the RHS type is dictated
-            // by cxxopts while the LHS is a choice of ours which is supposedly
-            // independent of it. Perhaps we should initialize parsed_options.include_paths
-            // with a begin/end constructor pair?
-        for (const auto& def : parsed_options.preprocessor_definitions) {
-            spdlog::trace("Preprocessor definition: {}", def);
+        for(const auto& definition : parsed_defines) {
+            auto equals_pos = definition.find('=');
+            switch (equals_pos) {
+                case string::npos:
+                    spdlog::trace("Preprocessor definition: {}", definition);
+                    parsed_options.preprocessor_definitions.emplace(definition);
+                    break;
+                case 0:
+                    die("Preprocessor definition specified with an empty name: \"{}\" ", definition);
+                default:
+                    auto defined_term = definition.substr(0, equals_pos);
+                    auto value = definition.substr(equals_pos + 1);
+                    spdlog::trace("Preprocessor definition: {} with value {}", defined_term, value);
+                    parsed_options.preprocessor_value_definitions.emplace(defined_term, value);
+            }
         }
     }
+
+    if (parse_result.count("argument") > 0) {
+        const auto& kernel_arguments_assignments = parse_result["argument"].as<std::vector<string>>();
+        for(const auto& kernel_arg_definition : kernel_arguments_assignments) {
+            auto equals_pos = kernel_arg_definition.find('=');
+            switch(equals_pos) {
+                case string::npos:
+                    die("Kernel argument name \"{}\" specified without a value", kernel_arg_definition);
+                case 0:
+                    die("Kernel argument value specified with an empty name: \"{}\" ", kernel_arg_definition);
+                default:
+                    auto param_name = kernel_arg_definition.substr(0, equals_pos);
+                    auto value = kernel_arg_definition.substr(equals_pos+1);
+                    parsed_options.kernel_arguments.emplace(param_name, value);
+            }
+        }
+    }
+
     if (parse_result.count("include-path") > 0) {
         parsed_options.include_dir_paths = parse_result["include-path"].as<std::vector<string>>();
         for (const auto& p : parsed_options.include_dir_paths) {
@@ -728,7 +644,7 @@ kernel_inspecific_cmdline_options_t parse_command_line_initially(int argc, char*
 }
 
 // TODO: Yes, make execution_context_t a proper class... and be less lax with the initialization
-execution_context_t initialize_execution_context(kernel_inspecific_cmdline_options_t parsed_options)
+execution_context_t initialize_execution_context(parsed_cmdline_options_t parsed_options)
 {
     // Somewhat redundant with later code
     ensure_gpu_device_validity(
@@ -797,8 +713,8 @@ bool build_kernel(execution_context_t& context)
             context.options.language_standard,
             context.finalized_include_dir_paths,
             context.options.preinclude_files,
-            context.finalized_preprocessor_definitions.valueless,
-            context.finalized_preprocessor_definitions.valued,
+            context.options.preprocessor_definitions,
+            context.options.preprocessor_value_definitions,
             context.options.extra_compilation_options);
         build_succeeded = result.succeeded;
         context.compilation_log = std::move(result.log);
@@ -820,8 +736,8 @@ bool build_kernel(execution_context_t& context)
             context.options.write_ptx_to_file,
             context.finalized_include_dir_paths,
             context.options.preinclude_files,
-            context.finalized_preprocessor_definitions.valueless,
-            context.finalized_preprocessor_definitions.valued,
+            context.options.preprocessor_definitions,
+            context.options.preprocessor_value_definitions,
             context.options.extra_compilation_options);
         build_succeeded = result.succeeded;
         context.compilation_log = std::move(result.log);
@@ -1021,11 +937,16 @@ int main(int argc, char** argv)
     spdlog::set_level(spdlog::level::info);
     spdlog::cfg::load_env_levels(); // support setting the logging verbosity with an environment variable
 
-    auto kernel_inspecific_cmdline_options = parse_command_line_initially(argc, argv);
+    auto parsed_cmdline_options = parse_command_line(argc, argv);
 
-    execution_context_t context = initialize_execution_context(kernel_inspecific_cmdline_options);
-    parse_command_line_for_kernel(argc, argv, context);
+    execution_context_t context = initialize_execution_context(parsed_cmdline_options);
 
+    if (not context.options.compile_only) {
+        parse_scalars(context);
+        resolve_buffer_filenames(context);
+    }
+
+    ensure_necessary_terms_were_defined(context);
     auto build_succeeded = build_kernel(context);
     auto log = context.compilation_log.value();
     handle_compilation_log(build_succeeded, context);

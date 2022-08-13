@@ -3,7 +3,7 @@
 
 #include "common_types.hpp"
 
-#include "kernel_inspecific_cmdline_options.hpp"
+#include "parsed_cmdline_options.hpp"
 #include "launch_configuration.hpp"
 #include "preprocessor_definitions.hpp"
 
@@ -56,7 +56,7 @@ class kernel_adapter;
 
 // Essentially, a manually-managed closure and some other dynamically-generated data
 struct execution_context_t {
-    kernel_inspecific_cmdline_options_t options;
+    parsed_cmdline_options_t options;
     std::unique_ptr<kernel_adapter> kernel_adapter_;
       // The adapter also holds the parsed kernel-specific command-line options
     struct {

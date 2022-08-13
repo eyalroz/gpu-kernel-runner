@@ -1,5 +1,5 @@
-#ifndef KERNEL_INSPECIFIC_COMMAND_LINE_OPTIONS_HPP_
-#define KERNEL_INSPECIFIC_COMMAND_LINE_OPTIONS_HPP_
+#ifndef PARSED_COMMAND_LINE_OPTIONS_HPP_
+#define PARSED_COMMAND_LINE_OPTIONS_HPP_
 
 #include "common_types.hpp" // for execution_ecosystem_t
 
@@ -15,7 +15,7 @@
 #include <cstdlib>
 
 // These options are common, and relevant, to any and all kernel adapters
-struct kernel_inspecific_cmdline_options_t {
+struct parsed_cmdline_options_t {
     struct {
         std::string key;
         std::string function_name;
@@ -38,6 +38,7 @@ struct kernel_inspecific_cmdline_options_t {
      * "-D FOO=bar".
      */
     preprocessor_value_definitions_t preprocessor_value_definitions;
+    argument_values_t kernel_arguments;
     include_paths_t include_dir_paths;
     include_paths_t preinclude_files;
     bool zero_output_buffers;
@@ -59,4 +60,4 @@ struct kernel_inspecific_cmdline_options_t {
     optional_launch_config_components_t forced_launch_config_components;
 };
 
-#endif /* KERNEL_INSPECIFIC_COMMAND_LINE_OPTIONS_HPP_ */
+#endif /* PARSED_COMMAND_LINE_OPTIONS_HPP_ */

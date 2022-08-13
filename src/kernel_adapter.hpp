@@ -338,6 +338,9 @@ inline parameter_name_set buffer_names(const kernel_adapter& adapter, parameter_
     return util::union_(adapter.buffer_names(dir_1), adapter.buffer_names(dir_2));
 }
 
+inline bool is_input (kernel_adapter::single_parameter_details spd) { return is_input(spd.direction);  }
+inline bool is_output(kernel_adapter::single_parameter_details spd) { return is_output(spd.direction); }
+
 // Boilerplate macros for subclasses of kernel_adapter.
 // Each of these needs to be invoked once in any subclass
 // definition

@@ -124,7 +124,7 @@ void copy_outputs_from_device(execution_context_t& context)
         const auto& name = output_pair.first;
         auto& host_side_buffer = output_pair.second;
         const auto& device_side_buffer = context.buffers.device_side.outputs.at(name);
-        spdlog::trace("Copying device output buffer to host output buffer for {}", name);
+        spdlog::trace("Copying device output buffer to host output buffer for '{}'", name);
         copy_buffer_to_host(
             context.ecosystem,
             &context.opencl.queue,
@@ -158,7 +158,7 @@ device_buffer_type create_device_side_buffer(
         cl::Buffer buffer { opencl_context.value(), CL_MEM_READ_WRITE, size };
             // TODO: Consider separating in, out and in/out buffer w.r.t. OpenCL creating, to be able to pass
             // other flags.
-        spdlog::trace("Created an OpenCL read/write buffer with size {} for kernel parameter {}", size, name);
+        spdlog::trace("Created an OpenCL read/write buffer with size {} for kernel parameter '{}'", size, name);
         result.opencl = std::move(buffer);
     }
     return result;

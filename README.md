@@ -39,14 +39,15 @@ kernel-runner --cuda \
     --kernel-source vector_add.cu \
     --block-dimensions=256,1,1 \
     --grid-dimensions=1,1,1 \
-    -A input_a -B input_b -D A_LITTLE_EXTRA=2
+    --arg A=input_a --arg length=3 --arg B=input_b \
+    -DA_LITTLE_EXTRA=2
 ```
-then you'll get a file named `C.out`, containing `fgh`. And that is, indeed, `abc`, plus 3 for each letter, from the values of `input_B`, plus 2 for each letter from the preprocessor definition. 
+then you'll get a file named `C.out`, containing `fgh`... which is indeed the correct output of the kernel: The sequence `abc`, plus 3 for each character due the values in `input_B`, plus 2 for each character from the preprocessor definition of `A_LITTLE_EXTRA`. 
 
-You can also do the same with an OpenCL kernel (but specify `--opencl` instead of `--cuda`). Such a kernel is bundled with this repository, so do try it.
+You can do the same with an equivalent OpenCL kernel, also bundled with this repository; just specify `--opencl` instead of `--cuda`, 
+nd use the `vector_add.cl` kernel source file.
 
-There is a bit of "cheating" here: The kernel runner doesn't magically parse your kernel source to determine what parameters you need. You need to have added some boilerplate code for your kernel into the runner:  Listing the kernel name, parameter names, whether they're input or output etc.
-
+There is a bit of "cheating" here: The kernel runner doesn't magically parse your kernel source to determine what arguments are required. You need to have added some boilerplate code for your kernel into the runner:  Listing the kernel name, parameter names, whether they're input or output etc.
 
 ## <a name="motivation">Motivation</a>
 

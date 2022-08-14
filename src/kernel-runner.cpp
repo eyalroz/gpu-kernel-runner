@@ -768,23 +768,10 @@ inline void write_data_to_file(
     util::write_data_to_file(kind, name, data, destination, overwrite_allowed);
 }
 
-// Note: We could actually do some verification
-// before building the kernel and before reading
-// from any file - although just for the scalars.
-void verify_input_arguments(execution_context_t& context)
+void validate_scalars(execution_context_t& context)
 {
-    spdlog::debug("Verifying input arguments (buffers and scalars)");
+    spdlog::debug("Validating scalar argument values");
     auto& ka = *context.kernel_adapter_;
-
-    auto in_and_inout_names = buffer_names(ka, parameter_direction_t::input, parameter_direction_t::inout);
-    auto obtained_in_buffers = util::keys(context.buffers.host_side.inputs);
-    if (obtained_in_buffers != in_and_inout_names)
-    {
-        std::ostringstream ss;
-        auto names_of_missing_buffers = util::difference(in_and_inout_names, obtained_in_buffers);
-        for (auto buffer_name : names_of_missing_buffers) { ss << buffer_name << " "; }
-        die("Missing input/inout buffers: {}", ss.str());
-    }
 
     std::stringstream ss;
     const auto& available_args = util::keys(context.scalar_input_arguments.raw);
@@ -798,8 +785,16 @@ void verify_input_arguments(execution_context_t& context)
         util::contains(available_args, required)
             or die("Required scalar argument {} not provided", required);
     }
+}
 
-    ka.input_sizes_are_valid(context) or die("Inputs are invalid, cannot execute kernel");
+void validate_arguments(execution_context_t& context)
+{
+    auto& ka = *context.kernel_adapter_;
+
+    validate_scalars(context);
+
+    spdlog::debug("Validating input sizes");
+    ka.input_sizes_are_valid(context) or die("Input buffer sizes are invalid, cannot execute kernel");
 
     if (not context.kernel_adapter_->extra_validity_checks(context)) {
         // TODO: Have the kernel adapter report an error instead of just a boolean;
@@ -807,7 +802,7 @@ void verify_input_arguments(execution_context_t& context)
         // return a runtime_error (?)
         die("The combination of input arguments (scalars and buffers) and preprocessor definitions is invalid.");
     }
-    spdlog::info("Verified all inputs (scalars and/or buffers, including any inout)");
+    spdlog::info("Kernel arguments are fully valid (scalars and buffers, including any inout)");
 }
 
 void generate_additional_scalar_arguments(execution_context_t& context)
@@ -957,9 +952,7 @@ int main(int argc, char** argv)
     if (context.options.compile_only) { return EXIT_SUCCESS; }
 
     read_buffers_from_files(context);
-    // TODO: Consider verifying before reading the buffers, but obtaining the sizes
-    // for the verification
-    verify_input_arguments(context);
+    validate_arguments(context);
     create_host_side_output_buffers(context);
     create_device_side_buffers(context);
     generate_additional_scalar_arguments(context);

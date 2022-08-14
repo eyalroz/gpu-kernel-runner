@@ -145,12 +145,6 @@ public:
     virtual const preprocessor_definitions_type& preprocessor_definition_details() const = 0;
 
 protected:
-    static parameter_name_set buffer_names_from_details(const parameter_details_type& param_details)
-    {
-        return util::transform<parameter_name_set>(param_details,
-            [](const auto& details) { return details.name; } );
-    }
-
     template <typename Scalar>
     static inline void pusher(
         marshalled_arguments_type& argument_ptrs_and_maybe_sizes,
@@ -159,18 +153,6 @@ protected:
 
 
 public:
-    virtual parameter_name_set buffer_names(parameter_direction_t direction) const
-    {
-        auto& all_params = parameter_details();
-        auto requested_dir_buffers_only =
-            util::filter(all_params,
-                [&direction](const single_parameter_details& spd) {
-                    return spd.direction == direction and spd.kind == buffer;
-                }
-            );
-        return buffer_names_from_details(requested_dir_buffers_only);
-    }
-
     virtual any parse_cmdline_scalar_argument(
         const single_parameter_details& parameter_details,
         const std::string& value_str) const
@@ -254,6 +236,27 @@ protected:
     }
 }; // kernel_adapter
 
+inline parameter_name_set buffer_names(const kernel_adapter& kernel_adapter, parameter_direction_t direction);
+
+template <typename Predicate, typename = std::enable_if_t<not std::is_same<Predicate, parameter_direction_t>::value, void> >
+parameter_name_set buffer_names(const kernel_adapter& kernel_adapter, Predicate pred)
+{
+    return util::transform_if<parameter_name_set>(kernel_adapter.parameter_details(),
+        [&pred](const auto& spd) {
+            return spd.kind == kernel_parameters::kind_t::buffer and pred(spd);
+        },
+        [](const auto& spd) { return spd.name; }
+    );
+}
+
+inline parameter_name_set buffer_names(const kernel_adapter& kernel_adapter, parameter_direction_t direction)
+{
+    return buffer_names(kernel_adapter,
+        [direction](const kernel_adapter::single_parameter_details& spd) {
+            return spd.direction == direction;
+        } );
+}
+
 namespace kernel_adapters {
 
 template <typename U>
@@ -331,11 +334,6 @@ inline marshalled_arguments_type kernel_adapter::marshal_kernel_arguments(const 
         // Note: Remember that sizes is unused in this case
     }
     return argument_ptrs_and_maybe_sizes;
-}
-
-inline parameter_name_set buffer_names(const kernel_adapter& adapter, parameter_direction_t dir_1, parameter_direction_t dir_2)
-{
-    return util::union_(adapter.buffer_names(dir_1), adapter.buffer_names(dir_2));
 }
 
 inline bool is_input (kernel_adapter::single_parameter_details spd) { return is_input(spd.direction);  }

@@ -144,7 +144,6 @@ void resolve_buffer_filenames(execution_context_t& context)
 
     const auto& args = context.options.kernel_arguments;
     auto params_with_args = util::keys(args);
-//    auto in_and_inout_buffers =  buffer_names(ka, parameter_direction_t::input, parameter_direction_t::inout);
     for(const auto& buffer : ka.buffer_details()) {
         const auto &name = buffer.name;
         auto got_arg = util::contains(params_with_args, name);
@@ -934,7 +933,7 @@ int main(int argc, char** argv)
 
     if (context.options.compile_only) { return EXIT_SUCCESS; }
 
-    read_buffers_from_files(context);
+    read_input_buffers_from_files(context);
     validate_arguments(context);
     create_host_side_output_buffers(context);
     create_device_side_buffers(context);

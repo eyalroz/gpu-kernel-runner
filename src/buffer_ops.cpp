@@ -8,11 +8,13 @@
 using std::size_t;
 using std::string;
 
-host_buffers_map read_buffers_from_files(
+host_buffers_map read_input_buffers_from_files(
     const parameter_name_set& buffer_names,
     const string_map&         filenames,
     const filesystem::path&   buffer_directory)
 {
+    spdlog::debug("Reading input buffers from files.");
+
     host_buffers_map result;
     std::unordered_map<string, filesystem::path> buffer_paths;
     for(const auto& name : buffer_names) {
@@ -29,6 +31,19 @@ host_buffers_map read_buffers_from_files(
         }
     }
     return result;
+}
+
+void read_input_buffers_from_files(execution_context_t& context)
+{
+    auto input_buffer_names = buffer_names(*context.kernel_adapter_,
+        [&](const auto& spd) {
+            return is_input(spd.direction) and spd.kind == kernel_parameters::kind_t::buffer;
+        }
+    );
+    context.buffers.host_side.inputs = read_input_buffers_from_files(
+        input_buffer_names,
+        context.buffers.filenames.inputs,
+        context.options.buffer_base_paths.input);
 }
 
 void write_buffers_to_files(execution_context_t& context)
@@ -91,7 +106,7 @@ void copy_input_buffers_to_device(const execution_context_t& context)
     }
 
     spdlog::debug("Copying in-out buffers to a 'pristine' copy on the device (which will not be altered).");
-    for(const auto& buffer_name : context.kernel_adapter_->buffer_names(parameter_direction_t::inout)  ) {
+    for(const auto& buffer_name : buffer_names(*context.kernel_adapter_,parameter_direction_t::inout)  ) {
         auto& host_side_buffer = context.buffers.host_side.inputs.at(buffer_name);
         const auto& device_side_buffer = context.buffers.device_side.inputs.at(buffer_name);
         copy_buffer_to_device(context, buffer_name, device_side_buffer, host_side_buffer);
@@ -209,7 +224,7 @@ void zero_output_buffer(
 void zero_output_buffers(execution_context_t& context)
 {
     const auto& ka = *context.kernel_adapter_;
-    auto output_only_buffers = ka.buffer_names(parameter_direction_t::out);
+    auto output_only_buffers = buffer_names(ka, parameter_direction_t::out);
     if (output_only_buffers.empty()) {
         spdlog::debug("There are no output-only buffers to fill with zeros.");
         return;
@@ -273,24 +288,10 @@ void create_host_side_output_buffers(execution_context_t& context)
     );
 }
 
-void read_buffers_from_files(execution_context_t& context)
-{
-    spdlog::debug("Reading input buffers.");
-    auto buffer_names_to_read_from_files = buffer_names(
-        *context.kernel_adapter_,
-        parameter_direction_t::input,
-        parameter_direction_t::inout);
-    context.buffers.host_side.inputs =
-        read_buffers_from_files(
-            buffer_names_to_read_from_files,
-            context.buffers.filenames.inputs,
-            context.options.buffer_base_paths.input);
-}
-
 void reset_working_copy_of_inout_buffers(execution_context_t& context)
 {
     auto& ka = *context.kernel_adapter_;
-    auto inout_buffer_names = ka.buffer_names(parameter_direction_t::inout);
+    auto inout_buffer_names = buffer_names(ka, parameter_direction_t::inout);
     if (inout_buffer_names.empty()) {
         return;
     }

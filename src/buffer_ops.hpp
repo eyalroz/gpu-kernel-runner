@@ -2,10 +2,12 @@
 #include "util/filesystem.hpp"
 #include "execution_context.hpp"
 
-host_buffers_map read_buffers_from_files(
+host_buffers_map read_input_buffers_from_files(
     const parameter_name_set& buffer_names,
     const string_map&         filenames,
     const filesystem::path&   buffer_directory);
+
+void read_input_buffers_from_files(execution_context_t& context);
 
 
 /**
@@ -66,7 +68,5 @@ void create_device_side_buffers(execution_context_t& context);
 
 // Note: Will create buffers also for each inout buffers
 void create_host_side_output_buffers(execution_context_t& context);
-
-void read_buffers_from_files(execution_context_t& context);
 
 void reset_working_copy_of_inout_buffers(execution_context_t& context);

@@ -115,6 +115,8 @@ struct execution_context_t {
     {
         return ::get_defined_value<T>(finalized_preprocessor_definitions.valued, s);
     }
+
+    const ::kernel_adapter& get_kernel_adapter() const { return *kernel_adapter_.get(); }
 };
 
 // TODO: This may not be such a good idea, rethink it.

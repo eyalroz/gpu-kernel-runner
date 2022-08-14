@@ -87,9 +87,8 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
 
 void ensure_necessary_terms_were_defined(const execution_context_t& context)
 {
-    const auto& ka = *context.kernel_adapter_;
     auto required_terms = util::transform_if<std::unordered_set<string>>(
-        ka.preprocessor_definition_details(),
+        context.get_kernel_adapter().preprocessor_definition_details(),
         [](const auto& sad) { return sad.required; },
         [](const auto& sad) { return string{sad.name};});
     auto defined_valued_terms = util::keys(context.options.preprocessor_value_definitions);
@@ -185,14 +184,14 @@ void resolve_buffer_filenames(execution_context_t& context)
 void parse_scalars(execution_context_t &context)
 {
     const auto& args = context.options.kernel_arguments;
-    const kernel_adapter &kernel_adapter = (*context.kernel_adapter_.get());
     auto params_with_args = util::keys(args);
     {
         std::ostringstream oss;
         oss << params_with_args;
         spdlog::trace("Arguments we specified for parameters {}", oss.str());
     }
-    auto all_scalar_details = kernel_adapter.scalar_parameter_details();
+    auto& adapter = context.get_kernel_adapter();
+    auto all_scalar_details = adapter.scalar_parameter_details();
     for(const auto& spd : all_scalar_details ) {
         std::string param_name { spd.name };
         if (not util::contains(params_with_args, param_name)) {
@@ -200,14 +199,14 @@ void parse_scalars(execution_context_t &context)
                 spdlog::trace("No argument provided for kernel parameter '{}'.", param_name);
                 continue;
             }
-            die("Required scalar parameter '{}' for kernel '{}' was not specified.\n\n", param_name, kernel_adapter.key());
+            die("Required scalar parameter '{}' for kernel '{}' was not specified.\n\n", param_name, adapter.key());
         }
         // TODO: Consider not parsing anything at this stage, and just marshaling all the scalar arguments together.
         auto& arg_value = args.at(param_name);
         spdlog::trace("Parsing argument for scalar parameter '{}' from \"{}\"", param_name, arg_value);
         context.scalar_input_arguments.raw[param_name] = arg_value;
         context.scalar_input_arguments.typed[param_name] =
-            kernel_adapter.parse_cmdline_scalar_argument(spd, arg_value);
+            adapter.parse_cmdline_scalar_argument(spd, arg_value);
         spdlog::trace("Successfully parsed argument for scalar parameter '{}'.", param_name);
     }
 }
@@ -749,14 +748,13 @@ inline void write_data_to_file(
 void validate_scalars(execution_context_t& context)
 {
     spdlog::debug("Validating scalar argument values");
-    auto& ka = *context.kernel_adapter_;
 
     std::stringstream ss;
     const auto& available_args = util::keys(context.scalar_input_arguments.raw);
     ss << available_args;
     spdlog::trace("Available scalar arguments: {}", ss.str()); ss.str("");
     auto required_args = util::transform_if<std::vector<const char *>>(
-        ka.scalar_parameter_details(),
+        context.get_kernel_adapter().scalar_parameter_details(),
         [](const auto& sad) { return sad.required; },
         [](const auto& sad) { return sad.name; });
 
@@ -771,12 +769,10 @@ void validate_scalars(execution_context_t& context)
 
 void validate_arguments(execution_context_t& context)
 {
-    auto& ka = *context.kernel_adapter_;
-
     validate_scalars(context);
 
     spdlog::debug("Validating input sizes");
-    ka.input_sizes_are_valid(context) or die("Input buffer sizes are invalid, cannot execute kernel");
+    context.get_kernel_adapter().input_sizes_are_valid(context) or die("Input buffer sizes are invalid, cannot execute kernel");
 
     if (not context.kernel_adapter_->extra_validity_checks(context)) {
         // TODO: Have the kernel adapter report an error instead of just a boolean;

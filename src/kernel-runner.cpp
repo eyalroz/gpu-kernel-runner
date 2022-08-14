@@ -85,34 +85,13 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
     return options;
 }
 
-std::vector<const char*> get_required_arg_names(const kernel_adapter& ka) {
-    auto sads = ka.scalar_parameter_details();
-    std::vector<const char*> result;
-    util::transform_if(
-        std::cbegin(sads), std::cend(sads), std::back_inserter(result),
-        [](const auto& sad) { return sad.required; },
-        [](const auto& sad) { return sad.name;});
-    return result;
-}
-
-
-// TODO: DRY with get_required_scalar_arguments :-(
-// Also check if we can't use `util::difference` with strings vs const char*'s after all
-std::unordered_set<string> get_required_preprocessor_definition_terms(const kernel_adapter& ka) {
-    auto pdds = ka.preprocessor_definition_details();
-    std::unordered_set<string> result;
-    util::transform_if(
-        std::cbegin(pdds), std::cend(pdds), std::inserter(result, result.begin()),
-        [](const auto& sad) { return sad.required; },
-        [](const auto& sad) { return string{sad.name};});
-    return result;
-}
-
 void ensure_necessary_terms_were_defined(const execution_context_t& context)
 {
     const auto& ka = *context.kernel_adapter_;
-
-    auto required_terms = get_required_preprocessor_definition_terms(ka);
+    auto required_terms = util::transform_if<std::unordered_set<string>>(
+        ka.preprocessor_definition_details(),
+        [](const auto& sad) { return sad.required; },
+        [](const auto& sad) { return string{sad.name};});
     auto defined_valued_terms = util::keys(context.options.preprocessor_value_definitions);
     auto all_defined_terms = util::union_(defined_valued_terms, context.options.preprocessor_definitions);
     auto required_but_undefined = util::difference(required_terms, all_defined_terms);
@@ -777,7 +756,11 @@ void validate_scalars(execution_context_t& context)
     const auto& available_args = util::keys(context.scalar_input_arguments.raw);
     ss << available_args;
     spdlog::trace("Available scalar arguments: {}", ss.str()); ss.str("");
-    const auto required_args = get_required_arg_names(ka);
+    auto required_args = util::transform_if<std::vector<const char *>>(
+        ka.scalar_parameter_details(),
+        [](const auto& sad) { return sad.required; },
+        [](const auto& sad) { return sad.name; });
+
     ss << required_args;
     spdlog::trace("Required scalar arguments: {}", ss.str()); ss.str("");
 

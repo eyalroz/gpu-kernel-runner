@@ -59,6 +59,15 @@ OutputIterator transform_if(
     return d_first;
 }
 
+template <typename OutContainer, typename InContainer, typename Predicate, typename UnaryOperator>
+OutContainer transform_if(InContainer in_container, Predicate pred, UnaryOperator op)
+{
+    OutContainer result;
+    transform_if(std::cbegin(in_container), std::cend(in_container),
+        std::inserter(result, std::end(result)), std::forward<Predicate>(pred), std::forward<UnaryOperator>(op));
+    return result;
+}
+
 } // namespace util
 
 #endif // UTIL_FUNCTIONAL_HPP_

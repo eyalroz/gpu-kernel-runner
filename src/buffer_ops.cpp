@@ -96,7 +96,7 @@ void copy_buffer_on_device(
 
 void copy_input_buffers_to_device(const execution_context_t& context)
 {
-    spdlog::debug("Copying inputs to device.");
+    spdlog::debug("Copying input (non-inout) buffers to the GPU.");
     for(const auto& input_pair : context.buffers.host_side.inputs) {
         const auto& name = input_pair.first;
         const auto& host_side_buffer = input_pair.second;
@@ -105,7 +105,7 @@ void copy_input_buffers_to_device(const execution_context_t& context)
 
     }
 
-    spdlog::debug("Copying in-out buffers to a 'pristine' copy on the device (which will not be altered).");
+    spdlog::debug("Copying in-out buffers to the GPU (to pristine, not-to-be-altered copies).");
     for(const auto& buffer_name : buffer_names(*context.kernel_adapter_,parameter_direction_t::inout)  ) {
         auto& host_side_buffer = context.buffers.host_side.inputs.at(buffer_name);
         const auto& device_side_buffer = context.buffers.device_side.inputs.at(buffer_name);
@@ -208,7 +208,7 @@ void zero_output_buffer(
     const cl::CommandQueue*   opencl_queue,
     const std::string &       buffer_name)
 {
-    spdlog::trace("Zeroing output buffer '{}'", buffer_name);
+    spdlog::trace("Zeroing GPU-side output buffer for '{}'", buffer_name);
     if (ecosystem == execution_ecosystem_t::cuda) {
         cuda_stream->enqueue.memzero(buffer.cuda.data(), buffer.cuda.size());
     } else {
@@ -229,31 +229,31 @@ void zero_output_buffers(execution_context_t& context)
         spdlog::debug("There are no output-only buffers to fill with zeros.");
         return;
     }
-    spdlog::debug("Zeroing output-only buffers.");
+    spdlog::debug("Zeroing GPU-side output-only buffers.");
     for(const auto& buffer_name : output_only_buffers) {
         const auto& buffer = context.buffers.device_side.outputs.at(buffer_name);
         zero_output_buffer(context.ecosystem, buffer, context.cuda.stream, &context.opencl.queue, buffer_name);
     }
-    spdlog::debug("Output-only buffers filled with zeros.");
+    spdlog::debug("GPU-side Output-only buffers filled with zeros.");
 }
 
 void create_device_side_buffers(execution_context_t& context)
 {
-    spdlog::debug("Creating device buffers.");
+    spdlog::debug("Creating GPU-side buffers.");
     context.buffers.device_side.inputs = create_device_side_buffers(
         context.ecosystem,
         context.cuda.context,
         context.opencl.context,
         context.buffers.host_side.inputs);
-    spdlog::debug("Input device buffers created.");
+    spdlog::debug("Input buffers, and pristine copies of in-out buffers, created in GPU memory.");
     context.buffers.device_side.outputs = create_device_side_buffers(
         context.ecosystem,
         context.cuda.context,
         context.opencl.context,
         context.buffers.host_side.outputs);
             // ... and remember the behavior regarding in-out buffers: For each in-out buffers, a buffer
-            // is crea0ted in _both_ previous function calls
-    spdlog::debug("Output device buffers created.");
+            // is created in _both_ previous function calls
+    spdlog::debug("Output buffers, and work copy of inout buffers, created in GPU memory.");
 }
 
 // Note: Will create buffers also for each inout buffers
@@ -282,7 +282,7 @@ void create_host_side_output_buffers(execution_context_t& context)
                     context.finalized_preprocessor_definitions.valued,
                     context.options.forced_launch_config_components);
             auto host_side_output_buffer = host_buffer_type(buffer_size);
-            spdlog::trace("Created a host-side output buffer of size {} for kernel parameter {}", buffer_size,  buffer_name);
+            spdlog::trace("Created a host-side output buffer of size {} for kernel parameter '{}'", buffer_size,  buffer_name);
             return std::make_pair(buffer_details.name, std::move(host_side_output_buffer));
         }
     );
@@ -295,15 +295,14 @@ void reset_working_copy_of_inout_buffers(execution_context_t& context)
     if (inout_buffer_names.empty()) {
         return;
     }
-    spdlog::debug("Initializing the 'work-copies' of the in-out buffers with the contents of the read-only device-side copies.");
+    spdlog::debug("Initializing the work-copies of the in-out buffers with the pristine copies.");
     for(const auto& inout_buffer_name : inout_buffer_names) {
         const auto& pristine_copy = context.buffers.device_side.inputs.at(inout_buffer_name);
         const auto& work_copy = context.buffers.device_side.outputs.at(inout_buffer_name);
-        spdlog::debug("Initializing {}...", inout_buffer_name);
+        spdlog::debug("Initializing work-copy of inout buffer '{}'...", inout_buffer_name);
         copy_buffer_on_device(context.ecosystem,
             context.ecosystem == execution_ecosystem_t::opencl ? &context.opencl.queue : nullptr,
             work_copy, pristine_copy);
-
     }
     context.cuda.context->synchronize();
 }

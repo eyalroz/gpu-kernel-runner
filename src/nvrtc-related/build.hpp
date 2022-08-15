@@ -44,7 +44,6 @@
 #include <nvrtc.h>
 #include <fstream>
 #include <iostream>
-#include <sstream>
 #include <string>
 #include <tuple>
 #include <memory>

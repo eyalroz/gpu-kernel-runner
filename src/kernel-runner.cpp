@@ -15,7 +15,6 @@
 #include <util/spdlog-extra.hpp>
 
 #include <cxxopts/cxxopts.hpp>
-#include <cxx-prettyprint/prettyprint.hpp>
 
 #include <spdlog/spdlog.h>
 #include <spdlog/cfg/helpers.h>
@@ -24,7 +23,6 @@
 #include <system_error>
 #include <cerrno>
 #include <iostream>
-#include <cstdio>
 #include <vector>
 
 template <typename... Ts>
@@ -95,9 +93,7 @@ void ensure_necessary_terms_were_defined(const execution_context_t& context)
     auto all_defined_terms = util::union_(defined_valued_terms, context.options.preprocessor_definitions);
     auto required_but_undefined = util::difference(required_terms, all_defined_terms);
     if (not required_but_undefined.empty()) {
-        std::ostringstream oss;
-        oss << required_but_undefined;
-        die("The following preprocessor definitions must be specified, but have not been: {}", oss.str());
+        die("The following preprocessor definitions must be specified, but have not been: {}", required_but_undefined);
     }
 }
 
@@ -185,11 +181,7 @@ void parse_scalars(execution_context_t &context)
 {
     const auto& args = context.options.kernel_arguments;
     auto params_with_args = util::keys(args);
-    {
-        std::ostringstream oss;
-        oss << params_with_args;
-        spdlog::trace("Arguments we specified for parameters {}", oss.str());
-    }
+    spdlog::trace("Arguments we specified for parameters {}", params_with_args);
     auto& adapter = context.get_kernel_adapter();
     auto all_scalar_details = adapter.scalar_parameter_details();
     for(const auto& spd : all_scalar_details ) {
@@ -749,17 +741,14 @@ void validate_scalars(execution_context_t& context)
 {
     spdlog::debug("Validating scalar argument values");
 
-    std::stringstream ss;
     const auto& available_args = util::keys(context.scalar_input_arguments.raw);
-    ss << available_args;
-    spdlog::trace("Available scalar arguments: {}", ss.str()); ss.str("");
+    spdlog::trace("Available scalar arguments: {}", available_args);
     auto required_args = util::transform_if<std::vector<const char *>>(
         context.get_kernel_adapter().scalar_parameter_details(),
         [](const auto& sad) { return sad.required; },
         [](const auto& sad) { return sad.name; });
 
-    ss << required_args;
-    spdlog::trace("Required scalar arguments: {}", ss.str()); ss.str("");
+    spdlog::trace("Required scalar arguments: {}", required_args);
 
     for(const auto& required : required_args) {
         util::contains(available_args, required)

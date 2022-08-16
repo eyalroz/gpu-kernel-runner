@@ -340,6 +340,10 @@ inline float_array4& operator-=(float_array4& lhs, float4 rhs) noexcept
 // TODO: Add the operators involving float2's and arrays of 2 floats.
 // TODO: Add operators for other types, or template all of the above on the scalar type
 
+inline float fdividef (float x, float y ) { return __fdividef(x, y); }
+// Note: We don't need to define fdivide - that's already defined, strangely enough
+// (and __fdivide isn't).
+
 /**
  * The following macro is intended to allow the same syntax for constructing compound types
  * in both OpenCL and CUDA. In CUDA, we would write float2 { foo, bar }; but in OpenCL we

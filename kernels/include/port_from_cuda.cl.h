@@ -86,7 +86,6 @@ inline float expf (float x) { return exp(x); }
 inline float expm1f (float x) { return expm1(x); }
 inline float fabsf (float x) { return fabs(x); }
 inline float fdimf (float x, float y) { return fdim(x, y); }
-//inline float fdividef (float x, float y) { return fdivide(x, y); }
 inline float floorf (float x) { return floor(x); }
 inline float fmaf (float x, float y, float z) { return fma(x, y, z); }
 inline float fmaxf (float x, float y) { return fmax(x, y); }
@@ -143,6 +142,14 @@ inline float truncf (float x) { return trunc(x); }
 //inline float y0f (float x) { return y0(x); }
 //inline float y1f (float x) { return y1(x); }
 //inline float ynf (int n, float x) { return yn(n, x); }
+
+// The following two functions are wrappers around plain division in OpenCL;
+// they are necessary for CUDA compatibility, since in CUDA, plain division
+// may be interpreted differently (e.g. uses a specific rounding mode) -
+// depending on compilation options
+// TODO: Make sure behavior doesn't change regardless of the compilation flags
+inline float  fdividef (float  x, float  y) { return x / y; }
+inline double fdivide  (double x, double y) { return x / y; }
 
 #endif // __CUDA_ARCH__
 

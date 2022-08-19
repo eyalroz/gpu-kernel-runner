@@ -17,15 +17,15 @@ public:
     {
         static const parameter_details_type pd = {
             //
-            // Buffers:                 Name  Direction  Description                  Size Calculator
+            // Buffers:                 Name  Direction  Size Calculator
             // --------------------------------------------------------------------------------------
-            buffer_details(             "C",  output,    "Sequence of sums",          size_by_length),
-            buffer_details(             "A",  input,     "First sequence of addends"                ),
-            buffer_details(             "B",  input,     "Second sequence of addends"               ),
+            buffer_details(             "C",  output,    size_by_length),
+            buffer_details(             "A",  input                    ),
+            buffer_details(             "B",  input                    ),
             //
-            // Scalars:    Type         Name             Description
-            // --------------------------------------------------------------------------------------
-            scalar_details<length_type>("length",        "Length of each of A, B and C"             ),
+            // Scalars:    Type         Name
+            // ------------------------------------------
+            scalar_details<length_type>("length"),
         };
         return pd;
     }
@@ -57,7 +57,7 @@ public:
 //    optional<preprocessor_definitions_type> preprocessor_definition_details() const override
 //    {
 //        static const preprocessor_definitions_type preprocessor_definitions = {
-//            { "A_LITTLE_EXTRA", "Something extra to add to the result", is_required }
+//            { "A_LITTLE_EXTRA", is_required }
 //        };
 //        return preprocessor_definitions;
 //    }

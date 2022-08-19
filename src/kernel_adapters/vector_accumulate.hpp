@@ -16,9 +16,9 @@ public:
     const parameter_details_type& parameter_details() const override
     {
         static const parameter_details_type pd = {
-            buffer_details("A", output, "Accumulator sequence (initialized with a second sequence of addends"),
-            buffer_details("B", input, "Sequence of addends"),
-            scalar_details<length_type>("length", "Length of each of A and B"),
+            buffer_details("A", output),
+            buffer_details("B", input),
+            scalar_details<length_type>("length"),
         };
         return pd;
     }
@@ -63,7 +63,7 @@ public:
     optional<preprocessor_definitions_type> preprocessor_definition_details() const override
     {
         static const preprocessor_definitions_type preprocessor_definitions = {
-            { "A_LITTLE_EXTRA", "Something extra to add to the result", not is_required }
+            { "A_LITTLE_EXTRA", not is_required }
         };
         return optional<preprocessor_definitions_type>{preprocessor_definitions};
     }

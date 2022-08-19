@@ -142,7 +142,14 @@ public:
         parameter_details_type all_params = parameter_details();
         return util::filter(all_params, [](const single_parameter_details& param) { return param.kind == buffer; });
     }
-    virtual const preprocessor_definitions_type& preprocessor_definition_details() const = 0;
+    // TODO: Could use an optional-ref return type here
+    /**
+     * @brief Obtains the set of preprocessor definitions which may affect the kernel's  compilation,
+     * including an indication of which of them _must_ be specified for compilation to succeed.
+     * @return  Either the set of affecting preprocessor definition terms, or the empty optional value in
+     * case that set is not known to the adapter
+     */
+    virtual optional<preprocessor_definitions_type> preprocessor_definition_details() const { return nullopt; }
 
 protected:
     template <typename Scalar>
@@ -150,7 +157,6 @@ protected:
         marshalled_arguments_type& argument_ptrs_and_maybe_sizes,
         const execution_context_t& context,
         const char* scalar_parameter_name);
-
 
 public:
     virtual any parse_cmdline_scalar_argument(

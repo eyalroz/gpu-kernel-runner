@@ -60,12 +60,12 @@ public:
         return result;
     }
 
-    virtual const preprocessor_definitions_type& preprocessor_definition_details() const override
+    optional<preprocessor_definitions_type> preprocessor_definition_details() const override
     {
         static const preprocessor_definitions_type preprocessor_definitions = {
             { "A_LITTLE_EXTRA", "Something extra to add to the result", not is_required }
         };
-        return preprocessor_definitions;
+        return optional<preprocessor_definitions_type>{preprocessor_definitions};
     }
 };
 

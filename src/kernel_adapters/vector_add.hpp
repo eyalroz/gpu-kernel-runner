@@ -42,29 +42,25 @@ protected:
     }
 
 public:
-    virtual const preprocessor_definitions_type& preprocessor_definition_details() const override
-    {
-        static const preprocessor_definitions_type preprocessor_definitions = {
-            //
-            // Name              Description                            Required?
-            // --------------------------------------------------------------------------------------
-            { "A_LITTLE_EXTRA", "Something extra to add to the result", is_required }
-        };
-        return preprocessor_definitions;
-    }
+    // The following are not necessary, but could help this adapter:
 
-    // could have added this method - but it's not strictly necessary:
-    //
-    // virtual bool input_sizes_are_valid(const execution_context_t& context) const override
-    // {
-    //     auto length = get_scalar_argument<length_type>(context, "length");
-    //     const auto& a = context.buffers.host_side.inputs.at("A");
-    //     if (a.size() != length) { return false; }
-    //     const auto& b = context.buffers.host_side.inputs.at("B");
-    //     if (b.size() != length) { return false; }
-    //     return true;
-    // }
-
+//    bool input_sizes_are_valid(const execution_context_t& context) const override
+//    {
+//        auto length = get_scalar_argument<length_type>(context, "length");
+//        const auto& a = context.buffers.host_side.inputs.at("A");
+//        if (a.size() != length) { return false; }
+//        const auto& b = context.buffers.host_side.inputs.at("B");
+//        if (b.size() != length) { return false; }
+//        return true;
+//    }
+//
+//    optional<preprocessor_definitions_type> preprocessor_definition_details() const override
+//    {
+//        static const preprocessor_definitions_type preprocessor_definitions = {
+//            { "A_LITTLE_EXTRA", "Something extra to add to the result", is_required }
+//        };
+//        return preprocessor_definitions;
+//    }
 };
 
 } // namespace kernel_adapters

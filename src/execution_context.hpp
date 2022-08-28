@@ -61,7 +61,7 @@ struct execution_context_t {
       // The adapter also holds the parsed kernel-specific command-line options
     struct {
         struct {
-            host_buffers_map inputs, outputs; // , expected;
+            host_buffers_t inputs, outputs; // , expected;
         } host_side;
         struct {
             device_buffers_map inputs, outputs;
@@ -108,7 +108,7 @@ struct execution_context_t {
     include_paths_t finalized_include_dir_paths;
     marshalled_arguments_type finalized_arguments;
     launch_configuration_type kernel_launch_configuration;
-    durations_type durations; // The execution durations of each invocation of the kernel
+    durations_t durations; // The execution durations of each invocation of the kernel
 
     template <typename T>
     T get_defined_value(const std::string& s)

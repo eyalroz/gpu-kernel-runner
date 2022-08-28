@@ -28,7 +28,7 @@ using device_id_t = int;
 using run_index_t = unsigned;
 
 using duration_t = std::chrono::duration<std::uint64_t, std::nano>;
-using durations_type = std::vector<duration_t>;
+using durations_t = std::vector<duration_t>;
 
 using string_map = std::unordered_map<std::string, std::string>;
 using preprocessor_value_definitions_t = std::unordered_map<std::string, std::string>;
@@ -89,7 +89,7 @@ inline constexpr const char* parameter_direction_name(parameter_direction_t dir)
     return names[(int) dir];
 }
 
-using host_buffer_type = std::vector<byte_type>;
-using host_buffers_map = std::unordered_map<std::string, host_buffer_type>;
+using host_buffer_t = std::vector<byte_type>;
+using host_buffers_t = std::unordered_map<std::string, host_buffer_t>;
 
 #endif /* COMMON_TYPES_HPP_ */

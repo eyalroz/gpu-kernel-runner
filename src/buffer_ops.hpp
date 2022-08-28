@@ -2,7 +2,7 @@
 #include "util/filesystem.hpp"
 #include "execution_context.hpp"
 
-host_buffers_map read_input_buffers_from_files(
+host_buffers_t read_input_buffers_from_files(
     const parameter_name_set& buffer_names,
     const string_map&         filenames,
     const filesystem::path&   buffer_directory);
@@ -20,7 +20,7 @@ void copy_buffer_to_device(
     const execution_context_t& context,
     const std::string&         buffer_name,
     const device_buffer_type&  device_side_buffer,
-    const host_buffer_type&    host_side_buffer);
+    const host_buffer_t&    host_side_buffer);
 
 void copy_buffer_on_device(
     execution_ecosystem_t      ecosystem,
@@ -34,7 +34,7 @@ void copy_buffer_to_host(
     execution_ecosystem_t      ecosystem,
     cl::CommandQueue*          opencl_queue,
     const device_buffer_type&  device_side_buffer,
-    host_buffer_type&          host_side_buffer);
+    host_buffer_t&          host_side_buffer);
 
 // Note: must take the context as non-const, since it has vector members, and vectors
 // are value-types, not reference-types, i.e. copying into those vectors changes
@@ -47,13 +47,13 @@ device_buffer_type create_device_side_buffer(
     execution_ecosystem_t            ecosystem,
     const optional<cuda::context_t>& cuda_context,
     optional<cl::Context>            opencl_context,
-    const host_buffers_map&);
+    const host_buffers_t&);
 
 device_buffers_map create_device_side_buffers(
     execution_ecosystem_t            ecosystem,
     const optional<cuda::context_t>& cuda_context,
     optional<cl::Context>            opencl_context,
-    const host_buffers_map&          host_side_buffers);
+    const host_buffers_t&          host_side_buffers);
 
 void zero_output_buffer(
     execution_ecosystem_t     ecosystem,

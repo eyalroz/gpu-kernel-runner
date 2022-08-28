@@ -875,7 +875,7 @@ void maybe_write_intermediate_representation(execution_context_t& context)
         spdlog::level::info);
 }
 
-void print_execution_durations(std::ostream& os, const durations_type& execution_durations)
+void print_execution_durations(std::ostream& os, const durations_t& execution_durations)
 {
     for (const auto &duration: execution_durations) {
         os << duration.count() << '\n';

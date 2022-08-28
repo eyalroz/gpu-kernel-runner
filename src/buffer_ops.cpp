@@ -8,20 +8,20 @@
 using std::size_t;
 using std::string;
 
-host_buffers_map read_input_buffers_from_files(
+host_buffers_t read_input_buffers_from_files(
     const parameter_name_set& buffer_names,
     const string_map&         filenames,
     const filesystem::path&   buffer_directory)
 {
     spdlog::debug("Reading input buffers from files.");
 
-    host_buffers_map result;
+    host_buffers_t result;
     std::unordered_map<string, filesystem::path> buffer_paths;
     for(const auto& name : buffer_names) {
         auto path = maybe_prepend_base_dir(buffer_directory, filenames.at(name));
         try {
             spdlog::debug("Reading buffer '{}' from {}", name, path.native());
-            host_buffer_type buffer = util::read_input_file(path);
+            host_buffer_t buffer = util::read_input_file(path);
             spdlog::debug("Have read buffer '{}': {} bytes from {}", name, buffer.size(), path.native());
             result.emplace(name, std::move(buffer));
         }
@@ -64,7 +64,7 @@ void copy_buffer_to_device(
     const execution_context_t& context,
     const std::string&         buffer_name,
     const device_buffer_type&  device_side_buffer,
-    const host_buffer_type&    host_side_buffer)
+    const host_buffer_t&    host_side_buffer)
 {
     if (context.ecosystem == execution_ecosystem_t::cuda) {
         spdlog::debug("Copying buffer '{}' (size {} bytes): host-side {} -> device-side {}",
@@ -117,7 +117,7 @@ void copy_buffer_to_host(
     execution_ecosystem_t      ecosystem,
     cl::CommandQueue*          opencl_queue,
     const device_buffer_type&  device_side_buffer,
-    host_buffer_type&          host_side_buffer)
+    host_buffer_t&          host_side_buffer)
 {
     if (ecosystem == execution_ecosystem_t::cuda) {
         cuda::memory::copy(host_side_buffer.data(), device_side_buffer.cuda.data(), host_side_buffer.size());
@@ -160,7 +160,7 @@ device_buffer_type create_device_side_buffer(
     execution_ecosystem_t            ecosystem,
     const optional<cuda::context_t>& cuda_context,
     optional<cl::Context>            opencl_context,
-    const host_buffers_map&)
+    const host_buffers_t&)
 {
     device_buffer_type result;
     if (ecosystem == execution_ecosystem_t::cuda) {
@@ -183,7 +183,7 @@ device_buffers_map create_device_side_buffers(
     execution_ecosystem_t            ecosystem,
     const optional<cuda::context_t>& cuda_context,
     optional<cl::Context>            opencl_context,
-    const host_buffers_map&          host_side_buffers)
+    const host_buffers_t&          host_side_buffers)
 {
     return util::transform<device_buffers_map>(
         host_side_buffers,
@@ -281,7 +281,7 @@ void create_host_side_output_buffers(execution_context_t& context)
                     context.finalized_preprocessor_definitions.valueless,
                     context.finalized_preprocessor_definitions.valued,
                     context.options.forced_launch_config_components);
-            auto host_side_output_buffer = host_buffer_type(buffer_size);
+            auto host_side_output_buffer = host_buffer_t(buffer_size);
             spdlog::trace("Created a host-side output buffer of size {} for kernel parameter '{}'", buffer_size,  buffer_name);
             return std::make_pair(buffer_details.name, std::move(host_side_output_buffer));
         }

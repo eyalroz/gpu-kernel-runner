@@ -32,7 +32,7 @@ public:
 
 protected:
     static std::size_t size_by_length(
-        const host_buffers_map&,
+        const host_buffers_t&,
         const scalar_arguments_map& scalars,
         const preprocessor_definitions_t&,
         const preprocessor_value_definitions_t&,

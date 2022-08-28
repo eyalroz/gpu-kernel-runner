@@ -104,13 +104,13 @@ void add_preincludes(
 }
 */
 
-std::vector<host_buffer_type>
+std::vector<host_buffer_t>
 load_preinclude_files(const include_paths_t& preincludes, const include_paths_t& include_dirs)
 {
     // TODO: What about the source file directory?
     auto include_dir_fs_paths = util::transform<std::vector<filesystem::path>>(
         include_dirs, [](const auto& dir) { return filesystem::path{dir}; });
-    return util::transform<std::vector<host_buffer_type>>(
+    return util::transform<std::vector<host_buffer_t>>(
         preincludes,
         [&](const auto& preinclude_file_path_suffix) {
             for(const auto& p : include_dir_fs_paths) {
@@ -149,7 +149,7 @@ opencl_compilation_result_t build_opencl_kernel(
     std::vector<std::string>         extra_compilation_options)
 {
     // TODO: Consider moving the preinclude reading out of this function
-    std::vector<host_buffer_type> loaded_preincludes =
+    std::vector<host_buffer_t> loaded_preincludes =
         load_preinclude_files(preinclude_files, finalized_include_dir_paths);
     spdlog::debug("All pre-includes loaded from files.");
     auto sources = util::transform<cl::Program::Sources>(loaded_preincludes,

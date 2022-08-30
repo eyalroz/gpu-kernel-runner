@@ -111,9 +111,15 @@ struct execution_context_t {
     durations_t durations; // The execution durations of each invocation of the kernel
 
     template <typename T>
-    T get_defined_value(const std::string& s)
+    T get_defined_value(const std::string& s) const
     {
         return ::get_defined_value<T>(finalized_preprocessor_definitions.valued, s);
+    }
+
+    template <typename T>
+    T get_defined_value(char const* cptr) const {
+        std::string str{cptr};
+        return get_defined_value<T>(str);
     }
 
     const ::kernel_adapter& get_kernel_adapter() const { return *kernel_adapter_.get(); }
@@ -122,7 +128,7 @@ struct execution_context_t {
 // TODO: This may not be such a good idea, rethink it.
 
 template <>
-inline bool execution_context_t::get_defined_value<bool>(const std::string& s)
+inline bool execution_context_t::get_defined_value<bool>(const std::string& s) const
 {
     auto find_result = finalized_preprocessor_definitions.valueless.find(s);
     if (find_result != std::cend(finalized_preprocessor_definitions.valueless)) {

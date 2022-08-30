@@ -187,7 +187,6 @@ To create a kernel adapter for your kernel, it's easiest to start with the follo
 ```
 #include <kernel_adapter.hpp>
 
-namespace kernel_adapters {
 class [[[ UNIQUE CLASS NAME HERE ]]] : public kernel_adapter {
 public:
     KA_KERNEL_FUNCTION_NAME("[[[ (POSSIBLY-NON-UNIQUE) FUNCTION NAME HERE ]]]")
@@ -207,7 +206,6 @@ public:
         return pd;
     }
 };
-} // namespace kernel_adapters
 ```
 For a concrete example, see the adapter file [`vector_add.hpp`](https://github.com/eyalroz/gpu-kernel-runner/blob/main/src/kernel_adapters/vector_add.hpp).
 

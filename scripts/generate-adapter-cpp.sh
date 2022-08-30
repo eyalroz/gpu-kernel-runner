@@ -22,4 +22,4 @@ fi
 kernel_header_filename="${kernel_header_path##*/}"
 echo -e "\n// Auto-generated from ${kernel_header_filename}\n\n#include \"$kernel_header_path\"\n"
 egrep  '^\s*(namespace|}\s*//\s*namespace|(class|struct)\s*[^ ]*)' "$kernel_header_path" \
-	| sed -r 's/(class|struct)\s+([^ ]*)\s+.*$/static_block {\n    register_in_factory<\2>();\n}/;'
+	| sed -r 's/(class|struct)\s+([^ ]*)\s+.*$/static_block {\n    kernel_adapters::register_in_factory<\2>();\n}/;'

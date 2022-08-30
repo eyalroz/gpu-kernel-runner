@@ -27,7 +27,7 @@ for line in open(sys.argv[1], 'r').readlines():
     if (adapter_definition_match):
         print(
             "static_block {\n" +
-            "    register_in_factory<" + adapter_definition_match.group(2) + ">();\n" +
+            "    kernel_adapters::register_in_factory<" + adapter_definition_match.group(2) + ">();\n" +
             "}")
         continue
     #

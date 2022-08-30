@@ -182,7 +182,7 @@ cmake \
 
 To create a kernel adapter for your kernel, it's easiest to start with the following empty template and replace the `[[[ ... ]]]` parts with what's relevant for your own kernel:
 ```
-#include "kernel_adapter.hpp"
+#include <kernel_adapter.hpp>
 
 namespace kernel_adapters {
 

@@ -1,7 +1,7 @@
 #ifndef VECTOR_ACCUMULATE_KERNEL_ADAPTER_HPP_
 #define VECTOR_ACCUMULATE_KERNEL_ADAPTER_HPP_
 
-#include "kernel_adapter.hpp"
+#include <kernel_adapter.hpp>
 
 namespace kernel_adapters {
 

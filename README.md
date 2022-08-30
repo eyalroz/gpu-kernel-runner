@@ -160,6 +160,44 @@ Additionally, for a given kernel, you can specify its parameters. For example, i
 (the buffer `bar` will, by default, be loaded from the file named `bar` in the present working directory.) Scalar parameters do not typically have defaults.
 
 
+## <a name="kernel-adapter-template">A kernel adapter template</a>
+
+So, you've written a kernel. In order for the GPU kernel runner to run it, the runner needs to know about it. The runner knows about it by having a "kernel adapter" header present in one of the kernel headers directories. To create such a header, start with the following template and replace the `[[[ ... ]]]` parts with what's relevant for your own kernel:
+```
+#include "kernel_adapter.hpp"
+
+namespace kernel_adapters {
+
+class [[[ UNIQUE CLASS NAME HERE ]]] : public kernel_adapter {
+public:
+    using length_type = size_t;
+
+    KA_KERNEL_FUNCTION_NAME("[[[ (POSSIBLY-NON-UNIQUE) FUNCTION NAME HERE ]]]")
+    KA_KERNEL_KEY("[[[ UNIQUE KERNEL KEY STRING HERE ]]]")
+
+    const parameter_details_type& parameter_details() const override
+    {
+        static const parameter_details_type pd = {
+            [[[ A LINE FOR EACH KERNEL PARAMETER, each being either buffer_details(...) or scalar_details(...) 
+        };
+        return pd;
+    }
+
+protected:
+    [[[ STATIC METHODS FOR COMPUTING SIZES OF OUTPUT BUFFERS, AS NECESSARY ]]]
+};
+} // namespace kernel_adapters
+```
+For a concrete example, see the adapter file [`vector_add.hpp`](https://github.com/eyalroz/gpu-kernel-runner/blob/main/src/kernel_adapters/vector_add.hpp).
+
+The kernel_adapter class actually has other methods one could overwrite in order to make the kernel easier to invoke, for:
+
+* Deducing launch grid configuration
+* Specifying required preprocessor definitions
+* Generation of some arguments from other arguments (e.g. length from buffer size)
+
+but none of these are essential.
+
 ## <a name="feedback"> Feedback, bugs, questions etc.
 
 * If you use this kernel runner in an interesting project, consider [dropping me a line](mailto:eyalroz1@gmx.com) and telling me about it - both the positive and any negative part of your experience.

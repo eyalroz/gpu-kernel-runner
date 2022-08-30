@@ -273,14 +273,28 @@ void create_host_side_output_buffers(execution_context_t& context)
         output_buffer_details,
         [&](const kernel_adapter::single_parameter_details& buffer_details) {
             auto buffer_name = buffer_details.name;
-            auto buffer_size = (buffer_details.direction == parameter_direction_t::inout) ?
-                context.buffers.host_side.inputs.at(buffer_name).size() :
-                buffer_details.size_calculator(
+            size_t buffer_size;
+            if (buffer_details.direction == parameter_direction_t::inout) {
+                buffer_size = context.buffers.host_side.inputs.at(buffer_name).size();
+                // TODO: What if an output size has been specified on the command line
+            }
+            else if (util::contains(context.options.output_buffer_sizes, std::string{buffer_name})) {
+                buffer_size = context.options.output_buffer_sizes.at(buffer_name);
+            }
+            else {
+                if (buffer_details.size_calculator == nullptr) {
+                    spdlog::critical("Cannot determine the size of output buffer '{}': No used-specified size and no size calculator available", buffer_name);
+                    throw std::logic_error(
+                        "Cannot determine the size of output buffer '" + std::string{buffer_name}
+                        + "': No user-specified size and no size calculator function available");
+                }
+                buffer_size = buffer_details.size_calculator(
                     context.buffers.host_side.inputs,
                     context.scalar_input_arguments.typed,
                     context.finalized_preprocessor_definitions.valueless,
                     context.finalized_preprocessor_definitions.valued,
                     context.options.forced_launch_config_components);
+            }
             auto host_side_output_buffer = host_buffer_t(buffer_size);
             spdlog::trace("Created a host-side output buffer of size {} for kernel parameter '{}'", buffer_size,  buffer_name);
             return std::make_pair(buffer_details.name, std::move(host_side_output_buffer));

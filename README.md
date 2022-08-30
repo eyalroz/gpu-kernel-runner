@@ -68,80 +68,90 @@ This repository is intended to take away all of that hassle away: It has the mac
 ```
 A runner for dynamically-compiled CUDA kernels
 Usage:
-  ./kernel-runner [OPTION...]
+  kernel-runner [OPTION...]
 
-  -l, --log-level arg           Set logging level (default: warning)
+  -l, --log arg                 Set logging level (default: warning)
       --log-flush-threshold arg
                                 Set the threshold level at and above which
-                                the log is flushed on each message (default:
-                                info)
-  -w, --write-output            Write output buffers to files (default: true)
-  -n, --num-runs arg            Number of times to run the compiled kernel
+                                the log is flushed on each message
+                                (default: info)
+  -w, --save-output             Write output buffers to files (default:
+                                true)
+  -n, --repetitions arg         Number of times to run the compiled kernel
                                 (default: 1)
       --opencl                  Use OpenCL
       --cuda                    Use CUDA
-  -p, --platform-id arg         Use the OpenCL platform with the specified
+  -p, --platform arg            Use the OpenCL platform with the specified
                                 index
-  -d, --device arg              Device index (default: 0)
-  -D, --define arg              Set a preprocessor definition for NVRTC (can
-                                be used repeatedly; specify either DEFINITION
-                                or DEFINITION=VALUE)
-  -c, --compile-only            Compile the kernel, but don't actually run it
-  -G, --debug-mode              Have the NVRTC compile the kernel in debug
+  -a, --arg arg                 Set one of the kernel's argument, keyed by
+                                name, with a serialized value for a scalar
+                                (e.g. foo=123) or a path to the contents of
+                                a buffer (e.g. bar=/path/to/data.bin)
+      --output-buffer-size arg  Set one of the output buffers' sizes, keyed
+                                by name, in bytes (e.g. myresult=1048576)
+  -d, --dev arg                 Device index (default: 0)
+  -D, --define arg              Set a preprocessor definition for NVRTC
+                                (can be used repeatedly; specify either
+                                DEFINITION or DEFINITION=VALUE)
+  -c, --compilation             Compile the kernel, but don't actually run
+                                it
+  -G, --debug                   Have the NVRTC compile the kernel in debug
                                 mode (no optimizations)
   -P, --write-ptx               Write the intermediate representation code
-                                (PTX) resulting from the kernel compilation, to
-                                a file
+                                (PTX) resulting from the kernel
+                                compilation, to a file
       --ptx-output-file arg     File to which to write the kernel's
                                 intermediate representation
       --print-compilation-log   Print the compilation log to the standard
                                 output
       --write-compilation-log arg
                                 Path of a file into which to write the
-                                compilation log (regardless of whether it's printed
-                                to standard output)
+                                compilation log (regardless of whether it's
+                                printed to standard output) (default: "")
       --print-execution-durations
-                                Print the execution duration, in nanoseconds,
-                                of each kernel invocation to the standard
-                                output
+                                Print the execution duration, in
+                                nanoseconds, of each kernel invocation to
+                                the standard output
       --write-execution-durations arg
                                 Path of a file into which to write the
-                                execution durations, in nanoseconds, for each kernel
-                                invocation (regardless of whether they're
-                                printed to standard output)
+                                execution durations, in nanoseconds, for
+                                each kernel invocation (regardless of
+                                whether they're printed to standard output)
+                                (default: "")
       --generate-line-info      Add source line information to the
-                                intermediate representation code (PTX) (default: true)
-  -b, --block-dimensions arg    Set grid block dimensions in threads
-                                (OpenCL: local work size); a comma-separated list
-  -g, --grid-dimensions arg     Set grid dimensions in blocks; a
+                                intermediate representation code (PTX)
+                                (default: true)
+  -b, --block arg               Set grid block dimensions in threads
+                                (OpenCL: local work size); a
                                 comma-separated list
-  -o, --overall-grid-dimensions arg
-                                Set grid dimensions in threads (OpenCL:
+  -g, --grid arg                Set grid dimensions in blocks; a
+                                comma-separated list
+  -o, --overall arg             Set grid dimensions in threads (OpenCL:
                                 global work size); a comma-separated list
-  -O, --append-compilation-option arg
-                                Append an arbitrary extra compilation option
-  -S, --dynamic-shared-memory-size arg
-                                Force specific amount of dynamic shared
+  -O, --append-compile-option arg
+                                Append an arbitrary extra compilation
+                                option
+  -S, --dshmem arg              Force specific amount of dynamic shared
                                 memory
-  -W, --overwrite               Overwrite the files for buffer and/or PTX
+  -W, --overwrite-output-files  Overwrite the files for buffer and/or PTX
                                 output if they already exists
-  -i, --include arg             Include a specific file into the kernels'
+  -i, --direct-include arg      Include a specific file into the kernels'
                                 translation unit
-  -I, --include-path arg        Add a directory to the search paths for
-                                header files included by the kernel (can be used
-                                repeatedly)
-  -s, --kernel-source arg       Path to CUDA source file with the kernel
-                                function to compile; may be absolute or relative
-                                to the sources dir
-  -k, --kernel-function arg     Name of function within the source file to
-                                compile and run as a kernel (if different than
-                                the key)
-  -K, --kernel-key arg          The key identifying the kernel among all
+  -I, --include-search-dir arg  Add a directory to the search paths for
+                                header files included by the kernel (can be
+                                used repeatedly)
+  -s, --kernel-source-code arg  Path to CUDA source file with the kernel
+                                function to compile; may be absolute or
+                                relative to the sources dir
+  -k, --function arg            Name of function within the source file to
+                                compile and run as a kernel (if different
+                                than the key)
+  -K, --key arg                 The key identifying the kernel among all
                                 registered runnable kernels
-  -L, --list-kernels            List the (keys of the) kernels which may be
+  -L, --all-kernels             List the (keys of the) kernels which may be
                                 run with this program
-  -z, --zero-output-buffers     Set the contents of output(-only) buffers to
-                                all-zeros
+  -z, --zero-outputs            Set the contents of output(-only) buffers
+                                to all-zeros
       --language-standard arg   Set the language standard to use for CUDA
                                 compilation (options: c++11, c++14, c++17)
       --input-buffer-dir arg    Base location for locating input buffers
@@ -152,13 +162,6 @@ Usage:
                                 files (default: /current/working/dir)
   -h, --help                    Print usage information
 ```
-Additionally, for a given kernel, you can specify its parameters. For example, if the kernel's signature is `__global__ foo(int bar, float* baz)`, you can also specify:
-```
-  --foo arg  Description of foo
-  --bar arg  Description of bar (default: foo)
-```
-(the buffer `bar` will, by default, be loaded from the file named `bar` in the present working directory.) Scalar parameters do not typically have defaults.
-
 
 ## <a name="running-your-own-kernel">How do I get the runner to run my own kernels?</a>
 
@@ -185,24 +188,24 @@ To create a kernel adapter for your kernel, it's easiest to start with the follo
 #include <kernel_adapter.hpp>
 
 namespace kernel_adapters {
-
 class [[[ UNIQUE CLASS NAME HERE ]]] : public kernel_adapter {
 public:
-    using length_type = size_t;
-
     KA_KERNEL_FUNCTION_NAME("[[[ (POSSIBLY-NON-UNIQUE) FUNCTION NAME HERE ]]]")
     KA_KERNEL_KEY("[[[ UNIQUE KERNEL KEY STRING HERE ]]]")
 
     const parameter_details_type& parameter_details() const override
     {
         static const parameter_details_type pd = {
-            [[[ A LINE FOR EACH KERNEL PARAMETER, each being either buffer_details(...) or scalar_details(...) 
+            [[[ DETAIL LINES FOR EACH KERNEL PARAMETER ]]]
+            
+            // Example detail lines:
+            //
+            //  scalar_details<int>("x"),
+            //  buffer_details("my_results", output),
+            //  buffer_details("my_data", input),
         };
         return pd;
     }
-
-protected:
-    [[[ STATIC METHODS FOR COMPUTING SIZES OF OUTPUT BUFFERS, AS NECESSARY ]]]
 };
 } // namespace kernel_adapters
 ```

@@ -3,7 +3,6 @@
 
 #include <kernel_adapter.hpp>
 
-
 namespace kernel_adapters {
 
 class vector_add final : public kernel_adapter {
@@ -16,34 +15,29 @@ public:
     const parameter_details_type& parameter_details() const override
     {
         static const parameter_details_type pd = {
-            //
-            // Buffers:                 Name  Direction  Size Calculator
-            // --------------------------------------------------------------------------------------
-            buffer_details(             "C",  output,    size_by_length),
-            buffer_details(             "A",  input                    ),
-            buffer_details(             "B",  input                    ),
-            //
-            // Scalars:    Type         Name
-            // ------------------------------------------
+            // buffer_details("C",  output,    size_by_length),
+            buffer_details("C",  output),
+            buffer_details("A",  input),
+            buffer_details("B",  input),
             scalar_details<length_type>("length"),
         };
         return pd;
     }
 
-protected:
-    static std::size_t size_by_length(
-        const host_buffers_t&,
-        const scalar_arguments_map& scalars,
-        const preprocessor_definitions_t&,
-        const preprocessor_value_definitions_t&,
-        const optional_launch_config_components_t&)
-    {
-        return any_cast<length_type>(scalars.at("length"));
-    }
+// The following are not necessary, but could help this adapter:
 
-public:
-    // The following are not necessary, but could help this adapter:
-
+// protected:
+//    static std::size_t size_by_length(
+//        const host_buffers_t&,
+//        const scalar_arguments_map& scalars,
+//        const preprocessor_definitions_t&,
+//        const preprocessor_value_definitions_t&,
+//        const optional_launch_config_components_t&)
+//    {
+//        return any_cast<length_type>(scalars.at("length"));
+//    }
+//
+// public:
 //    bool input_sizes_are_valid(const execution_context_t& context) const override
 //    {
 //        auto length = get_scalar_argument<length_type>(context, "length");

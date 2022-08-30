@@ -32,6 +32,9 @@ struct parsed_cmdline_options_t {
     preprocessor_definitions_t preprocessor_definitions;
     std::vector<std::string> extra_compilation_options;
 
+    // std::unordered_map<std::string, std::string> raw_output_size_settings;
+    std::unordered_map<std::string, std::size_t> output_buffer_sizes;
+
     /**
      * Preprocessor definitions specified on the command-line using the
      * defined term as the command-line option, e.g. "--FOO=bar" rather than

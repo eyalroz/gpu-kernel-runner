@@ -42,14 +42,14 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
     cxxopts::Options options { program_name, "A runner for dynamically-compiled CUDA kernels"};
     options.add_options()
         ("l,log-level,log", "Set logging level", cxxopts::value<string>()->default_value("warning"))
-        ("log-flush-threshold", "Set the threshold level at and above which the log is flushed on each message",
-            cxxopts::value<string>()->default_value("info"))
+        ("log-flush-threshold", "Set the threshold level at and above which the log is flushed on each message", cxxopts::value<string>()->default_value("info"))
         ("w,write-output,save-output", "Write output buffers to files", cxxopts::value<bool>()->default_value("true"))
         ("n,num-runs,runs,repetitions", "Number of times to run the compiled kernel", cxxopts::value<unsigned>()->default_value("1"))
         ("opencl,OpenCL", "Use OpenCL", cxxopts::value<bool>())
         ("cuda,CUDA", "Use CUDA", cxxopts::value<bool>())
         ("p,platform-id,platform", "Use the OpenCL platform with the specified index", cxxopts::value<unsigned>())
         ("a,argument,arg", "Set one of the kernel's argument, keyed by name, with a serialized value for a scalar (e.g. foo=123) or a path to the contents of a buffer (e.g. bar=/path/to/data.bin)", cxxopts::value<std::vector<string>>())
+        ("output-buffer-size,output-size", "Set one of the output buffers' sizes, keyed by name, in bytes (e.g. myresult=1048576)", cxxopts::value<std::vector<string>>())
         ("d,device,dev", "Device index", cxxopts::value<int>()->default_value("0"))
         ("D,preprocessor-definition,define", "Set a preprocessor definition for NVRTC (can be used repeatedly; specify either DEFINITION or DEFINITION=VALUE)", cxxopts::value<std::vector<string>>())
         ("c,compile-only,compile,compilation", "Compile the kernel, but don't actually run it", cxxopts::value<bool>()->default_value("false"))
@@ -569,6 +569,23 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
                     auto value = definition.substr(equals_pos + 1);
                     spdlog::trace("Preprocessor definition: {} with value {}", defined_term, value);
                     parsed_options.preprocessor_value_definitions.emplace(defined_term, value);
+            }
+        }
+    }
+
+    if (parse_result.count("output-buffer-size") > 0) {
+        const auto& buffer_size_settings = parse_result["output-buffer-size"].as<std::vector<string>>();
+        for(const auto& setting : buffer_size_settings) {
+            auto equals_pos = setting.find('=');
+            switch (equals_pos) {
+                case string::npos:
+                case 0:
+                    die("Output buffer size setting is not in a name=size format: \"{}\"", setting);
+                default:
+                    auto buffer_name = setting.substr(0, equals_pos);
+                    auto buffer_size = std::stoul(setting.substr(equals_pos + 1));
+                    spdlog::trace("Size of output buffer '{}' set to {} bytes", buffer_name, buffer_size);
+                    parsed_options.output_buffer_sizes.emplace(buffer_name, buffer_size);
             }
         }
     }

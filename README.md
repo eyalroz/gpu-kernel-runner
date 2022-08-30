@@ -6,7 +6,7 @@ A harness for stand-alone execution of single GPU kernels, for timing, debugging
 
 | Table of contents|
 |:----------------|
-| <sub>[Example: Executing a simple kernel to get its output](#example) <br> [Motivation](#motivation)<br>[Command-line interface](#cmdline) <br> [Feedback, bugs, questions etc.](#feedback) </sub>|
+| <sub>[Example: Executing a simple kernel to get its output](#example) <br> [Motivation](#motivation)<br>[Command-line interface](#cmdline) <br>[How do I get the runner to run my own kernel?](#running-your-own-kernel) <br> [Feedback, bugs, questions etc.](#feedback) </sub>|
 
 ----
 
@@ -160,9 +160,27 @@ Additionally, for a given kernel, you can specify its parameters. For example, i
 (the buffer `bar` will, by default, be loaded from the file named `bar` in the present working directory.) Scalar parameters do not typically have defaults.
 
 
-## <a name="kernel-adapter-template">A kernel adapter template</a>
+## <a name="running-your-own-kernel">How do I get the runner to run my own kernels?</a>
 
-So, you've written a kernel. In order for the GPU kernel runner to run it, the runner needs to know about it. The runner knows about it by having a "kernel adapter" header present in one of the kernel headers directories. To create such a header, start with the following template and replace the `[[[ ... ]]]` parts with what's relevant for your own kernel:
+So, you've written a kernel. In order for the GPU kernel runner to run it, the runner needs to know about it. Internally, the runner knows kernels through "kernel adapter" classes, instantiated into a factory. Luckily, you don't have to be familiar with this mechanism in order to use it. What you _do_ need is a:
+
+1. A kernel adapter class definition, in a header file
+2. Building the kernel runner so as to recognize and use your kernel adapter header file
+
+### <a name="build-with-extra-adapters">Telling the build about your adapters</a>
+
+The CMake for this repository has a variables named `EXTRA_ADAPTER_SOURCE_DIRS`- you can set it when invoking CMake to configure your build, e.g.:
+```
+cmake \
+    -D CMAKE_BUILD_TYPE=Release \
+    -DEXTRA_ADAPTER_SOURCE_DIRS="/path/to/my_adapters/;/another/path/to/more_adapters" \
+    -B /path/to/build_dir/
+```
+... so that the build configuration can find your adapters and ensure they are instantiated.
+
+### <a name="kernel-adapter-template">A kernel adapter template</a>
+
+To create a kernel adapter for your kernel, it's easiest to start with the following empty template and replace the `[[[ ... ]]]` parts with what's relevant for your own kernel:
 ```
 #include "kernel_adapter.hpp"
 
@@ -190,7 +208,7 @@ protected:
 ```
 For a concrete example, see the adapter file [`vector_add.hpp`](https://github.com/eyalroz/gpu-kernel-runner/blob/main/src/kernel_adapters/vector_add.hpp).
 
-The kernel_adapter class actually has other methods one could overwrite in order to make the kernel easier to invoke, for:
+The `kernel_adapter` class actually has other methods one could overwrite in order to make the kernel easier to invoke, for:
 
 * Deducing launch grid configuration
 * Specifying required preprocessor definitions

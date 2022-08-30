@@ -96,6 +96,7 @@ foreach(adapter-source_dir ${adapter-definition-dirs})
 			add_custom_command(
 				OUTPUT ${adapter-source}
 				MAIN_DEPENDENCY ${adapter-definition}
+				DEPENDS ${PROJECT_SOURCE_DIR}/scripts/generate-adapter-cpp.py
 				COMMAND Python::Interpreter ${PROJECT_SOURCE_DIR}/scripts/generate-adapter-cpp.py "${adapter-definition}" "${adapter-source}"
 				COMMENT "Generating source file for adapter ${adapter-name}"
 				VERBATIM
@@ -104,6 +105,7 @@ foreach(adapter-source_dir ${adapter-definition-dirs})
 			add_custom_command(
 				OUTPUT ${adapter-source}
 				MAIN_DEPENDENCY ${adapter-definition}
+				DEPENDS ${PROJECT_SOURCE_DIR}/scripts/generate-adapter-cpp.sh
 				COMMAND ${PROJECT_SOURCE_DIR}/scripts/generate-adapter-cpp.sh "${adapter-definition}" "${adapter-source}"
 				COMMENT "Generating source file for adapter ${adapter-name}"
 				VERBATIM

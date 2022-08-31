@@ -152,13 +152,17 @@ inline optional<std::string> get_env ( const std::string& key )
 template <typename I, typename I2 = I>
 constexpr I round_up(I x, I2 y) noexcept
 {
+    static_assert(std::is_signed<I>::value or std::is_unsigned<I2>::value,
+        "Attempt to implicitly introduce signedness; make an explicit cast");
     return (x % y == 0) ? x : x + (y - x%y);
 }
 
-template <typename I1, typename I2>
-constexpr I1 div_rounding_up(I1 x, const I2 modulus) noexcept
+template <typename I, typename I2>
+constexpr I div_rounding_up(I x, const I2 modulus) noexcept
 {
-    return ( x + I1{modulus} - I1{1} ) / I1{modulus};
+    static_assert(std::is_signed<I>::value or std::is_unsigned<I2>::value,
+                  "Attempt to implicitly introduce signedness; make an explicit cast");
+    return (x + I{modulus} - I{1} ) / I{modulus};
 }
 
 

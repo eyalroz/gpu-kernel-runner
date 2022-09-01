@@ -65,12 +65,12 @@ add_executable(kernel-runner
 
 add_library(kernel-adapters OBJECT)
 target_link_libraries(kernel-runner PRIVATE kernel-adapters)
-set(adapter-definition-dirs src/kernel_adapters)
-list(APPEND adapter-definition-dirs ${EXTRA_ADAPTER_SOURCE_DIRS})
-foreach(adapter-source_dir ${adapter-definition-dirs})
-	message(STATUS "Using adapters from directory ${adapter-source_dir}")
-	file(GLOB_RECURSE adapter-definitions "${adapter-source_dir}/*.hpp")
-	file(GLOB_RECURSE adapter-sources "${adapter-source_dir}/*.cpp")
+set(adapter-definition-root-dirs src/kernel_adapters)
+list(APPEND adapter-definition-root-dirs ${EXTRA_ADAPTER_SOURCE_DIRS})
+foreach(adapter-definitions-root-dir ${adapter-definition-root-dirs})
+	message(STATUS "Using adapters defined under ${adapter-definitions-root-dir}")
+	file(GLOB_RECURSE adapter-definitions "${adapter-definitions-root-dir}/*.hpp")
+	file(GLOB_RECURSE adapter-sources "${adapter-definitions-root-dir}/*.cpp")
 	foreach(adapter-definition ${adapter-definitions})
 		target_sources(kernel-adapters PRIVATE "${adapter-definition}")
 	endforeach()
@@ -91,7 +91,8 @@ foreach(adapter-source_dir ${adapter-definition-dirs})
 			continue()
 		endif()
 		get_filename_component(adapter-name ${adapter-definition} NAME_WE)
-		set(adapter-source "src/${adapter-name}.cpp") # Note this will be generated within the build directory
+		get_filename_component(adapter-definition-dir ${adapter-definition} DIRECTORY)
+		set(adapter-source "src/${adapter-definition-dir}/${adapter-name}.cpp") # Note this will be generated within the build directory
 		if (Python_FOUND)
 			add_custom_command(
 				OUTPUT ${adapter-source}

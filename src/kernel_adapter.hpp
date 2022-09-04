@@ -110,7 +110,9 @@ public: // constructors & destructor
     // TODO: This should really be a span (and then we wouldn't
     // need to use const-refs to it)
     using parameter_details_type = std::vector<single_parameter_details>;
-    using preprocessor_definitions_type = std::vector<single_preprocessor_definition_details>;
+    using preprocessor_definition_details_type = std::vector<single_preprocessor_definition_details>;
+    using preprocessor_definitions_type = typename execution_context_t::preprocessor_definitions_type;
+
 
 public:
     /**
@@ -147,7 +149,7 @@ public:
      * @return  Either the set of affecting preprocessor definition terms, or the empty optional value in
      * case that set is not known to the adapter
      */
-    virtual optional<preprocessor_definitions_type> preprocessor_definition_details() const { return nullopt; }
+    virtual optional<preprocessor_definition_details_type> preprocessor_definition_details() const { return nullopt; }
 
 protected:
     template <typename Scalar>
@@ -164,12 +166,11 @@ public:
         return parameter_details.parser(value_str);
     }
 
+    virtual void generate_additional_preprocessor_definitions(execution_context_t&) const { }
+
     virtual scalar_arguments_map generate_additional_scalar_arguments(execution_context_t&) const { return {}; }
-
-    // Try not to require the whole context
-
-    virtual bool extra_validity_checks(const execution_context_t&) const { return true; }
     virtual bool input_sizes_are_valid(const execution_context_t&) const { return true; }
+    virtual bool extra_validity_checks(const execution_context_t&) const { return true; }
 
 public:
 

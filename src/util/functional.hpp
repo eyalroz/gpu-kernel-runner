@@ -8,6 +8,13 @@
 
 namespace util {
 
+template<typename SourceContainer, typename DestinationContainer>
+DestinationContainer copy(SourceContainer& src, DestinationContainer& dest)
+{
+    std::copy(src.cbegin(), src.cend(), std::inserter(dest, dest.begin()));
+    return dest;
+}
+
 template<typename DestinationContainer, typename SourceContainer, typename F>
 DestinationContainer transform(const SourceContainer& container, F func)
 {

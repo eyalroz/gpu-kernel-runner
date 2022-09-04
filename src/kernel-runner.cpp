@@ -91,11 +91,11 @@ void ensure_necessary_terms_were_defined(const execution_context_t& context)
         pdd.value(),
         [](const auto& sad) { return sad.required; },
         [](const auto& sad) { return string{sad.name};});
-    auto defined_valued_terms = util::keys(context.options.preprocessor_value_definitions);
-    auto all_defined_terms = util::union_(defined_valued_terms, context.options.preprocessor_definitions);
+    auto defined_valued_terms = util::keys(context.preprocessor_definitions.finalized.valued);
+    auto all_defined_terms = util::union_(defined_valued_terms, context.preprocessor_definitions.finalized.valueless);
     auto required_but_undefined = util::difference(required_terms, all_defined_terms);
     if (not required_but_undefined.empty()) {
-        die("The following preprocessor definitions must be specified, but have not been: {}", required_but_undefined);
+        die("Missing obligatory preprocessor definitions: {}", required_but_undefined);
     }
 }
 
@@ -701,8 +701,8 @@ bool build_kernel(execution_context_t& context)
             context.options.language_standard,
             context.finalized_include_dir_paths,
             context.options.preinclude_files,
-            context.options.preprocessor_definitions,
-            context.options.preprocessor_value_definitions,
+            context.preprocessor_definitions.finalized.valueless,
+            context.preprocessor_definitions.finalized.valued,
             context.options.extra_compilation_options);
         build_succeeded = result.succeeded;
         context.compilation_log = std::move(result.log);
@@ -724,8 +724,8 @@ bool build_kernel(execution_context_t& context)
             context.options.write_ptx_to_file,
             context.finalized_include_dir_paths,
             context.options.preinclude_files,
-            context.options.preprocessor_definitions,
-            context.options.preprocessor_value_definitions,
+            context.preprocessor_definitions.finalized.valueless,
+            context.preprocessor_definitions.finalized.valued,
             context.options.extra_compilation_options);
         build_succeeded = result.succeeded;
         context.compilation_log = std::move(result.log);
@@ -913,6 +913,35 @@ void handle_execution_durations(const execution_context_t &context)
     }
 }
 
+void generate_additional_preprocessor_defines(execution_context_t& context)
+{
+    spdlog::debug("Generating additional preprocessor definitions");
+    context.kernel_adapter_->generate_additional_preprocessor_definitions(context);
+    const auto& generated = context.preprocessor_definitions.generated;
+    auto nothing_generated =  (generated.valued.empty() and generated.valueless.empty());
+    {
+        auto level =  nothing_generated ? spdlog::level::debug : spdlog::level::info;
+        spdlog::log(level, "Generated {} value-less and {} valued preprocessor definitions",
+                    generated.valueless.size(), generated.valued.size());
+    }
+    for(const auto& valued_def : generated.valued) {
+        spdlog::debug("Generated preprocessor definition: {} with value {}", valued_def.first, valued_def.second);
+    }
+    for(const auto& valueless_def : generated.valueless) {
+        spdlog::debug("Generated preprocessor definition: {}", valueless_def);
+    }
+}
+
+void finalize_preprocessor_definitions(execution_context_t& context)
+{
+    context.preprocessor_definitions.finalized.valueless =
+        util::union_(context.options.preprocessor_definitions,
+                     context.preprocessor_definitions.generated.valueless);
+    context.preprocessor_definitions.finalized.valued =
+        util::union_(context.options.preprocessor_value_definitions,
+                     context.preprocessor_definitions.generated.valued);
+}
+
 int main(int argc, char** argv)
 {
     spdlog::set_level(spdlog::level::info);
@@ -927,6 +956,8 @@ int main(int argc, char** argv)
         resolve_buffer_filenames(context);
     }
 
+    generate_additional_preprocessor_defines(context);
+    finalize_preprocessor_definitions(context);
     ensure_necessary_terms_were_defined(context);
     auto build_succeeded = build_kernel(context);
     auto log = context.compilation_log.value();

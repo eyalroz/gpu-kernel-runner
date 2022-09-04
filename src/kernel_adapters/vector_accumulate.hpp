@@ -60,12 +60,12 @@ public:
         return result;
     }
 
-    optional<preprocessor_definitions_type> preprocessor_definition_details() const override
+    optional<preprocessor_definition_details_type> preprocessor_definition_details() const override
     {
-        static const preprocessor_definitions_type preprocessor_definitions = {
+        static const preprocessor_definition_details_type preprocessor_definitions = {
             { "A_LITTLE_EXTRA", not is_required }
         };
-        return optional<preprocessor_definitions_type>{preprocessor_definitions};
+        return optional<preprocessor_definition_details_type>{preprocessor_definitions};
     }
 };
 

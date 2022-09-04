@@ -101,25 +101,44 @@ struct execution_context_t {
         scalar_arguments_map typed; // the parsed values for each scalar, after type-erasure
     } scalar_input_arguments;
     std::vector<std::string> parameter_names; // for determining how to pass the arguments
-    struct {
+    struct preprocessor_definitions_type {
         preprocessor_definitions_t valueless;
         preprocessor_value_definitions_t valued;
-    } finalized_preprocessor_definitions;
+    };
+    struct {
+        preprocessor_definitions_type generated;
+        preprocessor_definitions_type finalized;
+    } preprocessor_definitions;
     include_paths_t finalized_include_dir_paths;
     marshalled_arguments_type finalized_arguments;
     launch_configuration_type kernel_launch_configuration;
     durations_t durations; // The execution durations of each invocation of the kernel
 
     template <typename T>
-    T get_defined_value(const std::string& s) const
+    T get_defined_value(const std::string& str, bool user_specified = false) const
     {
-        return ::get_defined_value<T>(finalized_preprocessor_definitions.valued, s);
+        return ::get_defined_value<T>(
+            user_specified ?
+                preprocessor_definitions.finalized.valued :
+                options.preprocessor_value_definitions,
+            str);
     }
 
     template <typename T>
-    T get_defined_value(char const* cptr) const {
+    T get_defined_value(char const* cptr, bool user_specified = false) const
+    {
         std::string str{cptr};
-        return get_defined_value<T>(str);
+        return get_defined_value<T>(str, user_specified);
+    }
+
+    template <typename T>
+    bool has_defined_value(const std::string& str, bool user_specified = false) const
+    {
+        return safe_get_defined_value<T>(
+            user_specified ?
+            preprocessor_definitions.finalized.valued :
+            options.preprocessor_value_definitions,
+            preprocessor_definitions.finalized.valued, str);
     }
 
     const ::kernel_adapter& get_kernel_adapter() const { return *kernel_adapter_.get(); }
@@ -128,14 +147,7 @@ struct execution_context_t {
 // TODO: This may not be such a good idea, rethink it.
 
 template <>
-inline bool execution_context_t::get_defined_value<bool>(const std::string& s) const
-{
-    auto find_result = finalized_preprocessor_definitions.valueless.find(s);
-    if (find_result != std::cend(finalized_preprocessor_definitions.valueless)) {
-        return true;
-    }
-    return ::get_defined_value<bool>(finalized_preprocessor_definitions.valued, s);
-}
+inline bool execution_context_t::get_defined_value<bool>(const std::string&, bool) const = delete;
 
 template <execution_ecosystem_t Ecosystem>
 void initialize_execution_context(execution_context_t& context);

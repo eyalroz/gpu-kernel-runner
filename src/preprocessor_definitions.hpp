@@ -44,13 +44,23 @@ get_defined_terms(const preprocessor_definitions_t definitions)
  * @throws std::runtime_error if the term hasn't been defined
  */
 template <typename T>
-T get_defined_value(const preprocessor_value_definitions_t& map, const std::string& defined_term)
+optional<T> safe_get_defined_value(const preprocessor_value_definitions_t& map, const std::string& defined_term)
 {
     auto find_result = map.find(defined_term);
     if (find_result == std::cend(map)) {
-        throw std::runtime_error("Could not find key " + defined_term + " in the valued preprocessor definitions map");
+        return nullopt;
     }
     return util::from_string<T>(find_result->second);
+}
+
+template <typename T>
+T get_defined_value(const preprocessor_value_definitions_t& map, const std::string& defined_term)
+{
+    auto result = safe_get_defined_value<T>(map, defined_term);
+    if (not result) {
+        throw std::runtime_error("Could not find key " + defined_term + " in the valued preprocessor definitions map");
+    }
+    return result.value();
 }
 
 #endif /* PREPROCESSOR_DEFINITIONS_HPP_ */

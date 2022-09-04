@@ -291,8 +291,8 @@ void create_host_side_output_buffers(execution_context_t& context)
                 buffer_size = buffer_details.size_calculator(
                     context.buffers.host_side.inputs,
                     context.scalar_input_arguments.typed,
-                    context.finalized_preprocessor_definitions.valueless,
-                    context.finalized_preprocessor_definitions.valued,
+                    context.preprocessor_definitions.finalized.valueless,
+                    context.preprocessor_definitions.finalized.valued,
                     context.options.forced_launch_config_components);
             }
             auto host_side_output_buffer = host_buffer_t(buffer_size);

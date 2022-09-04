@@ -48,9 +48,9 @@ public:
 //        return true;
 //    }
 //
-//    optional<preprocessor_definitions_type> preprocessor_definition_details() const override
+//    optional<preprocessor_definition_details_type> preprocessor_definition_details() const override
 //    {
-//        static const preprocessor_definitions_type preprocessor_definitions = {
+//        static const preprocessor_definition_details_type preprocessor_definitions = {
 //            { "A_LITTLE_EXTRA", is_required }
 //        };
 //        return preprocessor_definitions;

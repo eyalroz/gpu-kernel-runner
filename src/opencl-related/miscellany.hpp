@@ -26,6 +26,11 @@ inline std::ostream& operator<<(std::ostream& os, const cl::NDRange& rng)
 inline std::string get_name(cl::Platform& platform) {
     std::string name;
     platform.getInfo(CL_PLATFORM_NAME, &name);
+    // The OpenCL API may return the string with an embedded null character. Annoying!
+    auto nul_char_pos = name.find_first_of('\0');
+    if (nul_char_pos != std::string::npos) {
+        name.resize(nul_char_pos);
+    }
     return name;
 }
 

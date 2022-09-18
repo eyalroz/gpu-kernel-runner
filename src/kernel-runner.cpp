@@ -143,7 +143,7 @@ void resolve_buffer_filenames(execution_context_t& context)
         const auto &name = buffer.name;
         auto got_arg = util::contains(params_with_args, name);
         if (not got_arg) {
-            spdlog::debug("Filename for buffer '{}' not specified; using fallback names.");
+            spdlog::debug("Filename for buffer '{}' not specified; using fallback names.", name);
         }
         if (is_input(buffer)) {
             const auto default_filename = name;

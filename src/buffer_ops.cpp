@@ -94,6 +94,15 @@ void copy_buffer_on_device(
     }
 }
 
+void gpu_sync(const execution_context_t& context) {
+    if (context.ecosystem == execution_ecosystem_t::cuda) {
+        context.cuda.context->synchronize();
+    }
+    else {
+        context.opencl.queue.finish();
+    }
+}
+
 void copy_input_buffers_to_device(const execution_context_t& context)
 {
     spdlog::debug("Copying input (non-inout) buffers to the GPU.");
@@ -111,6 +120,7 @@ void copy_input_buffers_to_device(const execution_context_t& context)
         const auto& device_side_buffer = context.buffers.device_side.inputs.at(buffer_name);
         copy_buffer_to_device(context, buffer_name, device_side_buffer, host_side_buffer);
     }
+    gpu_sync(context);
 }
 
 void copy_buffer_to_host(
@@ -146,12 +156,7 @@ void copy_outputs_from_device(execution_context_t& context)
             device_side_buffer,
             host_side_buffer);
     }
-    if (context.ecosystem == execution_ecosystem_t::cuda) {
-        context.cuda.context->synchronize();
-    }
-    else {
-        context.opencl.queue.finish();
-    }
+    gpu_sync(context);
 }
 
 device_buffer_type create_device_side_buffer(
@@ -234,6 +239,7 @@ void zero_output_buffers(execution_context_t& context)
         const auto& buffer = context.buffers.device_side.outputs.at(buffer_name);
         zero_output_buffer(context.ecosystem, buffer, context.cuda.stream, &context.opencl.queue, buffer_name);
     }
+    gpu_sync(context);
     spdlog::debug("GPU-side Output-only buffers filled with zeros.");
 }
 
@@ -253,6 +259,7 @@ void create_device_side_buffers(execution_context_t& context)
         context.buffers.host_side.outputs);
             // ... and remember the behavior regarding in-out buffers: For each in-out buffers, a buffer
             // is created in _both_ previous function calls
+    gpu_sync(context);
     spdlog::debug("Output buffers, and work copy of inout buffers, created in GPU memory.");
 }
 
@@ -318,5 +325,5 @@ void reset_working_copy_of_inout_buffers(execution_context_t& context)
             context.ecosystem == execution_ecosystem_t::opencl ? &context.opencl.queue : nullptr,
             work_copy, pristine_copy);
     }
-    context.cuda.context->synchronize();
+    gpu_sync(context);
 }

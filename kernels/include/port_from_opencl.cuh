@@ -16,6 +16,8 @@
 
 #ifndef __OPENCL_VERSION__
 
+#include "cuda_syntax_for_ide_parser.cuh"
+
 #include <cstdint>
 #include <cstddef> // for size_t
 #include <climits>
@@ -33,49 +35,20 @@
 // #include <cassert>
 // #include <type_traits>
 
-#ifdef __CDT_PARSER__
-// These definitions will be ignored by the NVRTC compiler; they are only
-// enabled for editing this file in a (non-CUDA-aware) IDE
-template <typename T>
-T max(const T& x, const T& y);
-
-template <typename T>
-T min(const T& x, const T& y);
-
-void __syncthreads();
-
-struct dim3 {
-    int x, y, z;
-};
-
-dim3 threadIdx;
-dim3 blockIdx;
-dim3 blockDim;
-dim3 gridDim;
-
-#define __shared
-
-#define __device__
-#define __device_builtin__
-
-/*
-Is there a header which gets us max and min?
- */
-
-#endif // __CDT_PARSER__
-
 // These defined terms are used in OpenCL and not part of the C++ language
 #define __global
 #define __private
 #define __kernel extern "C" __global__
 #define __constant constexpr const
-#define restrict __restrict
+#define restrict __restrict__
+#define __restrict __restrict__
 // and note __local is missing!
 
 // For porting, the OpenCL kernel should replace __local
 // with one of the following - to indicate which uses of it require
 // decorating with CUDA's __shared__ for per-block memory allocation.
 #define __local_array __shared__
+#define __local_variable __shared__
 #define __local_ptr
 
 #define CLK_LOCAL_MEM_FENCE 0
@@ -130,12 +103,12 @@ inline unsigned get_dim3_element(const dim3& d3, int index)
 
 } // namespace detail
 
-inline uint get_local_id(int dimension_index)
+inline unsigned get_local_id(int dimension_index)
 {
     return detail::get_dim3_element(threadIdx, dimension_index);
 }
 
-inline uint get_group_id(int dimension_index)
+inline unsigned get_group_id(int dimension_index)
 {
     return detail::get_dim3_element(blockIdx, dimension_index);
 }
@@ -184,7 +157,7 @@ inline void barrier(int kind)
 }
 
 template <typename T>
-inline uint convert_uint(const T& x) { return static_cast<uint>(x); }
+inline unsigned convert_uint(const T& x) { return static_cast<unsigned>(x); }
 
 inline int2 convert_int2(const float2& v)
 {
@@ -211,6 +184,7 @@ inline double native_sqrt(double x)  { return sqrt(x);  }
 
 inline float  native_rsqrt(float x)  { return rsqrtf(x); }
 inline double native_rsqrt(double x) { return rsqrt(x);  }
+
 
 //template <typename T, typename Selector>
 //T select(T on_false, T on_true, Selector selector);

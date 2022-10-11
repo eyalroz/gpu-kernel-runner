@@ -1,20 +1,23 @@
 /**
- * @file opencl_syntax_for_cdt_parser.cl.h
+ * @file opencl_syntax_for_ide_parser.cl.h
  *
- * @brief Conditionally-compiled definitions which let CDT's parser better 
- * "accept" OpenCL sources without a specialized plugin.
+ * @brief Conditionally-compiled definitions which let some IDE parsers -
+ * currently JetBrains CLion and Eclipse CDT - better "accept" OpenCL
+ * sources without a specialized plugin.
  *
  * @note This is not a complete set of definitions.
  */
-#ifndef OPENCL_SYNTAX_FOR_CDT_PARSER_CL_H_
-#define OPENCL_SYNTAX_FOR_CDT_PARSER_CL_H_
+#ifndef OPENCL_SYNTAX_FOR_IDE_PARSER_CL_H_
+#define OPENCL_SYNTAX_FOR_IDE_PARSER_CL_H_
 
-#ifdef __CDT_PARSER__
+#if defined(__CDT_PARSER__) || defined (__JETBRAINS_IDE__)
 
 #define __kernel
 #define __global
 #define __private
 #define __constant const
+#define restrict __restrict
+
 
 struct short2 { short x, y; };
 struct ushort2 { unsigned short x, y; };
@@ -56,7 +59,7 @@ float asinf(float x);
 #define max(x,y) x
 #define min(x,y) x
 
-#define barrier(_x)
+#define barrier(_x) do {} while(0)
 
 #define __local
 #define __kernel
@@ -90,6 +93,6 @@ unsigned int atomic_cmpxchg (volatile __local unsigned int *p , unsigned int cmp
 
 float select(float on_false, float on_true, int selector);
 
-#endif // __CDT_PARSER__
+#endif // defined(__CDT_PARSER__) || defined (__JETBRAINS_IDE__)
 
-#endif // OPENCL_SYNTAX_FOR_CDT_PARSER_CL_H_
+#endif // OPENCL_SYNTAX_FOR_IDE_PARSER_CL_H_

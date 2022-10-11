@@ -32,8 +32,8 @@
 #define __local_ptr __local
 
 
-#ifdef __CDT_PARSER__
-#include "opencl_syntax_for_cdt_parser.cl.h"
+#if defined(__CDT_PARSER__) || defined (__JETBRAINS_IDE__)
+#include "opencl_syntax_for_ide_parser.cl.h"
 #endif
 
 typedef uchar  uint8_t;

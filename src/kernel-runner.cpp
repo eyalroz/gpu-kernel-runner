@@ -799,7 +799,10 @@ void generate_additional_scalar_arguments(execution_context_t& context)
 
 void perform_single_run(execution_context_t& context, run_index_t run_index)
 {
-    spdlog::info("Preparing for kernel run {} of {} (1-based).", run_index+1, context.options.num_runs);
+    if (spdlog::level_is_at_least(spdlog::level::debug)) {
+        auto num_digits = util::naive_num_digits(context.options.num_runs);
+        spdlog::info("Preparing for kernel run {1:>{0}} of {2:>{0}} (1-based).", num_digits, run_index + 1, context.options.num_runs);
+    }
     if (context.options.zero_output_buffers) {
         zero_output_buffers(context);
     }

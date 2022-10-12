@@ -233,6 +233,20 @@ inline std::string newline_if_missing(const std::string& str)
     return (str.end()[-1] != '\n') ? "\n" : "";
 }
 
+template <class I>
+int naive_num_digits(I number)
+{
+    int digits = (number < 0) ? 1 : 0;
+        // Need a digit for the minus sign
+
+    while (number >= 10) {
+        number /= 10;
+        digits++;
+    }
+    return digits + 1; // Note: 0 has a single digit
+}
+
+
 } // namespace util
 
 #endif // UTIL_MISCELLANY_HPP_

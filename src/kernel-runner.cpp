@@ -434,7 +434,13 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
     parsed_options.num_runs = parse_result["num-runs"].as<unsigned>();
 
     parsed_options.overwrite_allowed = parse_result["overwrite"].as<bool>();
-    spdlog::info("Existing output files will be overwritten.");
+    if (parsed_options.overwrite_allowed and
+        (parsed_options.write_ptx_to_file or
+         parsed_options.write_output_buffers_to_files or
+         parsed_options.write_compilation_log) )
+    {
+        spdlog::info("Existing output files will be overwritten.");
+    }
 
     parsed_options.buffer_base_paths.input = parse_result["input-buffer-dir"].as<string>();
     parsed_options.buffer_base_paths.output = parse_result["output-buffer-dir"].as<string>();

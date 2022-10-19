@@ -286,19 +286,18 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
 
     // Need to exit?
 
+    if (user_asked_for_help) {
+        print_help_and_exit(options);
+    }
+
     if (user_asked_for_list_of_kernels) {
         print_registered_kernel_keys();
         exit(EXIT_SUCCESS);
     }
 
-    if (not (got.key or got.function_name or got.source_file_path)) {
-        if (user_asked_for_help) {
-            print_help_and_exit(options);
-        }
-        else die(
-            "No kernel key was specified, nor enough information provided "
-            "to deduce the kernel key, source filename and kernel function name");
-    }
+    (got.key or got.function_name or got.source_file_path) or die(
+        "No kernel key was specified, nor enough information provided "
+        "to deduce the kernel key, source filename and kernel function name");
 
     // No need to exit (at least not until second parsing), let's
     // go ahead and collect the parsed data
@@ -413,16 +412,10 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
     parsed_options.kernel_sources_base_path = parse_result["kernel-sources-dir"].as<string>();
     parsed_options.kernel.source_file = maybe_prepend_base_dir(
            parsed_options.kernel_sources_base_path, source_file_path);
-    if (not got.source_file_path and not filesystem::exists(parsed_options.kernel.source_file)) {
-        spdlog::critical(
-            string("No source file specified, and inferred source file path does not exist") +
-            (user_asked_for_help ? ", so kernel-specific help cannot be provided" : "") + ": {}",
-            parsed_options.kernel.source_file.native());
-        if (user_asked_for_help) {
-            print_help_and_exit(options);
-        }
-        else die();
-    }
+    (got.source_file_path or filesystem::exists(parsed_options.kernel.source_file)) or die(
+        "No source file specified, and inferred source file path does not exist: {}",
+        parsed_options.kernel.source_file.native());
+
     spdlog::debug("Resolved kernel source file path: {}", parsed_options.kernel.source_file.native());
 
     // Note: Doing nothing if the kernel source file is missing. Since we must have gotten

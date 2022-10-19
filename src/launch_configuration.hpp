@@ -128,17 +128,17 @@ struct optional_launch_config_components_t {
         else { deduce_overall_dimensions(); }
     }
 
-    void set_block_dims(size_t x, size_t y, size_t z)
+    void set_block_dims(size_t x, size_t y = 1, size_t z = 1)
     {
         block_dimensions.emplace(std::array<size_t, 3>{x, y, z});
     }
 
-    void set_grid_dims(size_t x, size_t y, size_t z)
+    void set_grid_dims(size_t x, size_t y = 1, size_t z = 1)
     {
         grid_dimensions.emplace(std::array<size_t, 3>{x, y, z});
     }
 
-    void set_overall_dims(size_t x, size_t y, size_t z)
+    void set_overall_dims(size_t x, size_t y = 1, size_t z = 1)
     {
         overall_grid_dimensions.emplace(std::array<size_t, 3>{x, y, z});
     }

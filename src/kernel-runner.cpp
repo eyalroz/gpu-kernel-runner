@@ -800,8 +800,9 @@ void generate_additional_scalar_arguments(execution_context_t& context)
 void perform_single_run(execution_context_t& context, run_index_t run_index)
 {
     if (spdlog::level_is_at_least(spdlog::level::debug)) {
-        auto num_digits = util::naive_num_digits(context.options.num_runs);
-        spdlog::info("Preparing for kernel run {1:>{0}} of {2:>{0}} (1-based).", num_digits, run_index + 1, context.options.num_runs);
+        spdlog::debug("Preparing for kernel run {1:>{0}} of {2:>{0}} (1-based).",
+            util::naive_num_digits(context.options.num_runs),
+            run_index + 1, context.options.num_runs);
     }
     if (context.options.zero_output_buffers) {
         zero_output_buffers(context);
@@ -814,6 +815,13 @@ void perform_single_run(execution_context_t& context, run_index_t run_index)
     else {
         launch_time_and_sync_opencl_kernel(context, run_index);
     }
+    if (context.options.time_with_events) {
+        const auto& duration_nsec = (context.durations.end()-1)->count();
+        spdlog::info("Event-measured execution time of kernel {1} (run {2:>{0}} of {3:>{0}}): {4} nsec",
+            util::naive_num_digits(context.options.num_runs),
+            context.options.kernel.function_name, run_index+1, context.options.num_runs, duration_nsec);
+    }
+
 
     spdlog::debug("Kernel execution run complete.");
 }

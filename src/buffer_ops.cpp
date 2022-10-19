@@ -206,16 +206,18 @@ device_buffers_map create_device_side_buffers(
         } );
 }
 
+// Note: Why is cuda_stream not an optional-ref? Because
+// optional ref's are problematic in C++
 void zero_output_buffer(
-    execution_ecosystem_t     ecosystem,
-    const device_buffer_type  buffer,
-    optional<cuda::stream_t>  cuda_stream,
-    const cl::CommandQueue*   opencl_queue,
-    const std::string &       buffer_name)
+    execution_ecosystem_t      ecosystem,
+    const device_buffer_type   buffer,
+    optional<cuda::stream_t*>  cuda_stream,
+    const cl::CommandQueue*    opencl_queue,
+    const std::string &        buffer_name)
 {
     spdlog::trace("Zeroing GPU-side output buffer for '{}'", buffer_name);
     if (ecosystem == execution_ecosystem_t::cuda) {
-        cuda_stream->enqueue.memzero(buffer.cuda.data(), buffer.cuda.size());
+        cuda_stream.value()->enqueue.memzero(buffer.cuda.data(), buffer.cuda.size());
     } else {
         // OpenCL
         const constexpr unsigned char zero_pattern { 0 };
@@ -237,7 +239,7 @@ void zero_output_buffers(execution_context_t& context)
     spdlog::debug("Zeroing GPU-side output-only buffers.");
     for(const auto& buffer_name : output_only_buffers) {
         const auto& buffer = context.buffers.device_side.outputs.at(buffer_name);
-        zero_output_buffer(context.ecosystem, buffer, context.cuda.stream, &context.opencl.queue, buffer_name);
+        zero_output_buffer(context.ecosystem, buffer, &context.cuda.stream.value(), &context.opencl.queue, buffer_name);
     }
     gpu_sync(context);
     spdlog::debug("GPU-side Output-only buffers filled with zeros.");

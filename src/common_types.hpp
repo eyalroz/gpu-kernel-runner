@@ -49,7 +49,7 @@ constexpr const char* ecosystem_name(execution_ecosystem_t e)
 
 namespace kernel_parameters {
 
-enum : bool { is_required = true,  isnt_required = false };
+enum : bool { is_required = true, isnt_required = false };
 enum class kind_t { buffer, scalar };
 
 } // namespace kernel_parameters

@@ -56,13 +56,15 @@ Container union_(const Container& set_1, const Container& set_2)
     return result;
 }
 
-template <typename Container>
-Container intersection(const Container& lhs, const Container& rhs)
+template <typename LHSContainer, typename RHSContainer>
+LHSContainer intersection(const LHSContainer& lhs, const RHSContainer& rhs)
 {
     // TODO: This is an inefficient implementation; we could use a counting map for amortized-linear-time complexity
-    Container result;
+    LHSContainer result;
     std::copy_if(lhs.begin(), lhs.end(), std::inserter(result, result.end()),
-        [&rhs] (const auto& needle) { return rhs.find(needle) != rhs.end(); });
+        [&rhs] (const auto& needle) {
+        return std::find(std::cbegin(rhs), std::cend(rhs), needle) != rhs.end();
+    });
     return result;
 }
 

@@ -139,7 +139,7 @@ void resolve_buffer_filenames(execution_context_t& context)
     // if (context.kernel_adapter_.get() == nullptr) { throw std::runtime_error("Null kernel adapter pointer"); }
     const auto& ka = *(context.kernel_adapter_.get());
 
-    const auto& args = context.options.kernel_arguments;
+    const auto& args = context.kernel_arguments;
     auto params_with_args = util::keys(args);
     for(const auto& buffer : ka.buffer_details()) {
         const auto &name = buffer.name;
@@ -190,27 +190,19 @@ void resolve_buffer_filenames(execution_context_t& context)
 // adapter to this function.
 void parse_scalars(execution_context_t &context)
 {
-    const auto& args = context.options.kernel_arguments;
+    const auto& args = context.kernel_arguments;
     auto params_with_args = util::keys(args);
     spdlog::trace("Arguments we specified for parameters {}", params_with_args);
     auto& adapter = context.get_kernel_adapter();
     auto all_scalar_details = adapter.scalar_parameter_details();
     for(const auto& spd : all_scalar_details ) {
-        std::string param_name { spd.name };
-        if (not util::contains(params_with_args, param_name)) {
-            if (not spd.required) {
-                spdlog::trace("No argument provided for kernel parameter '{}'.", param_name);
-                continue;
-            }
-            die("Required scalar parameter '{}' for kernel '{}' was not specified.\n\n", param_name, adapter.key());
-        }
         // TODO: Consider not parsing anything at this stage, and just marshaling all the scalar arguments together.
-        auto& arg_value = args.at(param_name);
-        spdlog::trace("Parsing argument for scalar parameter '{}' from \"{}\"", param_name, arg_value);
-        context.scalar_input_arguments.raw[param_name] = arg_value;
-        context.scalar_input_arguments.typed[param_name] =
+        auto& arg_value = args.at(spd.name);
+        spdlog::trace("Parsing argument for scalar parameter '{}' from \"{}\"", spd.name, arg_value);
+        context.scalar_input_arguments.raw[spd.name] = arg_value;
+        context.scalar_input_arguments.typed[spd.name] =
             adapter.parse_cmdline_scalar_argument(spd, arg_value);
-        spdlog::trace("Successfully parsed argument for scalar parameter '{}'.", param_name);
+        spdlog::trace("Successfully parsed argument for scalar parameter '{}'.", spd.name);
     }
 }
 
@@ -604,13 +596,13 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
             auto equals_pos = kernel_arg_definition.find('=');
             switch(equals_pos) {
                 case string::npos:
-                    die("Kernel argument name \"{}\" specified without a value", kernel_arg_definition);
+                    die("Kernel argument name/alias \"{}\" specified without a value", kernel_arg_definition);
                 case 0:
-                    die("Kernel argument value specified with an empty name: \"{}\" ", kernel_arg_definition);
+                    die("Kernel argument value specified with an empty name/alias: \"{}\" ", kernel_arg_definition);
                 default:
                     auto param_name = kernel_arg_definition.substr(0, equals_pos);
                     auto value = kernel_arg_definition.substr(equals_pos+1);
-                    parsed_options.kernel_arguments.emplace(param_name, value);
+                    parsed_options.aliased_kernel_arguments.emplace(param_name, value);
             }
         }
     }
@@ -667,6 +659,32 @@ execution_context_t initialize_execution_context(parsed_cmdline_options_t parsed
     collect_include_paths(execution_context);
 
     return execution_context;
+}
+
+// The user may have specified arguments via aliases rather than their proper names
+void dealias_arguments(execution_context_t &context)
+{
+    auto param_details = context.kernel_adapter_->parameter_details();
+    auto key_mapper = [&param_details](const string& alias) -> string {
+        auto iter = std::find_if(std::cbegin(param_details), std::cend(param_details),
+            [&](const kernel_adapter::single_parameter_details& spd) {
+                bool result = spd.has_alias(alias);
+                return result;
+            } );
+        return (iter == param_details.cend()) ? alias : iter->name;
+    };
+
+    // This should work, but somehow doesn't:
+    // context.kernel_arguments = util::map_keys(context.options.aliased_kernel_arguments, key_mapper);
+    // ... so instead, let's inline that function:
+
+    context.kernel_arguments = util::transform<argument_values_t>(
+        context.options.aliased_kernel_arguments,
+        [&key_mapper](const auto& pair) -> std::pair<string, string> {
+            const auto& key = pair.first;
+            const auto& value = pair.second;
+            return {key_mapper(key), value};
+        } );
 }
 
 void finalize_kernel_function_name(execution_context_t& context)
@@ -959,6 +977,7 @@ int main(int argc, char** argv)
     execution_context_t context = initialize_execution_context(parsed_cmdline_options);
 
     if (not context.options.compile_only) {
+        dealias_arguments(context);
         parse_scalars(context);
         resolve_buffer_filenames(context);
     }

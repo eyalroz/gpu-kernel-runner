@@ -58,7 +58,11 @@ class kernel_adapter;
 struct execution_context_t {
     parsed_cmdline_options_t options;
     std::unique_ptr<kernel_adapter> kernel_adapter_;
-      // The adapter also holds the parsed kernel-specific command-line options
+    argument_values_t kernel_arguments;
+        // The result of mapping the argument name aliases to the actual, canonical
+        // argument names
+
+    // The adapter also holds the parsed kernel-specific command-line options
     struct {
         struct {
             host_buffers_t inputs, outputs; // , expected;

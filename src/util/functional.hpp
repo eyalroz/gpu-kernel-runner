@@ -37,6 +37,20 @@ auto map_values(const Map<Key,Value>& map, const F& value_mapper)
         } );
 }
 
+template<template<class, class> class Map, typename Key, typename Value , typename F>
+auto map_keys(const Map<Key,Value>& map, const F& key_mapper)
+{
+    using mapped_key_type = decltype(key_mapper(std::declval<Key>()));
+    static_assert(std::is_same<mapped_key_type, std::string>::value, "not the same");
+    return transform<Map<mapped_key_type, Value>>(
+        map,
+        [&key_mapper](const auto& pair) -> std::pair<mapped_key_type, Value> {
+            const auto& key = pair.first;
+            const auto& value = pair.second;
+            return {key_mapper(key), value};
+        } );
+}
+
 template<typename Container, typename F>
 Container filter(const Container& container, F predicate)
 {

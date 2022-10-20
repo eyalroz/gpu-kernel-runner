@@ -94,12 +94,37 @@ public: // constructors & destructor
 
     struct single_parameter_details {
         const char* name;
+        std::vector<std::string> aliases_;
         kernel_parameters::kind_t kind;
         parser_type parser;
         size_calculator_type size_calculator;
         scalar_pusher_type pusher;
         parameter_direction_t direction; // always input for scalars
         bool required;
+
+        single_parameter_details aliases(std::initializer_list<const char*> extra_aliases) const
+        {
+            auto result = *this;
+            std::copy(std::cbegin(extra_aliases), std::cend(extra_aliases), std::back_inserter(result.aliases_));
+            return result;
+        }
+
+        single_parameter_details alias(const char* extra_alias) const
+        {
+            auto result = *this;
+            result.aliases_.emplace_back(extra_alias);
+            return result;
+        }
+
+        single_parameter_details alias(const std::string& extra_alias) const
+        {
+            return alias(extra_alias.c_str());
+        }
+
+        bool has_alias(const std::string& alias) const
+        {
+            return util::find(aliases_,alias) != aliases_.cend();
+        }
     };
 
     struct single_preprocessor_definition_details {
@@ -218,24 +243,30 @@ public:
         else return deduce_launch_config(context);
     }
 
+    static std::initializer_list<std::string> no_aliases() { return {}; }
+
 protected:
     // Convenience functions for construction parameter details within an
     // implementation of the @ref parameter_details method
 
     template <typename T>
-    static single_parameter_details scalar_details(const char* name, bool required = is_required)
+    static single_parameter_details scalar_details(
+        const char*                        name,
+        bool                               required = is_required,
+        std::initializer_list<std::string> name_aliases = no_aliases())
     {
-        return single_parameter_details {name, scalar, parser<T>, no_size_calc, pusher<T>, input, required};
+        return single_parameter_details {name, name_aliases, scalar, parser<T>, no_size_calc, pusher<T>, input, required};
     }
 
     static single_parameter_details buffer_details(
         const char*            name,
         parameter_direction_t  direction,
         size_calculator_type   size_calculator = no_size_calc,
-        bool                   required = is_required)
+        bool                   required = is_required,
+        std::initializer_list<std::string> name_aliases = no_aliases())
     {
         return single_parameter_details {
-            name, buffer, no_parser, size_calculator,
+            name, name_aliases, buffer, no_parser, size_calculator,
             no_pusher, direction, required};
     }
 }; // kernel_adapter

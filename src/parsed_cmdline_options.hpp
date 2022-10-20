@@ -41,7 +41,7 @@ struct parsed_cmdline_options_t {
      * "-D FOO=bar".
      */
     preprocessor_value_definitions_t preprocessor_value_definitions;
-    argument_values_t kernel_arguments;
+    argument_values_t aliased_kernel_arguments;
     include_paths_t include_dir_paths;
     include_paths_t preinclude_files;
     bool zero_output_buffers;

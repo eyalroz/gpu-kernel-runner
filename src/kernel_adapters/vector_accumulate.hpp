@@ -16,9 +16,9 @@ public:
     const parameter_details_type& parameter_details() const override
     {
         static const parameter_details_type pd = {
-            buffer_details("A", output),
+            buffer_details("A", inout).alias("accumulator"),
             buffer_details("B", input),
-            scalar_details<length_type>("length"),
+            scalar_details<length_type>("length").aliases({"size", "num_elements", "nelements"}),
         };
         return pd;
     }
@@ -63,7 +63,7 @@ public:
     optional<preprocessor_definition_details_type> preprocessor_definition_details() const override
     {
         static const preprocessor_definition_details_type preprocessor_definitions = {
-            { "A_LITTLE_EXTRA", not is_required }
+            { "A_LITTLE_EXTRA", isnt_required },
         };
         return optional<preprocessor_definition_details_type>{preprocessor_definitions};
     }

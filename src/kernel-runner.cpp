@@ -153,27 +153,33 @@ void resolve_buffer_filenames(execution_context_t& context)
         if (is_input(buffer)) {
             const auto default_filename = name;
             auto filename = got_arg ? args.at(name) : default_filename;
-            spdlog::trace("Filename for input buffer '{}': {}", name, filename);
+            spdlog::trace("Input filename for argument '{}': {}", name, filename);
             context.buffers.filenames.inputs[name] = filename;
         }
         if (context.options.write_output_buffers_to_files and is_output(buffer)) {
             const auto default_filename = fmt::format("{}.out", name);
-            auto filename = is_input(buffer) ?
-                fmt::format("{}.out", context.buffers.filenames.inputs[name]) :
-                (got_arg ? args.at(name) : default_filename);
+            auto filename = [&]() {
+                if (not is_input(buffer)) {
+                    return got_arg ? args.at(name) : default_filename;
+                }
+                auto filename_path = filesystem::path(context.buffers.filenames.inputs[name]);
+                auto basename = filename_path.filename();
+                return fmt::format("{}.out", basename.native());
+            }();
             context.buffers.filenames.outputs[name] = filename;
+
+            // Note that if the output file gets created while the kernel runs, we might miss this fact
+            // when trying to write to it.
+            spdlog::trace("Output filename for argument '{}': {}", name, filename);
 
             // TODO: Move this verification elsewhere
             if (filesystem::exists(filename)) {
                 if (not context.options.overwrite_allowed and not context.options.compile_only) {
-                    die("Writing the contents of output buffer {} would overwrite an existing file: ",
+                    die("Writing the contents of output buffer {} would overwrite an existing file: {}",
                         name, filename);
                 }
                 spdlog::info("Output buffer '{}' will overwrite {}", name, filename);
             }
-            // Note that if the output file gets created while the kernel runs, we might miss this fact
-            // when trying to write to it.
-            spdlog::trace("Filename for output buffer '{}': {}", name, filename);
         }
     }
 }

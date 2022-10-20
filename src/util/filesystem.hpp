@@ -28,34 +28,6 @@ inline filesystem::path maybe_prepend_base_dir(
     return can_prepend_buffer_dir ? (prefix / suffix_or_absolute_path) : suffix_or_absolute_path;
 }
 
-
-// We could theoretically support C++11 with boost filesystem
-// #include <boost/filesystem.hpp> // Can't use std::filesystem before C++17
-
-/*
-inline void create_sized_file(filesystem::path path, size_t size)
-{
-    if (filesystem::exists(path)) {
-        throw std::invalid_argument("A file already exists at " + path.string());
-    }
-    std::ofstream ofs(path, std::ios::binary | std::ios::out);
-    if (size == 0) { return; }
-    ofs.seekp(size - 1);
-    ofs.write("", 1);
-}
-
-// Note: This will work for an existing file, but will not "clip" its size to
-// the desired one
-inline void ensure_sized_file_existence(filesystem::path path, size_t size)
-{
-    if (filesystem::exists(path)) {
-        filesystem::resize_file(path, size);
-        return;
-    }
-    create_sized_file(path, size);
-}
-*/
-
 //namespace std {
 //
 //template<typename OStream>
@@ -78,7 +50,7 @@ inline bool has_permission(const filesystem::path& path, path_check_kind permiss
         W_OK;
     return (access(path.native().c_str(), perm_flags) == have_access);
 #else
-    #ifdef WIN32
+#ifdef WIN32
     if (permissions_kind == for_recrusion) { return; }
     static constexpr int have_access{ 0 };
     auto perm_flags = (permissions_kind == for_reading) ? 2 : 4;

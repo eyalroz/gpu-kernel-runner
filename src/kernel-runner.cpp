@@ -143,6 +143,9 @@ void resolve_buffer_filenames(execution_context_t& context)
     auto params_with_args = util::keys(args);
     for(const auto& buffer : ka.buffer_details()) {
         const auto &name = buffer.name;
+        if (name == nullptr or *name == '\0') { 
+            die("Invalid argument name: {}", name); 
+        }
         auto got_arg = util::contains(params_with_args, name);
         if (not got_arg) {
             spdlog::debug("Filename for buffer '{}' not specified; using fallback names.", name);

@@ -72,13 +72,12 @@ std::vector<byte_type> read_file_as_null_terminated_string(const filesystem::pat
 }
 
 void write_data_to_file(
-    std::string kind,
-    std::string name,
+    std::string         data_description,
     const_memory_region data,
-    filesystem::path destination,
-    bool allow_overwrite)
+    filesystem::path    destination,
+    bool                overwrite_allowed)
 {
-    verify_path(destination, for_writing, allow_overwrite);
+    verify_path(destination, for_writing, overwrite_allowed);
     auto file = std::fstream(destination, std::ios::out | std::ios::binary);
     try {
         file.exceptions(std::ios::failbit | std::ios::badbit);
@@ -89,18 +88,8 @@ void write_data_to_file(
             throw ios_failure;
         }
         throw std::system_error(errno, std::generic_category(),
-            "trying to write " + kind + " '" + name + "' to file " + destination.native());
+            "trying to write " + data_description + " to file " + destination.native());
     }
-}
-
-void write_buffer_to_file(
-    std::string buffer_name,
-    const_memory_region buffer,
-    filesystem::path destination,
-    bool overwrite_allowed)
-{
-    write_data_to_file("output buffer", buffer_name, buffer,
-        destination, overwrite_allowed);
 }
 
 } // namespace util

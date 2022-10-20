@@ -743,18 +743,6 @@ bool build_kernel(execution_context_t& context)
     return build_succeeded;
 }
 
-inline void write_data_to_file(
-    std::string kind,
-    std::string name,
-    const_memory_region data,
-    filesystem::path destination,
-    bool overwrite_allowed,
-    spdlog::level::level_enum level)
-{
-    spdlog::log(level, "Writing {} '{}' to file {}", kind, name, destination.c_str());
-    util::write_data_to_file(kind, name, data, destination, overwrite_allowed);
-}
-
 void validate_scalars(execution_context_t& context)
 {
     spdlog::debug("Validating scalar argument values");
@@ -886,7 +874,7 @@ void handle_compilation_log(bool compilation_succeeded, execution_context_t& con
             as_region(log),
             context.options.compilation_log_file,
             context.options.overwrite_allowed,
-            spdlog::level::info);
+            log_file_write_at_info_level);
     }
 }
 
@@ -899,7 +887,7 @@ void maybe_write_intermediate_representation(execution_context_t& context)
         as_region(ptx),
         context.options.ptx_output_file,
         context.options.overwrite_allowed,
-        spdlog::level::info);
+        log_file_write_at_info_level);
 }
 
 void print_execution_durations(std::ostream& os, const durations_t& execution_durations)

@@ -70,3 +70,20 @@ void create_device_side_buffers(execution_context_t& context);
 void create_host_side_output_buffers(execution_context_t& context);
 
 void reset_working_copy_of_inout_buffers(execution_context_t& context);
+
+void write_buffers_to_files(execution_context_t& context);
+
+enum : bool {
+    log_file_write_at_info_level = true,
+    log_file_write_at_debug_level = false,
+    dont_log_file_write_at_info_level = false,
+};
+
+void write_data_to_file(
+    std::string          kind,
+    std::string          name,
+    const_memory_region  data,
+    filesystem::path     destination,
+    bool                 overwrite_allowed,
+    bool                 log_at_info_level);
+

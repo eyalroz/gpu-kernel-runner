@@ -46,20 +46,6 @@ void read_input_buffers_from_files(execution_context_t& context)
         context.options.buffer_base_paths.input);
 }
 
-void write_buffers_to_files(execution_context_t& context)
-{
-    spdlog::info("Writing output buffers to files.");
-    // Unfortunately, decent ranged-for iteration on maps is only possible with C++17
-    for(const auto& pair : context.buffers.host_side.outputs) {
-        const auto& buffer_name = pair.first;
-        const auto& buffer = pair.second;
-        auto write_destination = maybe_prepend_base_dir(
-               context.options.buffer_base_paths.output,
-               context.buffers.filenames.outputs[buffer_name]);
-        util::write_buffer_to_file(buffer_name, as_region(buffer), write_destination, context.options.overwrite_allowed);
-    }
-}
-
 void copy_buffer_to_device(
     const execution_context_t& context,
     const std::string&         buffer_name,
@@ -328,4 +314,34 @@ void reset_working_copy_of_inout_buffers(execution_context_t& context)
             work_copy, pristine_copy);
     }
     gpu_sync(context);
+}
+
+void write_data_to_file(
+    std::string          kind,
+    std::string          name,
+    const_memory_region  data,
+    filesystem::path     destination,
+    bool                 overwrite_allowed,
+    bool                 log_at_info_level)
+{
+    auto level = log_at_info_level ? spdlog::level::info : spdlog::level::debug;
+    spdlog::log(level, "Writing {} '{}' to file {}", kind, name, destination.c_str());
+    util::write_data_to_file(kind + " '" + name + "'", data, destination, overwrite_allowed);
+}
+
+void write_buffers_to_files(execution_context_t& context)
+{
+    spdlog::info("Writing output buffers to files.");
+    // Unfortunately, decent ranged-for iteration on maps is only possible with C++17
+    for(const auto& pair : context.buffers.host_side.outputs) {
+        const auto& buffer_name = pair.first;
+        const auto& buffer = pair.second;
+        auto write_destination = maybe_prepend_base_dir(
+            context.options.buffer_base_paths.output,
+            context.buffers.filenames.outputs[buffer_name]);
+        bool dont_log_at_info_level { false };
+        write_data_to_file(
+            "output buffer", buffer_name, as_region(buffer), write_destination,
+            context.options.overwrite_allowed, dont_log_at_info_level);
+    }
 }

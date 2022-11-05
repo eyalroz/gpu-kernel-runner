@@ -174,7 +174,7 @@ public:
      * @return  Either the set of affecting preprocessor definition terms, or the empty optional value in
      * case that set is not known to the adapter
      */
-    virtual optional<preprocessor_definition_details_type> preprocessor_definition_details() const { return nullopt; }
+    virtual preprocessor_definition_details_type preprocessor_definition_details() const { return {}; }
 
 protected:
     template <typename Scalar>

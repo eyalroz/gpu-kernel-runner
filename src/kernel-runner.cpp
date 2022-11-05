@@ -85,10 +85,8 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
 
 void ensure_necessary_terms_were_defined(const execution_context_t& context)
 {
-    auto pdd = context.get_kernel_adapter().preprocessor_definition_details();
-    if (not pdd) { return; }
     auto required_terms = util::transform_if<std::unordered_set<string>>(
-        pdd.value(),
+        context.get_kernel_adapter().preprocessor_definition_details(),
         [](const auto& sad) { return sad.required; },
         [](const auto& sad) { return string{sad.name};});
     auto defined_valued_terms = util::keys(context.preprocessor_definitions.finalized.valued);

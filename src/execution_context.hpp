@@ -134,11 +134,9 @@ struct execution_context_t {
     template <typename T>
     bool has_defined_value(const std::string& str, bool user_specified = false) const
     {
-        return safe_get_defined_value<T>(
-            user_specified ?
-            preprocessor_definitions.finalized.valued :
-            options.preprocessor_value_definitions,
-            preprocessor_definitions.finalized.valued, str);
+        return (bool) safe_get_defined_value<T>(user_specified ?
+            preprocessor_definitions.finalized.valued : options.preprocessor_value_definitions,
+            str);
     }
 
     const ::kernel_adapter& get_kernel_adapter() const { return *kernel_adapter_.get(); }

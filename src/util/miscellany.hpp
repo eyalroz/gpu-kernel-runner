@@ -19,83 +19,6 @@ inline std::string to_lowercase(std::string str) {
     return str;
 }
 
-// This is a bit ugly, but we don't have ranges
-template <typename Map>
-std::unordered_set<typename Map::key_type>
-keys(const Map& map)
-{
-    return util::transform<std::unordered_set<typename Map::key_type>>(
-        map, [](const auto& pair){ return pair.first;} );
-}
-
-template <typename Map>
-std::unordered_set<typename Map::key_type>
-keys(Map&& map)
-{
-    const Map copy { map };
-    return keys(copy);
-}
-
-// This is a bit ugly, but we don't have ranges
-template <typename Map>
-auto values(const Map& map)
-{
-    return util::transform<std::unordered_set<typename Map::value_type>>(map,
-        [](const typename Map::value_type &pair){return pair.second;} );
-}
-
-template <typename Container>
-Container union_(const Container& set_1, const Container& set_2)
-{
-    Container result;
-    set_union(
-        std::cbegin(set_1), std::cend(set_1),
-        std::cbegin(set_2), std::cend(set_2),
-        std::inserter(result, std::begin(result))
-    );
-    return result;
-}
-
-template <typename LHSContainer, typename RHSContainer>
-LHSContainer intersection(const LHSContainer& lhs, const RHSContainer& rhs)
-{
-    // TODO: This is an inefficient implementation; we could use a counting map for amortized-linear-time complexity
-    LHSContainer result;
-    std::copy_if(lhs.begin(), lhs.end(), std::inserter(result, result.end()),
-        [&rhs] (const auto& needle) {
-        return std::find(std::cbegin(rhs), std::cend(rhs), needle) != rhs.end();
-    });
-    return result;
-}
-
-template <typename Container>
-Container difference(const Container& lhs, const Container& rhs)
-{
-    // TODO: This is an inefficient implementation; we could use a counting map for amortized-linear-time complexity
-    Container result;
-    std::copy_if(lhs.begin(), lhs.end(), std::inserter(result, result.end()),
-        [&rhs] (const auto& needle) { return rhs.find(needle) == rhs.end(); });
-    return result;
-}
-
-template<class InputIt, typename Delimiter>
-constexpr std::ostream& implode(InputIt start, InputIt end, std::ostream& os, const Delimiter& delimiter)
-{
-    for(auto it = start; it < end; it++) {
-        os << *it;
-        if ((it+1) < end) {
-            os << delimiter;
-        }
-    }
-    return os;
-}
-
-template<class Container, typename Delimiter>
-constexpr std::ostream& implode(const Container& container, std::ostream& os, const Delimiter& delimiter)
-{
-    return implode(std::begin(container), std::end(container), os, delimiter);
-}
-
 namespace detail {
 
 template <typename T, typename Key, typename = void>
@@ -135,6 +58,98 @@ template <typename Container, typename Key>
 bool contains(const Container& container, const Key& key)
 {
     return find(container, key) != std::cend(container);
+}
+
+
+// This is a bit ugly, but we don't have ranges
+template <typename Map>
+std::unordered_set<typename Map::key_type>
+keys(const Map& map)
+{
+    return util::transform<std::unordered_set<typename Map::key_type>>(
+        map, [](const auto& pair){ return pair.first;} );
+}
+
+template <typename Map>
+std::unordered_set<typename Map::key_type>
+keys(Map&& map)
+{
+    const Map copy { map };
+    return keys(copy);
+}
+
+// This is a bit ugly, but we don't have ranges
+template <typename Map>
+auto values(const Map& map)
+{
+    return util::transform<std::unordered_set<typename Map::value_type>>(map,
+        [](const typename Map::value_type &pair){return pair.second;} );
+}
+
+template <typename Container>
+Container union_(const Container& set_1, const Container& set_2)
+{
+    Container result;
+    set_union(
+        std::cbegin(set_1), std::cend(set_1),
+        std::cbegin(set_2), std::cend(set_2),
+        std::inserter(result, std::begin(result))
+    );
+    return result;
+}
+
+template <typename Map>
+Map incremental_map_union(const Map& map_1, const Map& map_2)
+{
+    Map result;
+
+    util::copy(map_1, result);
+    util::copy_if(map_2, result,
+      [&](const auto& kv_pair) {
+          const auto& key = kv_pair.first;
+          // set_1 has element with the same key
+          return not contains(map_1, key);
+      });
+    return result;
+}
+template <typename LHSContainer, typename RHSContainer>
+LHSContainer intersection(const LHSContainer& lhs, const RHSContainer& rhs)
+{
+    // TODO: This is an inefficient implementation; we could use a counting map for amortized-linear-time complexity
+    LHSContainer result;
+    std::copy_if(lhs.begin(), lhs.end(), std::inserter(result, result.end()),
+        [&rhs] (const auto& needle) {
+        return std::find(std::cbegin(rhs), std::cend(rhs), needle) != rhs.end();
+    });
+    return result;
+}
+
+template <typename Container>
+Container difference(const Container& lhs, const Container& rhs)
+{
+    // TODO: This is an inefficient implementation; we could use a counting map for amortized-linear-time complexity
+    Container result;
+    std::copy_if(lhs.begin(), lhs.end(), std::inserter(result, result.end()),
+        [&rhs] (const auto& needle) { return rhs.find(needle) == rhs.end(); });
+    return result;
+}
+
+template<class InputIt, typename Delimiter>
+constexpr std::ostream& implode(InputIt start, InputIt end, std::ostream& os, const Delimiter& delimiter)
+{
+    for(auto it = start; it < end; it++) {
+        os << *it;
+        if ((it+1) < end) {
+            os << delimiter;
+        }
+    }
+    return os;
+}
+
+template<class Container, typename Delimiter>
+constexpr std::ostream& implode(const Container& container, std::ostream& os, const Delimiter& delimiter)
+{
+    return implode(std::begin(container), std::end(container), os, delimiter);
 }
 
 inline optional<std::string> get_env ( const char* key )

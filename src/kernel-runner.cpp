@@ -958,11 +958,13 @@ void generate_additional_preprocessor_defines(execution_context_t& context)
 void finalize_preprocessor_definitions(execution_context_t& context)
 {
     context.preprocessor_definitions.finalized.valueless =
-        util::union_(context.options.preprocessor_definitions,
-                     context.preprocessor_definitions.generated.valueless);
+        util::union_(
+            context.options.preprocessor_definitions.valueless,
+            context.preprocessor_definitions.generated.valueless);
     context.preprocessor_definitions.finalized.valued =
-        util::union_(context.options.preprocessor_value_definitions,
-                     context.preprocessor_definitions.generated.valued);
+        util::incremental_map_union(
+            context.options.preprocessor_definitions.valued,
+            context.preprocessor_definitions.generated.valued);
 }
 
 int main(int argc, char** argv)

@@ -144,7 +144,9 @@ struct optional_launch_config_components_t {
     }
 
     void set_block_dims(dim3 dims)   { set_block_dims  (dims.x, dims.y, dims.z); }
+    void set_block_dims(int3 dims)   { set_block_dims  (dims.x, dims.y, dims.z); }
     void set_grid_dims(dim3 dims)    { set_grid_dims   (dims.x, dims.y, dims.z); }
+    void set_grid_dims(int3 dims)    { set_grid_dims   (dims.x, dims.y, dims.z); }
     void set_overall_dims(dim3 dims) { set_overall_dims(dims.x, dims.y, dims.z); }
 
     operator cuda::launch_configuration_t() const noexcept(false) {

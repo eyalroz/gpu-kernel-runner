@@ -374,6 +374,16 @@ inline marshalled_arguments_type kernel_adapter::marshal_kernel_arguments(const 
 inline bool is_input (kernel_adapter::single_parameter_details spd) { return is_input(spd.direction);  }
 inline bool is_output(kernel_adapter::single_parameter_details spd) { return is_output(spd.direction); }
 
+inline std::size_t apply_size_calc(const size_calculator_type& calc, const execution_context_t& context)
+{
+    return calc(
+        context.buffers.host_side.inputs,
+        context.scalar_input_arguments.typed,
+        context.preprocessor_definitions.finalized.valueless,
+        context.preprocessor_definitions.finalized.valued,
+        context.options.forced_launch_config_components);
+}
+
 // Boilerplate macros for subclasses of kernel_adapter.
 // Each of these needs to be invoked once in any subclass
 // definition

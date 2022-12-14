@@ -194,6 +194,7 @@ void parse_scalars(execution_context_t &context)
     auto& adapter = context.get_kernel_adapter();
     auto all_scalar_details = adapter.scalar_parameter_details();
     for(const auto& spd : all_scalar_details ) {
+        util::contains(args, spd.name) or die("Missing scalar argument {}", spd.name);
         // TODO: Consider not parsing anything at this stage, and just marshaling all the scalar arguments together.
         auto& arg_value = args.at(spd.name);
         spdlog::trace("Parsing argument for scalar parameter '{}' from \"{}\"", spd.name, arg_value);

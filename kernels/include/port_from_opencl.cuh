@@ -16,6 +16,10 @@
 
 #ifndef __OPENCL_VERSION__
 
+#if __cplusplus < 2011O3L
+#error "This file requires compiling using C++11 or later"
+#endif
+
 #include "cuda_syntax_for_ide_parser.cuh"
 
 #include <cstdint>

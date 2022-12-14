@@ -56,11 +56,11 @@ device_buffers_map create_device_side_buffers(
     const host_buffers_t&          host_side_buffers);
 
 void zero_output_buffer(
-    execution_ecosystem_t     ecosystem,
-    const device_buffer_type  buffer,
-    optional<cuda::stream_t>  cuda_stream,
-    const cl::CommandQueue*   opencl_queue,
-    const std::string &       buffer_name);
+    execution_ecosystem_t            ecosystem,
+    const device_buffer_type         buffer,
+    const optional<cuda::stream_t*>  cuda_stream,
+    const cl::CommandQueue*          opencl_queue,
+    const std::string&               buffer_name);
 
 void zero_output_buffers(execution_context_t& context);
 

@@ -49,6 +49,7 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
         ("cuda,CUDA", "Use CUDA", cxxopts::value<bool>())
         ("p,platform,platform-id", "Use the OpenCL platform with the specified index", cxxopts::value<unsigned>())
         ("a,arg,argument", "Set one of the kernel's argument, keyed by name, with a serialized value for a scalar (e.g. foo=123) or a path to the contents of a buffer (e.g. bar=/path/to/data.bin)", cxxopts::value<std::vector<string>>())
+        ("A,no-implicit-compilation-options,no-implicit-compile-options,no-default-compilation-options,no-default-compile-options", "Avoid setting any compilation options not explicitly requested by the user", cxxopts::value<bool>()->default_value("false"))
         ("output-buffer-size,output-size", "Set one of the output buffers' sizes, keyed by name, in bytes (e.g. myresult=1048576)", cxxopts::value<std::vector<string>>())
         ("d,dev,device", "Device index", cxxopts::value<int>()->default_value("0"))
         ("D,preprocessor-definition,define", "Set a preprocessor definition for NVRTC (can be used repeatedly; specify either DEFINITION or DEFINITION=VALUE)", cxxopts::value<std::vector<string>>())
@@ -60,7 +61,7 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
         ("write-compilation-log", "Path of a file into which to write the compilation log (regardless of whether it's printed to standard output)", cxxopts::value<string>()->default_value(""))
         ("print-execution-durations,print-durations,print-time,print-times,execution-durations,report-duration,report-durations", "Print the execution duration, in nanoseconds, of each kernel invocation to the standard output", cxxopts::value<bool>()->default_value("false"))
         ("write-execution-durations,write-durations,write-time,write-times", "Path of a file into which to write the execution durations, in nanoseconds, for each kernel invocation (regardless of whether they're printed to standard output)", cxxopts::value<string>()->default_value(""))
-        ("generate-line-info,line-info", "Add source line information to the intermediate representation code (PTX)", cxxopts::value<bool>()->default_value("true"))
+        ("generate-line-info,line-info", "Add source line information to the intermediate representation code (PTX)", cxxopts::value<bool>())
         ("b,local-work-size,block-dims,blockdim,block,block-dimensions", "Set grid block dimensions in threads  (OpenCL: local work size); a comma-separated list", cxxopts::value<std::vector<unsigned>>() )
         ("g,grid-dims,griddim,grid,grid-dimensions", "Set grid dimensions in blocks; a comma-separated list", cxxopts::value<std::vector<unsigned>>() )
         ("o,overall-work-size,overall-dimensions,overall-dims,overall,overall-grid-dimensions", "Set grid dimensions in threads (OpenCL: global work size); a comma-separated list", cxxopts::value<std::vector<unsigned>>() )
@@ -101,6 +102,9 @@ void collect_include_paths(execution_context_t& context)
 {
     // Note the relative order in which we place the includes; it is non-trivial.
     context.finalized_include_dir_paths = context.options.include_dir_paths;
+    if (not context.options.set_default_compilation_options) {
+        return;
+    }
 
     auto source_file_include_dir = context.options.kernel.source_file.parent_path();
     if (source_file_include_dir.empty()) {
@@ -438,7 +442,16 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
     parsed_options.buffer_base_paths.input = parse_result["input-buffer-dir"].as<string>();
     parsed_options.buffer_base_paths.output = parse_result["output-buffer-dir"].as<string>();
     parsed_options.write_ptx_to_file = parse_result["write-ptx"].as<bool>();
-    parsed_options.generate_line_info = parse_result["generate-line-info"].as<bool>();
+    parsed_options.set_default_compilation_options = not parse_result["no-default-compile-options"].as<bool>();
+    parsed_options.generate_line_info =
+        (contains(parse_result, "generate-line-info")) ?
+        parse_result["no-default-compile-options"].as<bool>() :
+        parsed_options.set_default_compilation_options;
+        // If we were explicitly instructed about this, follow the instruction. Otherwise, we would _like_
+        // to get line info, and do so by default, but the user may also want us to avoid setting
+        // _any_ unnecessary compilation options by default, and we need to respect that too.
+        // We don't have this logic elsewhere, since other compilation flags don't default to true...
+
     if (parsed_options.write_ptx_to_file) {
         if (contains(parse_result, "ptx-output-file")) {
             parsed_options.ptx_output_file = parse_result["ptx-output-file"].as<string>();
@@ -507,6 +520,10 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
             die("Unsupported language standard for kernel compilation: {}", language_standard);
         }
     }
+    else {
+        parsed_options.language_standard = nullopt;
+    }
+
     if (parse_result.count("append-compilation-option") > 0) {
         parsed_options.extra_compilation_options = parse_result["append-compilation-option"].as<std::vector<string>>();
     }
@@ -721,6 +738,7 @@ bool build_kernel(execution_context_t& context)
             source_file.c_str(),
             kernel_source,
             context.options.kernel.function_name.c_str(),
+            context.options.set_default_compilation_options,
             context.options.compile_in_debug_mode,
             context.options.generate_line_info,
             context.options.language_standard,
@@ -738,6 +756,10 @@ bool build_kernel(execution_context_t& context)
         }
     }
     else {
+        // Note: We don't pass context.options.set_default_compilation_parameters,
+        // because at this point we've already applied this setting if necessary,
+        // so that this function will not issue compilation options not explicitly
+        // requested
         auto result = build_opencl_kernel(
             context.opencl.context,
             context.opencl.device,

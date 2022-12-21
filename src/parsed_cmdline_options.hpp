@@ -52,13 +52,14 @@ struct parsed_cmdline_options_t {
     bool write_compilation_log;
     bool print_execution_durations;
     bool generate_line_info;
+    bool set_default_compilation_options; // target GPU, language standard etc.
     bool compile_only;
 //    bool compare_outputs_against_expected;
     bool compile_in_debug_mode;
     filesystem::path ptx_output_file;
     filesystem::path compilation_log_file;
     filesystem::path execution_durations_file;
-    std::string language_standard; // At the moment, possible values are: empty, "c++11","c++14", "c++17"
+    optional<std::string> language_standard; // At the moment, possible (engaged) values are: "c++11","c++14", "c++17"
     bool time_with_events;
     optional_launch_config_components_t forced_launch_config_components;
 };

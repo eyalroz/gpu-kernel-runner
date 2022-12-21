@@ -102,9 +102,10 @@ compilation_result_t build_cuda_kernel(
     const char* kernel_source_file_path,
     const char* kernel_source,
     const char* kernel_function_name,
+    bool set_default_compilation_options,
     bool debug_mode,
     bool generate_line_info,
-    const std::string& language_standard,
+    optional<const std::string> language_standard,
     const std::vector<std::string>& include_dir_paths,
     const std::vector<std::string>& preinclude_files,
     const preprocessor_definitions_t& preprocessor_definitions,
@@ -117,16 +118,21 @@ compilation_result_t build_cuda_kernel(
         .set_headers(get_standard_header_substitutes());
 
     cuda::rtc::compilation_options_t opts;
-    opts.set_language_dialect(language_standard);
+
+    if (language_standard) {
+        opts.set_language_dialect(language_standard.value());
+    }
     opts.debug = debug_mode;
     opts.generate_line_info = generate_line_info;
+    if (set_default_compilation_options) {
+        opts.default_execution_space_is_device = true;
+        opts.set_target(context.device());
+    }
     // TODO: Note the copying of strings and maps here; can we move all of these instead?
     opts.additional_include_paths = include_dir_paths;
     opts.preinclude_files = preinclude_files;
     opts.no_value_defines = preprocessor_definitions;
     opts.valued_defines = preprocessor_value_definitions;
-    opts.default_execution_space_is_device = true;
-    opts.set_target(context.device());
     opts.extra_options = extra_compilation_options;
 
     spdlog::debug("Kernel compilation generated-command-line arguments: \"{}\"", render(opts));

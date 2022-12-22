@@ -73,7 +73,8 @@ struct execution_context_t {
                 // and a "working" copy the outputs map
         } device_side;
         struct {
-            string_map inputs, outputs; // , expected;
+            maybe_string_map inputs;
+            string_map outputs; // , expected;
         } filenames;
     } buffers;
         // Note: in-out buffers will appear both in the input and the output buffer maps;

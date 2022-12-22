@@ -102,6 +102,7 @@ public: // constructors & destructor
         parameter_direction_t direction; // always input for scalars
         bool required;
 
+        const std::vector<std::string>& get_aliases() const noexcept { return aliases_; }
         single_parameter_details aliases(std::initializer_list<const char*> extra_aliases) const
         {
             auto result = *this;

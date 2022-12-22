@@ -10,7 +10,7 @@ using std::string;
 
 host_buffers_t read_input_buffers_from_files(
     const parameter_name_set& buffer_names,
-    const string_map&         filenames,
+    const maybe_string_map&   filenames,
     const filesystem::path&   buffer_directory)
 {
     spdlog::debug("Reading input buffers from files.");
@@ -18,7 +18,9 @@ host_buffers_t read_input_buffers_from_files(
     host_buffers_t result;
     std::unordered_map<string, filesystem::path> buffer_paths;
     for(const auto& name : buffer_names) {
-        auto path = maybe_prepend_base_dir(buffer_directory, filenames.at(name));
+        // Note: Even though the map is of optional<string>, we expect all relevant buffers
+        // to have already had names determined
+        auto path = maybe_prepend_base_dir(buffer_directory, filenames.at(name).value());
         try {
             spdlog::debug("Reading buffer '{}' from {}", name, path.native());
             host_buffer_t buffer = util::read_input_file(path);

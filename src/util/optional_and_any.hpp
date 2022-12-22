@@ -1,6 +1,8 @@
 #ifndef UTIL_OPTIONAL_AND_ANY_HPP_
 #define UTIL_OPTIONAL_AND_ANY_HPP_
 
+#include <type_traits>
+
 #if __cplusplus >= 201703L
 #include <optional>
 #include <any>
@@ -18,5 +20,13 @@ using std::experimental::any;
 using std::experimental::any_cast;
 using std::experimental::in_place;
 #endif
+
+template <typename F>
+constexpr optional<decltype(std::declval<F>()())>
+value_if(bool condition, F value_producer)
+{
+    if (not condition) return nullopt;
+    return value_producer();
+}
 
 #endif // UTIL_OPTIONAL_AND_ANY_HPP_

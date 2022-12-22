@@ -49,7 +49,7 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
         ("cuda,CUDA", "Use CUDA", cxxopts::value<bool>())
         ("p,platform,platform-id", "Use the OpenCL platform with the specified index", cxxopts::value<unsigned>())
         ("a,arg,argument", "Set one of the kernel's argument, keyed by name, with a serialized value for a scalar (e.g. foo=123) or a path to the contents of a buffer (e.g. bar=/path/to/data.bin)", cxxopts::value<std::vector<string>>())
-        ("A,no-implicit-compilation-options,no-implicit-compile-options,no-default-compilation-options,no-default-compile-options", "Avoid setting any compilation options not explicitly requested by the user", cxxopts::value<bool>()->default_value("false"))
+        ("A,no-implicit-compilation-options,no-implicit-compile-options,suppress-default-compile-options,suppress-default-compilation-options,no-default-compile-options,no-default-compilation-options", "Avoid setting any compilation options not explicitly requested by the user", cxxopts::value<bool>()->default_value("false"))
         ("output-buffer-size,output-size", "Set one of the output buffers' sizes, keyed by name, in bytes (e.g. myresult=1048576)", cxxopts::value<std::vector<string>>())
         ("d,dev,device", "Device index", cxxopts::value<int>()->default_value("0"))
         ("D,preprocessor-definition,define", "Set a preprocessor definition for NVRTC (can be used repeatedly; specify either DEFINITION or DEFINITION=VALUE)", cxxopts::value<std::vector<string>>())
@@ -136,52 +136,96 @@ void collect_include_paths(execution_context_t& context)
     exit(user_asked_for_help ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
+std::string resolve_input_buffer_filename(
+    const execution_context_t&               context,
+    optional<string>                         buffer_cmdline_arg,
+    kernel_adapter::single_parameter_details buffer_param_details)
+{
+    const auto& name = buffer_param_details.name;
+    // Note: We're willing to accept user-requested filenames as-is; but if we're
+    // performing a search, we'll only accept names for which the files actually exist
+    if (buffer_cmdline_arg) {
+        return buffer_cmdline_arg.value();
+    }
+    spdlog::debug("Input filename for buffer parameter '{}' not specified; will try its name and aliases as fallback filenames.", name);
+
+    if (filesystem::exists(context.options.buffer_base_paths.input / name)) {
+        return name;
+    }
+    else {
+        spdlog::debug("Fallback input filename search for for input buffer parameter '{}': No such file {}", name, (context.options.buffer_base_paths.input / name).native());
+    }
+    for(const auto& alias : buffer_param_details.get_aliases()) {
+        filesystem::path input_file_for_alias = context.options.buffer_base_paths.input / alias;
+        if (filesystem::exists(input_file_for_alias)) {
+            return alias;
+        }
+        else {
+            spdlog::debug("Fallback input filename search for for input buffer parameter '{}': No such file {}", name, input_file_for_alias.native());
+        }
+    }
+    die("Cannot locate an input buffer file for parameter {}", name);
+}
+
+std::string resolve_output_buffer_filename(
+    execution_context_t&                     context,
+    optional<string>                         buffer_cmdline_arg,
+    kernel_adapter::single_parameter_details buffer_param_details)
+{
+    const auto& name = buffer_param_details.name;
+    auto output_file =[&]() -> filesystem::path {
+        if (is_input(buffer_param_details)) {
+            // Note that, in this case, we ignore the command-line argument, since it has
+            // already been taken into account via the input filename
+            auto input_file = context.buffers.filenames.inputs[name].value();
+            return input_file + ".out";
+        }
+        if (buffer_cmdline_arg) {
+            return buffer_cmdline_arg.value();
+        }
+        auto default_filename = fmt::format("{}.out", name);
+        return default_filename;
+    }();
+
+    // Note that if the output file gets created while the kernel runs, we might miss this fact
+    // when trying to write to it.
+
+    // TODO: Move this verification elsewhere? We could have a separate function called from main()
+    // just for performing these checks
+    if (filesystem::exists(output_file)) {
+        if (not context.options.overwrite_allowed and not context.options.compile_only) {
+            die("Writing the contents of output buffer '{}' would overwrite output buffer file: {}",
+                name, output_file.native());
+        }
+        spdlog::info("Output buffer '{}' will overwrite {}", name, output_file.native());
+    }
+    return output_file;
+}
+
 void resolve_buffer_filenames(execution_context_t& context)
 {
-    // if (context.kernel_adapter_.get() == nullptr) { throw std::runtime_error("Null kernel adapter pointer"); }
+    // Note that, at this point, we assume all input buffer entries in the map
+    // are resolved, i.e. engaged optionals.
     const auto& ka = *(context.kernel_adapter_.get());
 
     const auto& args = context.kernel_arguments;
     auto params_with_args = util::keys(args);
     for(const auto& buffer : ka.buffer_details()) {
-        const auto &name = buffer.name;
-        if (name == nullptr or *name == '\0') { 
-            die("Invalid argument name: {}", name); 
+        if (buffer.name == nullptr or *(buffer.name) == '\0') {
+            die("Empty/missing kernel parameter name encountered");
         }
-        auto got_arg = util::contains(params_with_args, name);
-        if (not got_arg) {
-            spdlog::debug("Filename for buffer '{}' not specified; using fallback names.", name);
-        }
+        std::string buffer_name = buffer.name; // TODO: Yes, we should really switch to string_view's at some point...
+        auto got_arg = util::contains(params_with_args, buffer.name);
+        auto maybe_cmdline_name = value_if(got_arg, [&]() { return args.at(buffer.name); });
         if (is_input(buffer)) {
-            const auto default_filename = name;
-            auto filename = got_arg ? args.at(name) : default_filename;
-            spdlog::trace("Input filename for argument '{}': {}", name, filename);
-            context.buffers.filenames.inputs[name] = filename;
+            context.buffers.filenames.inputs[buffer_name] = resolve_input_buffer_filename(context, maybe_cmdline_name, buffer);
+            spdlog::debug("Input buffer file for parameter '{}': {}", buffer.name, context.buffers.filenames.inputs[buffer_name].value());
         }
         if (context.options.write_output_buffers_to_files and is_output(buffer)) {
-            const auto default_filename = fmt::format("{}.out", name);
-            auto filename = [&]() {
-                if (not is_input(buffer)) {
-                    return got_arg ? args.at(name) : default_filename;
-                }
-                auto filename_path = filesystem::path(context.buffers.filenames.inputs[name]);
-                auto basename = filename_path.filename();
-                return fmt::format("{}.out", basename.native());
-            }();
-            context.buffers.filenames.outputs[name] = filename;
-
-            // Note that if the output file gets created while the kernel runs, we might miss this fact
-            // when trying to write to it.
-            spdlog::trace("Output filename for argument '{}': {}", name, filename);
-
-            // TODO: Move this verification elsewhere
-            if (filesystem::exists(filename)) {
-                if (not context.options.overwrite_allowed and not context.options.compile_only) {
-                    die("Writing the contents of output buffer {} would overwrite an existing file: {}",
-                        name, filename);
-                }
-                spdlog::info("Output buffer '{}' will overwrite {}", name, filename);
-            }
+            // Note: For an inout buffer, both name resolutions are called, and the
+            // latter depends on the former having succeeded.
+            context.buffers.filenames.outputs[buffer_name] = resolve_output_buffer_filename(context, maybe_cmdline_name, buffer);
+            spdlog::debug("Output buffer file for parameter '{}': {}", buffer.name, context.buffers.filenames.outputs[buffer_name]);
         }
     }
 }

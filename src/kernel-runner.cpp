@@ -45,6 +45,7 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
         ("log-flush-threshold", "Set the threshold level at and above which the log is flushed on each message", cxxopts::value<string>()->default_value("info"))
         ("w,write-output,save-output", "Write output buffers to files", cxxopts::value<bool>()->default_value("true"))
         ("n,num-runs,runs,repetitions", "Number of times to run the compiled kernel", cxxopts::value<unsigned>()->default_value("1"))
+        ("e,ecosystem,execution-ecosystem", "Execution ecosystem (CUDA or Opencl)", cxxopts::value<string>())
         ("opencl,OpenCL", "Use OpenCL", cxxopts::value<bool>())
         ("cuda,CUDA", "Use CUDA", cxxopts::value<bool>())
         ("p,platform,platform-id", "Use the OpenCL platform with the specified index", cxxopts::value<unsigned>())
@@ -365,23 +366,47 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
     //---------------------------------------
     // CUDA and OpenCL-related options
 
-    bool specified_cuda = contains(parse_result, "cuda");
-    bool specified_opencl = contains(parse_result, "opencl");
-    bool use_opencl = specified_opencl ? parse_result["opencl"].as<bool>() : false;
-    bool use_cuda = specified_cuda ? parse_result["cuda"].as<bool>() : true;
-    if(not use_cuda and not use_opencl) die("Please specify either CUDA or OpenCL to be used.\n");
-    if (use_cuda and use_opencl) {
-        if(specified_cuda and specified_opencl) die("Please specify either CUDA or OpenCL, not both.\n");
-        use_cuda = false;
-    }
-    parsed_options.gpu_ecosystem = use_cuda ? execution_ecosystem_t::cuda : execution_ecosystem_t::opencl;
+    parsed_options.gpu_ecosystem = [&]() -> execution_ecosystem_t {
+        // Yes, this IILE is kind of messy. You could consider dropping --cuda nnd
+        // --opencl entirely
+
+        bool specified_cuda = contains(parse_result, "cuda");
+        bool specified_opencl = contains(parse_result, "opencl");
+        bool use_opencl = specified_opencl ? parse_result["opencl"].as<bool>() : false;
+        bool use_cuda = specified_cuda ? parse_result["cuda"].as<bool>() : false;
+
+        optional<execution_ecosystem_t> specified_exec_ecosystem = {};
+        if (contains(parse_result, "execution-ecosystem")) {
+            auto unparsed_see = parse_result["execution-ecosystem"].as<string>();
+            if (util::case_insensitive_equals(unparsed_see, ecosystem_name(execution_ecosystem_t::cuda))) {
+                specified_exec_ecosystem = execution_ecosystem_t::cuda;
+            }
+            else if (util::case_insensitive_equals(unparsed_see, ecosystem_name(execution_ecosystem_t::opencl))) {
+                specified_exec_ecosystem = execution_ecosystem_t::opencl;
+            }
+            else die("Invalid execution ecosystem: {}", unparsed_see);
+            if ((use_cuda and specified_exec_ecosystem.value() == execution_ecosystem_t::opencl) or
+                (use_opencl and specified_exec_ecosystem.value() == execution_ecosystem_t::cuda))
+            {
+                die("Execution ecosystem specifier options disagree");
+            }
+        }
+        if (specified_exec_ecosystem) return specified_exec_ecosystem.value();
+        if(not use_cuda and not use_opencl) die("Please specify an execution system to use (either CUDA or OpenCL).\n");
+        if (use_cuda and use_opencl) {
+            die("Execution ecosystem specifier options disagree");
+        }
+        return use_cuda ? execution_ecosystem_t::cuda : execution_ecosystem_t::opencl;
+    }();
     spdlog::debug("Using the {} execution ecosystem.", ecosystem_name(parsed_options.gpu_ecosystem));
 
     parsed_options.gpu_device_id = parse_result["device"].as<int>();
     if (parsed_options.gpu_device_id < 0) die("Please specify a non-negative device index");
 
     if (contains(parse_result, "platform-id")) {
-        if (not use_opencl) die("CUDA does not support multiple per-machine platforms; thus any 'platform-id' value is unacceptable");
+        if (parsed_options.gpu_ecosystem == execution_ecosystem_t::cuda) {
+            die("CUDA does not support multiple per-machine platforms; thus any 'platform-id' value is unacceptable");
+        }
             // TODO: We could theoretically just ignore this, or warn later on
         parsed_options.platform_id = parse_result["platform-id"].as<unsigned>();
     }

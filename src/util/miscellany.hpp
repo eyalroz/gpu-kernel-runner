@@ -166,6 +166,14 @@ inline optional<std::string> get_env ( const std::string& key )
     return get_env(key.c_str());
 }
 
+inline bool case_insensitive_equals(const std::string& lhs, const std::string& rhs)
+{
+    return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(),
+        [](char a, char b) {
+            return tolower(a) == tolower(b);
+        });
+}
+
 template <typename I, typename I2 = I>
 constexpr I round_up(I x, I2 y) noexcept
 {

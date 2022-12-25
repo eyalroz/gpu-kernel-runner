@@ -34,7 +34,8 @@ and suppose that you've also created two files:
 
 Now, if you run:
 ```
-kernel-runner --cuda \
+kernel-runner \
+    --execution-ecosystem=cuda \
     --kernel-key bundled_with_runner/vector_add \
     --kernel-source vector_add.cu \
     --block-dimensions=256,1,1 \
@@ -44,7 +45,7 @@ kernel-runner --cuda \
 ```
 then you'll get a file named `C.out`, containing `fgh`... which is indeed the correct output of the kernel: The sequence `abc`, plus 3 for each character due the values in `input_B`, plus 2 for each character from the preprocessor definition of `A_LITTLE_EXTRA`. 
 
-You can do the same with an equivalent OpenCL kernel, also bundled with this repository; just specify `--opencl` instead of `--cuda`, 
+You can do the same with an equivalent OpenCL kernel, also bundled with this repository; just specify `opencl` instead of `cuda` as the execution ecosystem, 
 nd use the `vector_add.cl` kernel source file.
 
 There is a bit of "cheating" here: The kernel runner doesn't magically parse your kernel source to determine what arguments are required. You need to have added some boilerplate code for your kernel into the runner:  Listing the kernel name, parameter names, whether they're input or output etc.
@@ -79,23 +80,28 @@ Usage:
                                 true)
   -n, --repetitions arg         Number of times to run the compiled kernel
                                 (default: 1)
+  -e, --execution-ecosystem arg
       --opencl                  Use OpenCL
       --cuda                    Use CUDA
-  -p, --platform arg            Use the OpenCL platform with the specified
+                                Execution ecosystem (CUDA or Opencl)
+  -p, --platform-id arg         Use the OpenCL platform with the specified
                                 index
-  -a, --arg arg                 Set one of the kernel's argument, keyed by
+  -a, --argument arg            Set one of the kernel's argument, keyed by
                                 name, with a serialized value for a scalar
                                 (e.g. foo=123) or a path to the contents of
                                 a buffer (e.g. bar=/path/to/data.bin)
+  -A, --no-default-compilation-options
+                                Avoid setting any compilation options not
+                                explicitly requested by the user
       --output-buffer-size arg  Set one of the output buffers' sizes, keyed
                                 by name, in bytes (e.g. myresult=1048576)
-  -d, --dev arg                 Device index (default: 0)
+  -d, --device arg              Device index (default: 0)
   -D, --define arg              Set a preprocessor definition for NVRTC
                                 (can be used repeatedly; specify either
                                 DEFINITION or DEFINITION=VALUE)
-  -c, --compilation             Compile the kernel, but don't actually run
+  -c, --compile-only            Compile the kernel, but don't actually run
                                 it
-  -G, --debug                   Have the NVRTC compile the kernel in debug
+  -G, --device-debug-mode       Have the NVRTC compile the kernel in debug
                                 mode (no optimizations)
   -P, --write-ptx               Write the intermediate representation code
                                 (PTX) resulting from the kernel
@@ -120,46 +126,52 @@ Usage:
                                 (default: "")
       --generate-line-info      Add source line information to the
                                 intermediate representation code (PTX)
-                                (default: true)
-  -b, --block arg               Set grid block dimensions in threads
+  -b, --block-dimensions arg    Set grid block dimensions in threads
                                 (OpenCL: local work size); a
                                 comma-separated list
-  -g, --grid arg                Set grid dimensions in blocks; a
+  -g, --grid-dimensions arg     Set grid dimensions in blocks; a
                                 comma-separated list
-  -o, --overall arg             Set grid dimensions in threads (OpenCL:
+  -o, --overall-grid-dimensions arg
+                                Set grid dimensions in threads (OpenCL:
                                 global work size); a comma-separated list
-  -O, --append-compile-option arg
+  -O, --append-compilation-option arg
                                 Append an arbitrary extra compilation
                                 option
-  -S, --dshmem arg              Force specific amount of dynamic shared
+  -S, --dynamic-shared-memory-size arg
+                                Force specific amount of dynamic shared
                                 memory
   -W, --overwrite-output-files  Overwrite the files for buffer and/or PTX
                                 output if they already exists
-  -i, --direct-include arg      Include a specific file into the kernels'
+  -i, --include arg             Include a specific file into the kernels'
                                 translation unit
-  -I, --include-search-dir arg  Add a directory to the search paths for
+  -I, --include-path arg        Add a directory to the search paths for
                                 header files included by the kernel (can be
                                 used repeatedly)
-  -s, --kernel-source-code arg  Path to CUDA source file with the kernel
+  -s, --source-file arg         Path to CUDA source file with the kernel
                                 function to compile; may be absolute or
                                 relative to the sources dir
-  -k, --function arg            Name of function within the source file to
+  -k, --kernel-function arg     Name of function within the source file to
                                 compile and run as a kernel (if different
                                 than the key)
-  -K, --key arg                 The key identifying the kernel among all
+  -K, --kernel-key arg          The key identifying the kernel among all
                                 registered runnable kernels
-  -L, --all-kernels             List the (keys of the) kernels which may be
+  -L, --list-adapters           List the (keys of the) kernels which may be
                                 run with this program
   -z, --zero-outputs            Set the contents of output(-only) buffers
                                 to all-zeros
       --language-standard arg   Set the language standard to use for CUDA
                                 compilation (options: c++11, c++14, c++17)
-      --input-buffer-dir arg    Base location for locating input buffers
-                                (default: /current/working/dir)
-      --output-buffer-dir arg   Base location for writing output buffers
-                                (default: /current/working/dir)
+      --input-buffer-directory arg
+                                Base location for locating input buffers
+                                (default:
+                                /home/lh156516/src/gpu-kernel-runner)
+      --output-buffer-directory arg
+                                Base location for writing output buffers
+                                (default:
+                                /home/lh156516/src/gpu-kernel-runner)
       --kernel-sources-dir arg  Base location for locating kernel source
-                                files (default: /current/working/dir)
+                                files (default:
+                                /home/lh156516/src/gpu-kernel-runner)
   -h, --help                    Print usage information
 ```
 

@@ -16,7 +16,7 @@
 
 #ifndef __OPENCL_VERSION__
 
-#if __cplusplus < 2011O3L
+#if __cplusplus < 201103L
 #error "This file requires compiling using C++11 or later"
 #endif
 
@@ -54,6 +54,12 @@
 #define __local_array __shared__
 #define __local_variable __shared__
 #define __local_ptr
+
+// This next definition is for "emulating" constexpr in OpenCL - or
+// using the next closest thing - a global `__constant` memory space
+// definition: The same syntax can be used in both OpenCL and CUDA,
+// with CUDA actually producing `constexpr`, and OpenCL using `__constant`
+#define CONSTANT_MEM_OR_CONSTEXPR constexpr
 
 #define CLK_LOCAL_MEM_FENCE 0
 

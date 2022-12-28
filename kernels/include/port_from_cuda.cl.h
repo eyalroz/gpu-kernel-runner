@@ -31,6 +31,12 @@
 #define __local_array __local
 #define __local_ptr __local
 
+// This next definition is for "emulating" constexpr in OpenCL - or
+// using the next closest thing - a global `__constant` memory space
+// definition: The same syntax can be used in both OpenCL and CUDA,
+// with CUDA actually producing `constexpr`, and OpenCL using `__constant`
+#define CONSTANT_MEM_OR_CONSTEXPR __constant
+
 
 #if defined(__CDT_PARSER__) || defined (__JETBRAINS_IDE__)
 #include "opencl_syntax_for_ide_parser.cl.h"

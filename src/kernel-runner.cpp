@@ -742,6 +742,11 @@ execution_context_t initialize_execution_context(parsed_cmdline_options_t parsed
         kernel_adapter::produce_subclass(string(parsed_options.kernel.key));
 
     collect_include_paths(execution_context);
+    execution_context.language_standard =
+        parsed_options.language_standard ? parsed_options.language_standard :
+        parsed_options.set_default_compilation_options ?
+        execution_context.kernel_adapter_->default_language_standard(execution_context.ecosystem) :
+        nullopt;
 
     return execution_context;
 }
@@ -810,7 +815,7 @@ bool build_kernel(execution_context_t& context)
             context.options.set_default_compilation_options,
             context.options.compile_in_debug_mode,
             context.options.generate_line_info,
-            context.options.language_standard,
+            context.language_standard,
             context.finalized_include_dir_paths,
             context.options.preinclude_files,
             context.preprocessor_definitions.finalized.valueless,
@@ -825,10 +830,13 @@ bool build_kernel(execution_context_t& context)
         }
     }
     else {
-        // Note: We don't pass context.options.set_default_compilation_parameters,
-        // because at this point we've already applied this setting if necessary,
-        // so that this function will not issue compilation options not explicitly
-        // requested
+        // Notes:
+        // 1. We don't pass context.options.set_default_compilation_parameters,
+        //    because at this point we've already applied this setting if necessary,
+        //    so that this function will not issue compilation options not explicitly
+        //    requested.
+        // 2. Not using the language_standard option
+        //
         auto result = build_opencl_kernel(
             context.opencl.context,
             context.opencl.device,

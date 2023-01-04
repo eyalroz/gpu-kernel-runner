@@ -560,6 +560,12 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
         }
     }
 
+    if (not filesystem::exists(parsed_options.buffer_base_paths.output)) {
+        spdlog::info("Trying to create path to missing directory {}", parsed_options.buffer_base_paths.output.native());
+        filesystem::create_directories(parsed_options.buffer_base_paths.output)
+            or die("Failed creating path: {}", parsed_options.buffer_base_paths.output.native());
+    }
+
     for (const auto& path : {
              parsed_options.buffer_base_paths.input,
              parsed_options.buffer_base_paths.output,

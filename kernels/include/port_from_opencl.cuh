@@ -2,17 +2,28 @@
  * @file port_from_opencl.cuh
  *
  * @brief OpenCL-flavor definitions for porting OpenCL kernel code to CUDA
- * with minimal required changes
+ * with fewer changes required.
  *
- * @copyright (c) 2020-2022, GE Healthcare.
- * @copyright (c) 2022, Eyal Rozenberg.
+ * @copyright (c) 2020-2023, GE HealthCare
+ * @copyright (c) 2020-2023, Eyal Rozenberg
  *
  * @license BSD 3-clause license; see the `LICENSE` file or
  * @url https://opensource.org/licenses/BSD-3-Clause
  *
+ * @note Can be used for writing kernels targeting both CUDA and OpenCL
+ * at once (alongside @ref port_from_cuda.cl.h ).
+ *
+ * @note Changes you'll need to make on your own:
+ *
+ * - Replace `__local` / `__shared` with one of the aliases provided here
+ *   (@ref __local_array , @ref __local_var , @ref __local_ptr )
+ * - Dynamic shared memory access mechanism (`extern __shared` vs passing
+ *   via an argument)
+ * - Changing `max(x,y)`  into `fmax(x,y)`  (it's too risky to define a
+ *   `max(x,y)` macro)
  */
-#ifndef PORT_FROM_OPENCL_CUH_
-#define PORT_FROM_OPENCL_CUH_
+#ifndef PORT_FROM_OPENCL_TO_CUDA_CUH_
+#define PORT_FROM_OPENCL_TO_CUDA_CUH_
 
 #ifndef __OPENCL_VERSION__
 
@@ -30,20 +41,12 @@
     // take another file rather than our NVRTC-safe climits stub
 
 
-// Do we need these?
-#include <sm_20_intrinsics.h>
-// #include <device_functions.h>
-
 #include <vector_types.h>
-
-// #include <cassert>
-// #include <type_traits>
 
 // These defined terms are used in OpenCL and not part of the C++ language
 #define __global
 #define __private
 #define __kernel extern "C" __global__
-#define __constant constexpr const
 #define restrict __restrict__
 #define __restrict __restrict__
 // and note __local is missing!
@@ -59,7 +62,7 @@
 // using the next closest thing - a global `__constant` memory space
 // definition: The same syntax can be used in both OpenCL and CUDA,
 // with CUDA actually producing `constexpr`, and OpenCL using `__constant`
-#define CONSTANT_MEM_OR_CONSTEXPR constexpr
+#define CONSTEXPR_OR_CONSTANT_MEM constexpr const
 
 #define CLK_LOCAL_MEM_FENCE 0
 
@@ -71,7 +74,7 @@ using ushort = std::uint16_t;
 using uint = std::uint32_t;
 using ulong = std::uint64_t;
 
-// Note: CUDA guarantees that the sizes of non-unsigned char, short, int and long 
+// Note: CUDA guarantees that the sizes of non-unsigned char, short, int and long
 // are the same as in OpenCL: 1, 2, 4, 8 bytes respectively.
 
 using std::ptrdiff_t;
@@ -89,6 +92,16 @@ inline void vstore2(const float2& value, size_t offset, float* p)
     reinterpret_cast<float2*>(p)[offset] = value;
 }
 
+inline float3 vload3(size_t offset, const float* p)
+{
+    return reinterpret_cast<const float3*>(p)[offset];
+}
+
+inline void vstore3(const float3& value, size_t offset, float* p)
+{
+    reinterpret_cast<float3*>(p)[offset] = value;
+}
+
 inline float4 vload4(size_t offset, const float* p)
 {
     return reinterpret_cast<const float4*>(p)[offset];
@@ -101,7 +114,7 @@ inline void vstore4(const float4& value, size_t offset, float* p)
 
 namespace detail {
 
-inline unsigned get_dim3_element(const dim3& d3, int index)
+inline unsigned int get_dim3_element(const dim3& d3, int index)
 {
     switch (index) {
     case 0:  return d3.x;
@@ -113,12 +126,12 @@ inline unsigned get_dim3_element(const dim3& d3, int index)
 
 } // namespace detail
 
-inline unsigned get_local_id(int dimension_index)
+inline unsigned int get_local_id(int dimension_index)
 {
     return detail::get_dim3_element(threadIdx, dimension_index);
 }
 
-inline unsigned get_group_id(int dimension_index)
+inline unsigned int get_group_id(int dimension_index)
 {
     return detail::get_dim3_element(blockIdx, dimension_index);
 }
@@ -144,12 +157,12 @@ inline size_t get_global_id(int dimension_index)
     }
 }
 
-inline unsigned get_local_size(uint dimension_index)
+inline unsigned int get_local_size(uint dimension_index)
 {
     return detail::get_dim3_element(blockDim, dimension_index);
 }
 
-inline unsigned get_num_groups(uint dimension_index)
+inline unsigned int get_num_groups(uint dimension_index)
 {
     return detail::get_dim3_element(gridDim, dimension_index);
 }
@@ -167,7 +180,7 @@ inline void barrier(int kind)
 }
 
 template <typename T>
-inline unsigned convert_uint(const T& x) { return static_cast<unsigned>(x); }
+inline unsigned int convert_uint(const T& x) { return static_cast<unsigned int>(x); }
 
 inline int2 convert_int2(const float2& v)
 {
@@ -194,7 +207,6 @@ inline double native_sqrt(double x)  { return sqrt(x);  }
 
 inline float  native_rsqrt(float x)  { return rsqrtf(x); }
 inline double native_rsqrt(double x) { return rsqrt(x);  }
-
 
 //template <typename T, typename Selector>
 //T select(T on_false, T on_true, Selector selector);
@@ -325,8 +337,8 @@ inline float_array4& operator-=(float_array4& lhs, float4 rhs) noexcept
 // TODO: Add operators for other types, or template all of the above on the scalar type
 
 inline float fdividef (float x, float y ) { return __fdividef(x, y); }
-// Note: We don't need to define fdivide - that's already defined, strangely enough
-// (and __fdivide isn't).
+    // Note: We don't need to define fdivide - that's already defined, strangely enough
+    // (and __fdivide isn't).
 
 /**
  * The following macro is intended to allow the same syntax for constructing compound types
@@ -336,18 +348,17 @@ inline float fdividef (float x, float y ) { return __fdividef(x, y); }
 #define make_compound(_compound_type) _compound_type
 
 /*
-
-The ternary selection operator (?:) operates on three expressions (exp1 ? exp2 : exp3).
-This operator evaluates the first expression exp1, which can be a scalar or vector result except float.
-If all three expressions are scalar values, the C99 rules for ternary operator are followed. If the
-result is a vector value, then this is equivalent to calling select(exp3, exp2, exp1). The select
-function is described in Scalar and Vector Relational Functions. The second and third expressions
-can be any type, as long their types match, or there is an implicit conversion that can be
-applied to one of the expressions to make their types match, or one is a vector and the
-other is a scalar and the scalar may be subject to the usual arithmetic conversion to the element
-type used by the vector operand and widened to the same type as the vector type. This resulting
-matching type is the type of the entire expression.
+ * The ternary selection operator (?:) operates on three expressions (exp1 ? exp2 : exp3).
+ * This operator evaluates the first expression exp1, which can be a scalar or vector result except float.
+ * If all three expressions are scalar values, the C99 rules for ternary operator are followed. If the
+ * result is a vector value, then this is equivalent to calling select(exp3, exp2, exp1). The select
+ * function is described in Scalar and Vector Relational Functions. The second and third expressions
+ * can be any type, as long their types match, or there is an implicit conversion that can be
+ * applied to one of the expressions to make their types match, or one is a vector and the
+ * other is a scalar and the scalar may be subject to the usual arithmetic conversion to the element
+ * type used by the vector operand and widened to the same type as the vector type. This resulting
+ * matching type is the type of the entire expression.
 */
 
 #endif // __OPENCL_VERSION__
-#endif // PORT_FROM_OPENCL_CUH_
+#endif // PORT_FROM_OPENCL_TO_CUDA_CUH_

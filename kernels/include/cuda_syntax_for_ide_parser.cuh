@@ -1,11 +1,12 @@
 /**
- * @file port_from_opencl.cuh
+ * @file
  *
- * @brief OpenCL-flavor definitions for porting OpenCL kernel code to CUDA
- * with minimal required changes
+ * @brief Conditionally-compiled definitions which let some IDE parsers -
+ * currently JetBrains CLion and Eclipse CDT - better "accept" CUDA
+ * sources without a specialized plugin.
  *
- * @copyright (c) 2020-2022, GE Healthcare.
- * @copyright (c) 2022, Eyal Rozenberg.
+ * @copyright (c) 2020-2023, GE Healthcare.
+ * @copyright (c) 2022-2023, Eyal Rozenberg.
  *
  * @license BSD 3-clause license; see the `LICENSE` file or
  * @url https://opensource.org/licenses/BSD-3-Clause
@@ -37,7 +38,7 @@ dim3 blockDim;
 dim3 gridDim;
 
 #define __shared
-
+#define __constant
 #define __device__
 #define __device_builtin__
 

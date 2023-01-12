@@ -2,16 +2,26 @@
  * @file port_from_cuda.cl.h
  *
  * @brief CUDA-flavor definitions for porting CUDA kernel code to OpenCL
- * will less changes required
+ * with fewer changes required.
+ *
+ * @copyright (c) 2020-2023, GE HealthCare
+ * @copyright (c) 2020-2023, Eyal Rozenberg
+ *
+ * @license BSD 3-clause license; see the `LICENSE` file or
+ * @url https://opensource.org/licenses/BSD-3-Clause
+ *
+ * @note {Can be used for writing kernels targeting both CUDA and OpenCL
+ * at once (alongside @ref port_from_opencl.cuh ).}
  *
  * @note Changes you'll need to make on your own:
  *
- * - Replace `__local` with one of the aliases provided here
- * - Switch dynamic shared memory from being passed via a parameter
- *   to being available via an array variable of unspecified size.
- * - max(x,y) -> fmax
- *   (too risky to have a macro for this)
- *
+ * - Replace `__local` / `__shared` with one of the aliases provided here
+ *   (@ref __local_array , @ref __local_var , @ref __local_ptr )
+ * - Dynamic shared memory access mechanism (`extern __shared` vs passing
+ *   via an argument)
+ * - Changing `max(x,y)`  into `fmax(x,y)`  (it's too risky to define a
+ *   `max(x,y)` macro)
+  *
  */
 #ifndef PORT_FROM_CUDA_TO_OPENCL_CL_H_
 #define PORT_FROM_CUDA_TO_OPENCL_CL_H_
@@ -35,7 +45,7 @@
 // using the next closest thing - a global `__constant` memory space
 // definition: The same syntax can be used in both OpenCL and CUDA,
 // with CUDA actually producing `constexpr`, and OpenCL using `__constant`
-#define CONSTANT_MEM_OR_CONSTEXPR __constant
+#define CONSTEXPR_OR_CONSTANT_MEM __constant
 
 
 #if defined(__CDT_PARSER__) || defined (__JETBRAINS_IDE__)
@@ -59,11 +69,12 @@ inline double __drcp_rn(double x) { return native_recip(x); }
 
 /**
  * OpenCL has (non-C-like) overloaded math primitives, while CUDA, ironically,
- * actually has many C-style non-overloaded such primitives. Let's "implement"
+ * actually has many such primitives in C-style, not overloaded. Let's "implement"
  * some of them.
  *
  * @note Some functions are commented-out. They are available in CUDA, and
  * apparently not available in OpenCL 3.0.
+ *
  * @note no nanf
  */
 inline float acosf (float x) { return acos(x); }

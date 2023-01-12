@@ -5,6 +5,12 @@
  * currently JetBrains CLion and Eclipse CDT - better "accept" OpenCL
  * sources without a specialized plugin.
  *
+ * @copyright (c) 2020-2022, GE Healthcare.
+ * @copyright (c) 2022, Eyal Rozenberg.
+ *
+ * @license BSD 3-clause license; see the `LICENSE` file or
+ * @url https://opensource.org/licenses/BSD-3-Clause
+ *
  * @note This is not a complete set of definitions.
  */
 #ifndef OPENCL_SYNTAX_FOR_IDE_PARSER_CL_H_
@@ -28,7 +34,7 @@ struct float2 { float x, y; };
 struct short4 { short x, y, z, w; };
 struct ushort4 { unsigned short x, y, z, w; };
 struct int4 { int x, y, z, w; };
-struct uint4{ unsigned x, y, z, w; };
+struct uint4{ unsigned int x, y, z, w; };
 struct float4 { float x, y, z, w; };
 
 #define uchar unsigned char

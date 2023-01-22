@@ -104,7 +104,9 @@ struct execution_context_t {
     optional<std::string> compilation_log;
     struct {
         string_map raw; // the strings passed on the command-line for the arguments
-        scalar_arguments_map typed; // the parsed values for each scalar, after type-erasure
+        scalar_arguments_map typed;
+            // the results of parsing raw (i.e. parsing the command-line specified
+            // arguments), to which we later add generated, typed, scalar arguments
     } scalar_input_arguments;
     std::vector<std::string> parameter_names; // for determining how to pass the arguments
     struct preprocessor_definitions_type {

@@ -239,18 +239,18 @@ void parse_scalars(execution_context_t &context)
 {
     const auto& args = context.kernel_arguments;
     auto params_with_args = util::keys(args);
-    spdlog::trace("Arguments we specified for parameters {}", params_with_args);
+    spdlog::trace("Arguments have been specified on the command-line for parameters {}", params_with_args);
     auto& adapter = context.get_kernel_adapter();
     auto all_scalar_details = adapter.scalar_parameter_details();
-    for(const auto& spd : all_scalar_details ) {
-        util::contains(args, spd.name) or die("Missing scalar argument {}", spd.name);
+    for(const auto& spd : all_scalar_details) {
+        if (not util::contains(args, spd.name)) continue; // Maybe we can generate this later
         // TODO: Consider not parsing anything at this stage, and just marshaling all the scalar arguments together.
         auto& arg_value = args.at(spd.name);
-        spdlog::trace("Parsing argument for scalar parameter '{}' from \"{}\"", spd.name, arg_value);
+        spdlog::trace("Parsing command-line argument for scalar parameter '{}' from \"{}\"", spd.name, arg_value);
         context.scalar_input_arguments.raw[spd.name] = arg_value;
         context.scalar_input_arguments.typed[spd.name] =
             adapter.parse_cmdline_scalar_argument(spd, arg_value);
-        spdlog::trace("Successfully parsed argument for scalar parameter '{}'.", spd.name);
+        spdlog::trace("Successfully parsed command-line argument for scalar parameter '{}'.", spd.name);
     }
 }
 
@@ -878,7 +878,7 @@ void validate_scalars(execution_context_t& context)
 {
     spdlog::debug("Validating scalar argument values");
 
-    const auto& available_args = util::keys(context.scalar_input_arguments.raw);
+    const auto& available_args = util::keys(context.scalar_input_arguments.typed);
     spdlog::trace("Available scalar arguments: {}", available_args);
     auto required_args = util::transform_if<std::vector<const char *>>(
         context.get_kernel_adapter().scalar_parameter_details(),
@@ -889,7 +889,7 @@ void validate_scalars(execution_context_t& context)
 
     for(const auto& required : required_args) {
         util::contains(available_args, required)
-            or die("Required scalar argument {} not provided", required);
+            or die("Required scalar argument {} not provided (and could not be deduced)", required);
     }
 }
 
@@ -911,8 +911,13 @@ void validate_arguments(execution_context_t& context)
 
 void generate_additional_scalar_arguments(execution_context_t& context)
 {
-    auto generated_scalars = context.kernel_adapter_->generate_additional_scalar_arguments(context);
+    auto& adapter = context.get_kernel_adapter();
+    auto generated_scalars = adapter.generate_additional_scalar_arguments(context);
+    if (not generated_scalars.empty()) {
+        spdlog::debug("Generated additional scalar arguments: {}", util::keys(generated_scalars));
+    }
     context.scalar_input_arguments.typed.insert(generated_scalars.begin(), generated_scalars.end());
+    auto all_scalar_details = adapter.scalar_parameter_details();
 }
 
 void perform_single_run(execution_context_t& context, run_index_t run_index)
@@ -1101,10 +1106,10 @@ int main(int argc, char** argv)
     if (context.options.compile_only) { return EXIT_SUCCESS; }
 
     read_input_buffers_from_files(context);
+    generate_additional_scalar_arguments(context);
     validate_arguments(context);
     create_host_side_output_buffers(context);
     create_device_side_buffers(context);
-    generate_additional_scalar_arguments(context);
     copy_input_buffers_to_device(context);
 
     finalize_kernel_arguments(context);

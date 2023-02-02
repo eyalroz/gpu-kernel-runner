@@ -17,9 +17,12 @@
 
 #ifndef __OPENCL_VERSION__
 
-#if defined(__CDT_PARSER__) || defined(__JETBRAINS_IDE__)
 // These definitions will be ignored by the NVRTC compiler; they are only
 // enabled for editing this file in a (non-CUDA-aware) IDE
+#if defined(__CDT_PARSER__) || defined(__JETBRAINS_IDE__)
+
+#include <vector_types.h>
+
 template <typename T>
 T max(const T& x, const T& y);
 
@@ -41,8 +44,10 @@ dim3 gridDim;
 #define __constant
 #define __device__
 #define __device_builtin__
+#define __DEVICE__
 
 inline float __fdividef(float __a, float __b);
+inline float floorf(float __f);
 
 
 #endif // defined(__CDT_PARSER__) || defined(__JETBRAINS_IDE__)

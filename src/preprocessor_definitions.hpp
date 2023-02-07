@@ -8,7 +8,7 @@
 #include <unordered_set>
 #include <string>
 
-using preprocessor_value_definitions_t = std::unordered_map<std::string, std::string>;
+using valued_preprocessor_definitions_t = std::unordered_map<std::string, std::string>;
 using preprocessor_definitions_t = std::unordered_set<std::string>;
 using parameter_name_set = std::unordered_set<std::string>;
 
@@ -44,7 +44,7 @@ get_defined_terms(const preprocessor_definitions_t definitions)
  * @throws std::runtime_error if the term hasn't been defined
  */
 template <typename T>
-optional<T> safe_get_defined_value(const preprocessor_value_definitions_t& map, const std::string& defined_term)
+optional<T> safe_get_defined_value(const valued_preprocessor_definitions_t& map, const std::string& defined_term)
 {
     auto find_result = map.find(defined_term);
     if (find_result == std::cend(map)) {
@@ -54,7 +54,7 @@ optional<T> safe_get_defined_value(const preprocessor_value_definitions_t& map, 
 }
 
 template <typename T>
-T get_defined_value(const preprocessor_value_definitions_t& map, const std::string& defined_term)
+T get_defined_value(const valued_preprocessor_definitions_t& map, const std::string& defined_term)
 {
     auto result = safe_get_defined_value<T>(map, defined_term);
     if (not result) {

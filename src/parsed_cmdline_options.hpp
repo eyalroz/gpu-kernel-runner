@@ -14,6 +14,17 @@
 #include <string>
 #include <cstdlib>
 
+/**
+ * We handle preprocessor definitions with and without values
+ * (i.e. `-DFOO` vs `-DBAR=123`) differently, and thus want to
+ * store them separately - even though `preprocessor_definitions_t`
+ * can in principle also hold valued definitions
+ */
+struct split_preprocessor_definitions_t {
+    preprocessor_definitions_t valueless;
+    valued_preprocessor_definitions_t valued;
+};
+
 // These options are common, and relevant, to any and all kernel adapters
 struct parsed_cmdline_options_t {
     struct {
@@ -29,18 +40,12 @@ struct parsed_cmdline_options_t {
         filesystem::path input, output;
     } buffer_base_paths;
     filesystem::path kernel_sources_base_path;
-    preprocessor_definitions_t preprocessor_definitions;
+    split_preprocessor_definitions_t preprocessor_definitions;
     std::vector<std::string> extra_compilation_options;
 
     // std::unordered_map<std::string, std::string> raw_output_size_settings;
     std::unordered_map<std::string, std::size_t> output_buffer_sizes;
 
-    /**
-     * Preprocessor definitions specified on the command-line using the
-     * defined term as the command-line option, e.g. "--FOO=bar" rather than
-     * "-D FOO=bar".
-     */
-    preprocessor_value_definitions_t preprocessor_value_definitions;
     argument_values_t aliased_kernel_arguments;
     include_paths_t include_dir_paths;
     include_paths_t preinclude_files;

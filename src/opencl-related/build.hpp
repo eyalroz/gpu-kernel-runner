@@ -46,7 +46,7 @@ std::string marshal_opencl_compilation_options(
     bool                             generate_line_info,
     include_paths_t                  include_paths,
     preprocessor_definitions_t       valueless_definitions,
-    preprocessor_value_definitions_t valued_definitions,
+    valued_preprocessor_definitions_t valued_definitions,
     const std::vector<std::string>   extra_options)
 {
     std::stringstream ss;
@@ -144,8 +144,7 @@ opencl_compilation_result_t build_opencl_kernel(
     bool        need_ptx,
     const include_paths_t& finalized_include_dir_paths,
     const include_paths_t& preinclude_files,
-    preprocessor_definitions_t       valueless_definitions,
-    preprocessor_value_definitions_t valued_definitions,
+    split_preprocessor_definitions_t preprocessor_definitions,
     std::vector<std::string>         extra_compilation_options)
 {
     // TODO: Consider moving the preinclude reading out of this function
@@ -166,8 +165,8 @@ opencl_compilation_result_t build_opencl_kernel(
         compile_in_debug_mode,
         generate_line_info,
         finalized_include_dir_paths,
-        valueless_definitions,
-        valued_definitions,
+        preprocessor_definitions.valueless,
+        preprocessor_definitions.valued,
         extra_compilation_options);
 
     try {

@@ -31,7 +31,7 @@ public:
 //        const host_buffers_t&,
 //        const scalar_arguments_map& scalars,
 //        const preprocessor_definitions_t&,
-//        const preprocessor_value_definitions_t&,
+//        const valued_definitions_t&,
 //        const optional_launch_config_components_t&)
 //    {
 //        return any_cast<length_type>(scalars.at("length"));

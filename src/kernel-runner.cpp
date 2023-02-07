@@ -651,7 +651,7 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
             switch (equals_pos) {
                 case string::npos:
                     spdlog::trace("Preprocessor definition: {}", definition);
-                    parsed_options.preprocessor_definitions.emplace(definition);
+                    parsed_options.preprocessor_definitions.valueless.emplace(definition);
                     break;
                 case 0:
                     die("Preprocessor definition specified with an empty name: \"{}\" ", definition);
@@ -659,7 +659,7 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
                     auto defined_term = definition.substr(0, equals_pos);
                     auto value = definition.substr(equals_pos + 1);
                     spdlog::trace("Preprocessor definition: {} with value {}", defined_term, value);
-                    parsed_options.preprocessor_value_definitions[defined_term] = value;
+                    parsed_options.preprocessor_definitions.valued[defined_term] = value;
             }
         }
     }
@@ -824,8 +824,7 @@ bool build_kernel(execution_context_t& context)
             context.language_standard,
             context.finalized_include_dir_paths,
             context.options.preinclude_files,
-            context.preprocessor_definitions.finalized.valueless,
-            context.preprocessor_definitions.finalized.valued,
+            context.preprocessor_definitions.finalized,
             context.options.extra_compilation_options);
         build_succeeded = result.succeeded;
         context.compilation_log = std::move(result.log);
@@ -854,8 +853,7 @@ bool build_kernel(execution_context_t& context)
             context.options.write_ptx_to_file,
             context.finalized_include_dir_paths,
             context.options.preinclude_files,
-            context.preprocessor_definitions.finalized.valueless,
-            context.preprocessor_definitions.finalized.valued,
+            context.preprocessor_definitions.finalized,
             context.options.extra_compilation_options);
         build_succeeded = result.succeeded;
         context.compilation_log = std::move(result.log);

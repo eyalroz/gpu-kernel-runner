@@ -27,7 +27,7 @@ using size_calculator_type = std::size_t (*)(
     const host_buffers_t& input_buffers,
     const scalar_arguments_map& scalar_arguments,
     const preprocessor_definitions_t& valueless_preprocessor_definitions,
-    const preprocessor_value_definitions_t& value_preprocessor_definitions,
+    const valued_preprocessor_definitions_t& value_preprocessor_definitions,
     const optional_launch_config_components_t& forced_lc_components);
 
 static constexpr const size_calculator_type no_size_calc = nullptr;
@@ -137,8 +137,6 @@ public: // constructors & destructor
     // need to use const-refs to it)
     using parameter_details_type = std::vector<single_parameter_details>;
     using preprocessor_definition_details_type = std::vector<single_preprocessor_definition_details>;
-    using preprocessor_definitions_type = typename execution_context_t::preprocessor_definitions_type;
-
 
 public:
     /**

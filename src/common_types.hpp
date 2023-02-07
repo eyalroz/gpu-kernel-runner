@@ -32,7 +32,7 @@ using durations_t = std::vector<duration_t>;
 
 using string_map = std::unordered_map<std::string, std::string>;
 using maybe_string_map = std::unordered_map<std::string, optional<std::string>>;
-using preprocessor_value_definitions_t = std::unordered_map<std::string, std::string>;
+using valued_preprocessor_definitions_t = std::unordered_map<std::string, std::string>;
 using preprocessor_definitions_t = std::unordered_set<std::string>;
 using argument_values_t = std::unordered_map<std::string, std::string>;
 using include_paths_t = std::vector<std::string>;

@@ -54,7 +54,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-using preprocessor_value_definitions_t = std::unordered_map<std::string, std::string>;
+using valued_preprocessor_definitions_t = std::unordered_map<std::string, std::string>;
 using preprocessor_definitions_t = std::unordered_set<std::string>;
 using include_dir_paths_t = std::vector<std::string>;
 
@@ -108,8 +108,7 @@ compilation_result_t build_cuda_kernel(
     optional<const std::string> language_standard,
     const std::vector<std::string>& include_dir_paths,
     const std::vector<std::string>& preinclude_files,
-    const preprocessor_definitions_t& preprocessor_definitions,
-    const preprocessor_value_definitions_t& preprocessor_value_definitions,
+    const split_preprocessor_definitions_t& preprocessor_definitions,
     const std::vector<std::string>& extra_compilation_options)
 {
     // TODO: Consider mentioning the kernel function name in the program name.
@@ -131,8 +130,8 @@ compilation_result_t build_cuda_kernel(
     // TODO: Note the copying of strings and maps here; can we move all of these instead?
     opts.additional_include_paths = include_dir_paths;
     opts.preinclude_files = preinclude_files;
-    opts.no_value_defines = preprocessor_definitions;
-    opts.valued_defines = preprocessor_value_definitions;
+    opts.no_value_defines = preprocessor_definitions.valueless;
+    opts.valued_defines = preprocessor_definitions.valued;
     opts.extra_options = extra_compilation_options;
 
     spdlog::debug("Kernel compilation generated-command-line arguments: \"{}\"", render(opts));

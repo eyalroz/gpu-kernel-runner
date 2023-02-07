@@ -109,13 +109,8 @@ struct execution_context_t {
             // arguments), to which we later add generated, typed, scalar arguments
     } scalar_input_arguments;
     std::vector<std::string> parameter_names; // for determining how to pass the arguments
-    struct preprocessor_definitions_type {
-        preprocessor_definitions_t valueless;
-        preprocessor_value_definitions_t valued;
-    };
     struct {
-        preprocessor_definitions_type generated;
-        preprocessor_definitions_type finalized;
+        split_preprocessor_definitions_t generated, finalized;
     } preprocessor_definitions;
     include_paths_t finalized_include_dir_paths;
     marshalled_arguments_type finalized_arguments;
@@ -128,7 +123,7 @@ struct execution_context_t {
         return ::get_defined_value<T>(
             user_specified ?
                 preprocessor_definitions.finalized.valued :
-                options.preprocessor_value_definitions,
+                options.preprocessor_definitions.valued,
             str);
     }
 
@@ -143,7 +138,7 @@ struct execution_context_t {
     bool has_defined_value(const std::string& str, bool user_specified = false) const
     {
         return (bool) safe_get_defined_value<T>(user_specified ?
-            preprocessor_definitions.finalized.valued : options.preprocessor_value_definitions,
+            preprocessor_definitions.finalized.valued : options.preprocessor_definitions.valued,
             str);
     }
 

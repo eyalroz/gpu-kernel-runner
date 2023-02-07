@@ -659,7 +659,7 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
                     auto defined_term = definition.substr(0, equals_pos);
                     auto value = definition.substr(equals_pos + 1);
                     spdlog::trace("Preprocessor definition: {} with value {}", defined_term, value);
-                    parsed_options.preprocessor_value_definitions.emplace(defined_term, value);
+                    parsed_options.preprocessor_value_definitions[defined_term] = value;
             }
         }
     }

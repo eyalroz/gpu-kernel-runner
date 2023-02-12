@@ -1050,10 +1050,10 @@ void generate_additional_preprocessor_defines(execution_context_t& context)
     spdlog::debug("Generating additional preprocessor definitions");
     context.kernel_adapter_->generate_additional_preprocessor_definitions(context);
     const auto& generated = context.preprocessor_definitions.generated;
-    auto nothing_generated =  (generated.valued.empty() and generated.valueless.empty());
+    auto nothing_generated = (generated.valued.empty() and generated.valueless.empty());
     {
-        auto level =  nothing_generated ? spdlog::level::debug : spdlog::level::info;
-        spdlog::log(level, "Generated {} value-less and {} valued preprocessor definitions",
+        auto log_level = nothing_generated ? spdlog::level::debug : spdlog::level::info;
+        spdlog::log(log_level, "Generated {} value-less and {} valued preprocessor definitions",
                     generated.valueless.size(), generated.valued.size());
     }
     for(const auto& valued_def : generated.valued) {

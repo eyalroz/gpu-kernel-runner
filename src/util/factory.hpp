@@ -21,9 +21,55 @@
 
 #include <unordered_map>
 #include <exception>
-
+#ifndef AVOID_STREAMING_KEY_CONTENTS
+#include <type_traits>
+#include <utility>
+#include <iostream>
+#include <sstream>
+#endif
 
 namespace util {
+
+#ifndef AVOID_STREAMING_KEY_CONTENTS
+template<typename S, typename T>
+class is_streamable
+{
+    template<typename SS, typename TT>
+    static auto test(int)
+    -> decltype( std::declval<SS&>() << std::declval<TT>(), std::true_type() );
+
+    template<typename, typename>
+    static auto test(...) -> std::false_type;
+
+public:
+    static const bool value = decltype(test<S,T>(0))::value;
+};
+
+namespace detail_ {
+
+template <typename K>
+std::string maybe_stringify(std::integral_constant<bool, true>, const K& key)
+{
+    thread_local std::ostringstream oss;
+    oss << ": " << key;
+	return oss.str();
+}
+
+template <typename K>
+std::string maybe_stringify(std::integral_constant<bool, false>, const K& key)
+{
+	return "";
+}
+
+template <typename K>
+std::string maybe_stringify(const K& key)
+{
+	return maybe_stringify<K>(std::integral_constant<bool, is_streamable<std::ostream, K>::value>{}, key);
+}
+  
+} // namespace detail_
+
+#endif // AVOID_STREAMING_KEY_CONTENTS
 
 // Note: ProductionArgs are not necessarily the same as the parameters
 // of any of the constructors
@@ -78,7 +124,10 @@ public:
 	{
 		auto wasnt_registered = maybe_register_class<U>(key);
 		if (not wasnt_registered and not ignore_repeat_registration) {
-			throw std::logic_error("Repeat registration of the same subclass in this factory.");
+            std::string message {"Repeat registration of the same subclass in this factory" };
+            message += detail_::maybe_stringify(key);
+			throw std::logic_error(message);
+			
 		}
 		return;
 	}

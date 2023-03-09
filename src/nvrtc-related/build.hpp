@@ -31,7 +31,7 @@
 
 #include "standard_header_substitutes.hpp"
 
-#include <cuda/nvrtc.hpp>
+#include <cuda/rtc.hpp>
 
 #include <util/miscellany.hpp>
 #include <util/spdlog-extra.hpp>
@@ -112,17 +112,17 @@ compilation_result_t build_cuda_kernel(
     const std::vector<std::string>& extra_compilation_options)
 {
     // TODO: Consider mentioning the kernel function name in the program name.
-    auto program = cuda::rtc::program::create(kernel_source_file_path)
+    auto program = cuda::rtc::program::create<cuda::cuda_cpp>(kernel_source_file_path)
         .set_source(kernel_source)
         .set_headers(get_standard_header_substitutes());
 
-    cuda::rtc::compilation_options_t opts;
+    cuda::rtc::compilation_options_t<cuda::cuda_cpp> opts;
 
     if (language_standard) {
         opts.set_language_dialect(language_standard.value());
     }
-    opts.debug = debug_mode;
-    opts.generate_line_info = generate_line_info;
+    opts.generate_debug_info = debug_mode;
+    opts.generate_source_line_info = generate_line_info;
     if (set_default_compilation_options) {
         opts.default_execution_space_is_device = true;
         opts.set_target(context.device());

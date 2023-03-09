@@ -35,12 +35,18 @@ opencl_duration_type opencl_command_execution_time(cl::Event& ev)
 template <>
 void initialize_execution_context<execution_ecosystem_t::opencl>(execution_context_t& execution_context)
 {
+    constexpr const unsigned OpenCLDefaultPlatformID { 0 };
+    auto actual_platform_id = execution_context.options.platform_id.value_or(OpenCLDefaultPlatformID);
+    spdlog::trace("actual platform ID is {}", actual_platform_id);
     std::vector<cl::Platform> platforms;
-    cl::Platform::get(&platforms);
-    // Get list of devices on default platform and create context
-    cl_context_properties properties[] = { CL_CONTEXT_PLATFORM, (cl_context_properties) (platforms[0])(), 0 };
+    cl::Platform::get(&platforms); // At this point we know our platform does exist
+    const auto& platform = platforms[actual_platform_id];
+    cl_context_properties properties[] = {
+            CL_CONTEXT_PLATFORM,
+            (cl_context_properties) (platform)(),
+            0 };
     execution_context.opencl.context = cl::Context{CL_DEVICE_TYPE_GPU, properties};
-    std::vector<cl::Device> devices = execution_context.opencl.context.getInfo<CL_CONTEXT_DEVICES>();
+    auto devices = execution_context.opencl.context.getInfo<CL_CONTEXT_DEVICES>();
     // Device IDs happen to be ordinals into the devices array.
     execution_context.opencl.device = devices[(size_t) execution_context.options.gpu_device_id];
     constexpr const cl_command_queue_properties queue_properties { CL_QUEUE_PROFILING_ENABLE } ;

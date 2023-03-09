@@ -263,6 +263,7 @@ void ensure_gpu_device_validity(
 {
     std::size_t device_count;
 
+    spdlog::debug("Ensuring the requested GPU device exists{}",  (platform_id ? " on the specified platform" : ""));
     constexpr const unsigned OpenCLDefaultPlatformID { 0 };
     switch(ecosystem) {
     case execution_ecosystem_t::opencl : {

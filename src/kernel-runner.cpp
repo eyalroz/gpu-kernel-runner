@@ -49,6 +49,7 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
         ("opencl,OpenCL", "Use OpenCL", cxxopts::value<bool>())
         ("cuda,CUDA", "Use CUDA", cxxopts::value<bool>())
         ("p,platform,platform-id", "Use the OpenCL platform with the specified index", cxxopts::value<unsigned>())
+        ("list-opencl-platforms,list-platforms,platforms", "List available OpenCL platforms")
         ("a,arg,argument", "Set one of the kernel's argument, keyed by name, with a serialized value for a scalar (e.g. foo=123) or a path to the contents of a buffer (e.g. bar=/path/to/data.bin)", cxxopts::value<std::vector<string>>())
         ("A,no-implicit-compilation-options,no-implicit-compile-options,suppress-default-compile-options,suppress-default-compilation-options,no-default-compile-options,no-default-compilation-options", "Avoid setting any compilation options not explicitly requested by the user", cxxopts::value<bool>()->default_value("false"))
         ("output-buffer-size,output-size,buffer-size,arg-size", "Set one of the output buffers' sizes, keyed by name, in bytes (e.g. myresult=1048576)", cxxopts::value<std::vector<string>>())
@@ -306,6 +307,23 @@ void print_registered_kernel_keys() {
     }
 }
 
+void list_opencl_platforms()
+{
+    auto platforms = [] {
+        std::vector<cl::Platform> platforms_;
+        cl::Platform::get(&platforms_);
+        return platforms_;
+    }();
+    auto platform_id = 0;
+    for(const auto& platform : platforms) {
+        std::cout << "Platform " << platform_id << ": "
+            << platform.getInfo<CL_PLATFORM_NAME>() << " (by "
+            << platform.getInfo<CL_PLATFORM_VENDOR>() << ")\n";
+        platform_id++;
+    };
+    std::cout << std::endl;
+}
+
 parsed_cmdline_options_t parse_command_line(int argc, char** argv)
 {
     // TODO: Break off lots of smaller functions handling the just-parsed parameters
@@ -327,6 +345,7 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
         // out what kernel was asked for, we will want to provide help regarding
         // the kernel-specific command-line arguments
     bool user_asked_for_list_of_kernels = contains(parse_result, "list-kernels");
+    bool user_asked_for_list_of_platforms = contains(parse_result, "list-opencl-platforms");
     struct { bool key, function_name, source_file_path; } got;
 
     got.source_file_path  = contains(parse_result, "kernel-source");
@@ -341,6 +360,11 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
 
     if (user_asked_for_list_of_kernels) {
         print_registered_kernel_keys();
+        exit(EXIT_SUCCESS);
+    }
+
+    if (user_asked_for_list_of_platforms) {
+        list_opencl_platforms();
         exit(EXIT_SUCCESS);
     }
 

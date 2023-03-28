@@ -42,25 +42,24 @@ void copy_buffer_to_host(
 void copy_outputs_from_device(execution_context_t& context);
 
 device_buffer_type create_device_side_buffer(
-    const std::string&               name,
-    std::size_t                      size,
-    execution_ecosystem_t            ecosystem,
-    const optional<cuda::context_t>& cuda_context,
-    optional<cl::Context>            opencl_context,
-    const host_buffers_t&);
+    const std::string&                      name,
+    std::size_t                             size,
+    execution_ecosystem_t                   ecosystem,
+    const optional<const cuda::context_t>&  cuda_context,
+    optional<const cl::Context>             opencl_context);
 
 device_buffers_map create_device_side_buffers(
-    execution_ecosystem_t            ecosystem,
-    const optional<cuda::context_t>& cuda_context,
-    optional<cl::Context>            opencl_context,
-    const host_buffers_t&          host_side_buffers);
+    execution_ecosystem_t                   ecosystem,
+    const optional<const cuda::context_t>&  cuda_context,
+    optional<cl::Context>                   opencl_context,
+    const host_buffers_t&                   host_side_buffers);
 
-void zero_output_buffer(
-    execution_ecosystem_t            ecosystem,
-    const device_buffer_type         buffer,
-    const optional<cuda::stream_t*>  cuda_stream,
-    const cl::CommandQueue*          opencl_queue,
-    const std::string&               buffer_name);
+void zero_buffer(
+    execution_ecosystem_t                  ecosystem,
+    const device_buffer_type               buffer,
+    const optional<const cuda::stream_t*>  cuda_stream,
+    const cl::CommandQueue*                opencl_queue,
+    const std::string&                     buffer_name);
 
 void zero_output_buffers(execution_context_t& context);
 

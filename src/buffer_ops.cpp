@@ -148,12 +148,11 @@ void copy_outputs_from_device(execution_context_t& context)
 }
 
 device_buffer_type create_device_side_buffer(
-    const std::string&               name,
-    std::size_t                      size,
-    execution_ecosystem_t            ecosystem,
-    const optional<cuda::context_t>& cuda_context,
-    optional<cl::Context>            opencl_context,
-    const host_buffers_t&)
+    const std::string&                      name,
+    std::size_t                             size,
+    execution_ecosystem_t                   ecosystem,
+    const optional<const cuda::context_t>&  cuda_context,
+    optional<const cl::Context>             opencl_context)
 {
     device_buffer_type result;
     if (ecosystem == execution_ecosystem_t::cuda) {
@@ -173,10 +172,10 @@ device_buffer_type create_device_side_buffer(
 }
 
 device_buffers_map create_device_side_buffers(
-    execution_ecosystem_t            ecosystem,
-    const optional<cuda::context_t>& cuda_context,
-    optional<cl::Context>            opencl_context,
-    const host_buffers_t&          host_side_buffers)
+    execution_ecosystem_t                   ecosystem,
+    const optional<const cuda::context_t>&  cuda_context,
+    optional<cl::Context>                   opencl_context,
+    const host_buffers_t&                   host_side_buffers)
 {
     return util::transform<device_buffers_map>(
         host_side_buffers,
@@ -188,20 +187,19 @@ device_buffers_map create_device_side_buffers(
                 name, size,
                 ecosystem,
                 cuda_context,
-                opencl_context,
-                host_side_buffers);
+                opencl_context);
             return device_buffers_map::value_type { name, std::move(buffer) };
         } );
 }
 
 // Note: Why is cuda_stream not an optional-ref? Because
 // optional ref's are problematic in C++
-void zero_output_buffer(
-    execution_ecosystem_t            ecosystem,
-    const device_buffer_type         buffer,
-    const optional<cuda::stream_t*>  cuda_stream,
-    const cl::CommandQueue*          opencl_queue,
-    const std::string&               buffer_name)
+void zero_buffer(
+    execution_ecosystem_t                  ecosystem,
+    const device_buffer_type               buffer,
+    const optional<const cuda::stream_t*>  cuda_stream,
+    const cl::CommandQueue*                opencl_queue,
+    const std::string&                     buffer_name)
 {
     spdlog::trace("Zeroing GPU-side output buffer for '{}'", buffer_name);
     if (ecosystem == execution_ecosystem_t::cuda) {
@@ -230,7 +228,7 @@ void zero_output_buffers(execution_context_t& context)
         // Note: A bit of a kludge, but - we can't copy the optional, since stream copying is verbotten,
         // and we can't use an optional<stream_t&>, since C++ doesn't like optional-of-references
         auto maybe_cuda_stream_ptr = context.cuda.stream ? optional<cuda::stream_t*>(&context.cuda.stream.value()) : nullopt;
-        zero_output_buffer(context.ecosystem, buffer, maybe_cuda_stream_ptr, &context.opencl.queue, buffer_name);
+        zero_buffer(context.ecosystem, buffer, maybe_cuda_stream_ptr, &context.opencl.queue, buffer_name);
     }
     gpu_sync(context);
     spdlog::debug("GPU-side Output-only buffers filled with zeros.");

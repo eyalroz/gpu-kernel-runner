@@ -63,6 +63,8 @@ void zero_buffer(
 
 void zero_output_buffers(execution_context_t& context);
 
+void zero_single_buffer(const execution_context_t& context, const device_buffer_type& buffer);
+
 void create_device_side_buffers(execution_context_t& context);
 
 // Note: Will create buffers also for each inout buffers

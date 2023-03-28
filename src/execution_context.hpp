@@ -71,6 +71,10 @@ struct execution_context_t {
             device_buffers_map inputs, outputs;
                 // Note: in-out buffers have one pristine copy in the inputs map,
                 // and a "working" copy the outputs map
+
+            optional<device_buffer_type> l2_cache_clearing_gadget;
+                // We (attempt to) clear the L2 cache by memset'ing a large-ish
+                // buffer (which is not otherwise used)
         } device_side;
         struct {
             maybe_string_map inputs;

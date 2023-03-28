@@ -77,6 +77,7 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
         ("K,key,kernel-key", "The key identifying the kernel among all registered runnable kernels", cxxopts::value<string>())
         ("L,list-kernels,list,all-kernels,kernels,adapters,list-adapters", "List the (keys of the) kernels which may be run with this program")
         ("z,zero-output-buffers,zero-outputs", "Set the contents of output(-only) buffers to all-zeros", cxxopts::value<bool>()->default_value("false"))
+        ("C,clear-l2-cache,clear-cache,clear-l2,clear-L2,clear-L2-cache,clear-cache-before-run", "(Attempt to) clear the GPU L2 cache before each run of the kernel", cxxopts::value<bool>()->default_value("false"))
         ("language-standard,std", "Set the language standard to use for CUDA compilation (options: c++11, c++14, c++17)", cxxopts::value<string>())
         ("input-buffer-directory,in-dir,input-buffer-dir,input-buffers-directory,input-buffers-dir,inbuf-dir,inbufs,inbufs-dir,inbuf-directory,inbufs-directory,in-directory", "Base location for locating input buffers", cxxopts::value<string>()->default_value( filesystem::current_path().native() ))
         ("output-buffer-directory,output-buffer-dir,output-buffers-directory,output-buffers-dir,outbuf-dir,outbufs,outbufs-dir,outbuf-directory,outbufs-directory,out-directory", "Base location for writing output buffers", cxxopts::value<string>()->default_value( filesystem::current_path().native() ))
@@ -630,6 +631,7 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
 
     parsed_options.compile_in_debug_mode = parse_result["debug-mode"].as<bool>();
     parsed_options.zero_output_buffers = parse_result["zero-output-buffers"].as<bool>();
+    parsed_options.clear_l2_cache = parse_result["clear-l2-cache"].as<bool>();
 
     if (parse_result.count("block-dimensions") > 0) {
         auto dims = parse_result["block-dimensions"].as<std::vector<unsigned>>();
@@ -952,6 +954,10 @@ void perform_single_run(execution_context_t& context, run_index_t run_index)
     }
     if (context.options.zero_output_buffers) {
         zero_output_buffers(context);
+    }
+    if (context.options.clear_l2_cache) {
+        zero_single_buffer(context, context.buffers.device_side.l2_cache_clearing_gadget.value());
+        spdlog::debug("Hopefully cleared the L2 cache by memset'ing a dummy buffer");
     }
     reset_working_copy_of_inout_buffers(context);
 

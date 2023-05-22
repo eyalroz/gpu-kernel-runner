@@ -19,7 +19,7 @@ void set_opencl_kernel_arguments(
     spdlog::debug("All arguments passed.");
 }
 
-opencl_duration_type opencl_command_execution_time(cl::Event& ev)
+opencl_duration_type opencl_command_execution_time(const cl::Event& ev)
 {
     cl_ulong t_start { 0 }, t_end { 0 };
     try {
@@ -30,6 +30,26 @@ opencl_duration_type opencl_command_execution_time(cl::Event& ev)
         spdlog::error("Failed obtaining execution event start or end time (using {}): {}", e.what(), clGetErrorString(e.err()) );
     }
     return opencl_duration_type{t_end - t_start};
+}
+
+// Note: This function assumes the stream has been clFinish'ed and
+// all events have already occurred
+durations_t compute_durations(std::vector<cl::Event> timing_events)
+{
+    durations_t durations;
+    for(const auto& event : timing_events) {
+        auto duration = opencl_command_execution_time(event);
+        durations.emplace_back(std::chrono::duration_cast<duration_t>(duration));
+    }
+    return durations;
+    /*
+    if (context.options.time_with_events) {
+        kernel_execution_event_ptr->wait();
+        auto time_elapsed = opencl_command_execution_time(*kernel_execution_event_ptr);
+        context.durations.push_back(time_elapsed);
+    }
+
+     */
 }
 
 template <>
@@ -54,20 +74,29 @@ void initialize_execution_context<execution_ecosystem_t::opencl>(execution_conte
         cl::CommandQueue(execution_context.opencl.context, execution_context.opencl.device, queue_properties);
 }
 
-void launch_time_and_sync_opencl_kernel(execution_context_t& context, run_index_t run_index)
+void launch_and_time_opencl_kernel(execution_context_t& execution_context, run_index_t run_index)
 {
-    auto lc = context.kernel_launch_configuration;
-    cl::Event kernel_execution; // When uninitialized, no OpenCL API call is made
+    auto lc = execution_context.kernel_launch_configuration;
 
-    set_opencl_kernel_arguments(context.opencl.built_kernel, context.finalized_arguments);
+    spdlog::info("Scheduling kernel run {1:>{0}}", util::naive_num_digits(execution_context.options.num_runs), run_index + 1);
 
-    const std::vector<cl::Event>* no_events_to_wait_on { nullptr };
-    auto kernel_execution_event_ptr =
-    context.options.time_with_events ? &kernel_execution : nullptr;
+    auto& events = execution_context.opencl.timing_events;
+    if (execution_context.options.time_with_events) {
+        events.emplace_back();
+        // Notes:
+        // 1. This will make the size equal run_index + 1;
+        // 2. When creating an uninitialized event, no OpenCL API call is made
+    }
+
+    static const std::vector<cl::Event>* no_events_to_wait_on { nullptr };
+    auto kernel_execution_event_ptr = [&]() -> cl::Event* {
+        if (not execution_context.options.time_with_events) return nullptr;
+        return &events[run_index];
+    }();
 
     try {
-        context.opencl.queue.enqueueNDRangeKernel(
-            context.opencl.built_kernel,
+        execution_context.opencl.queue.enqueueNDRangeKernel(
+            execution_context.opencl.built_kernel,
             lc.opencl.offset(),
             lc.opencl.global_dims(),
             lc.opencl.local_dims(),
@@ -75,18 +104,15 @@ void launch_time_and_sync_opencl_kernel(execution_context_t& context, run_index_
             kernel_execution_event_ptr);
     }
     catch(cl::Error& e) {
-        spdlog::error("Failed enqueuing kernel: {}", clGetErrorString(e.err()) );
+        spdlog::error("Failed scheduling kernel: {}", clGetErrorString(e.err()) );
     }
 
-    spdlog::debug("Launched run {} of kernel '{}'", run_index+1, context.kernel_adapter_->kernel_function_name());
-
-    if (context.options.time_with_events) {
-        kernel_execution.wait();
-        auto time_elapsed = opencl_command_execution_time(kernel_execution);
-        context.durations.push_back(time_elapsed);
-    }
-    else {
-        context.opencl.queue.finish(); // To make sure we catch any possible errors here.
+    if (execution_context.options.sync_after_kernel_execution) {
+        spdlog::debug("Waiting for run {1:>{0}} to conclude",
+            util::naive_num_digits(execution_context.options.num_runs), run_index + 1);
+        execution_context.opencl.queue.finish();
+        spdlog::info("Kernel run {1:>{0}} concluded",
+            util::naive_num_digits(execution_context.options.num_runs), run_index + 1);
     }
 }
 

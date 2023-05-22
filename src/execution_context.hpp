@@ -2,6 +2,7 @@
 #define EXECUTION_CONTEXT_HPP_
 
 #include "common_types.hpp"
+#include "nvrtc-related/types.hpp"
 
 #include "parsed_cmdline_options.hpp"
 #include "launch_configuration.hpp"
@@ -87,11 +88,13 @@ struct execution_context_t {
         // instead.
     device_id_t device_id;
     execution_ecosystem_t ecosystem;
+
     struct cuda_specific_t {
-        optional<cuda::context_t>  context;
-        optional<cuda::module_t>   module; // in the context
-        optional<std::string>      mangled_kernel_signature;
-        optional<cuda::stream_t>  stream;
+        optional<cuda::context_t>       context;
+        optional<cuda::module_t>        module; // in the context
+        optional<std::string>           mangled_kernel_signature;
+        optional<cuda::stream_t>        stream;
+        std::vector<cuda_event_pair_t>  timing_events;
     };
     optional<std::string> language_standard;
     cuda_specific_t cuda;
@@ -103,6 +106,7 @@ struct execution_context_t {
         cl::CommandQueue  queue;
         std::vector<std::size_t> finalized_argument_sizes;
             // TODO: Consider moving these out of the OpenCL-specific structure
+        std::vector<cl::Event> timing_events;
     } opencl;
     optional<std::string> compiled_ptx; // PTX or whatever OpenCL becomes.
     optional<std::string> compilation_log;

@@ -48,11 +48,12 @@ void read_input_buffers_from_files(execution_context_t& context)
         context.options.buffer_base_paths.input);
 }
 
+// This function is synchronous and not effect by the sync_after_buffer_op option
 void copy_buffer_to_device(
     const execution_context_t& context,
     const std::string&         buffer_name,
     const device_buffer_type&  device_side_buffer,
-    const host_buffer_t&    host_side_buffer)
+    const host_buffer_t&       host_side_buffer)
 {
     if (context.ecosystem == execution_ecosystem_t::cuda) {
         spdlog::debug("Copying buffer '{}' (size {} bytes): host-side {} -> device-side {}",
@@ -108,6 +109,7 @@ void copy_input_buffers_to_device(const execution_context_t& context)
         const auto& device_side_buffer = context.buffers.device_side.inputs.at(buffer_name);
         copy_buffer_to_device(context, buffer_name, device_side_buffer, host_side_buffer);
     }
+    if (context.options.sync_after_buffer_op)
     gpu_sync(context);
 }
 
@@ -192,16 +194,19 @@ device_buffers_map create_device_side_buffers(
         } );
 }
 
-// Note: Why is cuda_stream not an optional-ref? Because
-// optional ref's are problematic in C++
-void zero_buffer(
+// Notes:
+// 1. Why is cuda_stream not an optional-ref? Because optional ref's are
+//    problematic in C++
+// 2. This function never performs a sync, as it is too low-level to know
+//    whether or not it needs to
+void schedule_zero_buffer(
     execution_ecosystem_t                  ecosystem,
     const device_buffer_type               buffer,
     const optional<const cuda::stream_t*>  cuda_stream,
     const cl::CommandQueue*                opencl_queue,
     const std::string&                     buffer_name)
 {
-    spdlog::trace("Zeroing GPU-side output buffer for '{}'", buffer_name);
+    spdlog::trace("Scheduling the zeroing of GPU-side output buffer for '{}'", buffer_name);
     if (ecosystem == execution_ecosystem_t::cuda) {
         cuda_stream.value()->enqueue.memzero(buffer.cuda.data(), buffer.cuda.size());
     } else {
@@ -214,7 +219,7 @@ void zero_buffer(
     }
 }
 
-void zero_output_buffers(execution_context_t& context)
+void schedule_zero_output_buffers(execution_context_t& context)
 {
     const auto& ka = *context.kernel_adapter_;
     auto output_only_buffers = buffer_names(ka, parameter_direction_t::out);
@@ -222,25 +227,28 @@ void zero_output_buffers(execution_context_t& context)
         spdlog::debug("There are no output-only buffers to fill with zeros.");
         return;
     }
-    spdlog::debug("Zeroing GPU-side output-only buffers.");
+    spdlog::debug("Scheduling the zeroing of GPU-side output-only buffers.");
     for(const auto& buffer_name : output_only_buffers) {
         const auto& buffer = context.buffers.device_side.outputs.at(buffer_name);
         // Note: A bit of a kludge, but - we can't copy the optional, since stream copying is verbotten,
         // and we can't use an optional<stream_t&>, since C++ doesn't like optional-of-references
         auto maybe_cuda_stream_ptr = context.cuda.stream ? optional<cuda::stream_t*>(&context.cuda.stream.value()) : nullopt;
-        zero_buffer(context.ecosystem, buffer, maybe_cuda_stream_ptr, &context.opencl.queue, buffer_name);
+        schedule_zero_buffer(context.ecosystem, buffer, maybe_cuda_stream_ptr, &context.opencl.queue, buffer_name);
     }
-    gpu_sync(context);
-    spdlog::debug("GPU-side Output-only buffers filled with zeros.");
+    if (context.options.sync_after_buffer_op) {
+        gpu_sync(context);
+        spdlog::debug("GPU-side Output-only buffers filled with zeros.");
+    }
 }
 
-void zero_single_buffer(const execution_context_t& context, const device_buffer_type& buffer)
+void schedule_zero_single_buffer(const execution_context_t& context, const device_buffer_type& buffer)
 {
     // Note: A bit of a kludge, but - we can't copy the optional, since stream copying is verbotten,
     // and we can't use an optional<stream_t&>, since C++ doesn't like optional-of-references
     auto maybe_cuda_stream_ptr = context.cuda.stream ? optional<const cuda::stream_t*>(&context.cuda.stream.value()) : nullopt;
-    zero_buffer(context.ecosystem, buffer, maybe_cuda_stream_ptr, &context.opencl.queue, "kernel_runner_L2_cache_clearing_gadget");
-    gpu_sync(context);
+    schedule_zero_buffer(context.ecosystem, buffer, maybe_cuda_stream_ptr, &context.opencl.queue,
+                         "kernel_runner_L2_cache_clearing_gadget");
+    if (context.options.sync_after_buffer_op) { gpu_sync(context); }
 }
 
 static size_t get_l2_cache_size(const execution_context_t& context)
@@ -329,14 +337,14 @@ void create_host_side_output_buffers(execution_context_t& context)
     );
 }
 
-void reset_working_copy_of_inout_buffers(execution_context_t& context)
+void schedule_reset_of_inout_buffers_working_copy(execution_context_t& context)
 {
     auto& ka = *context.kernel_adapter_;
     auto inout_buffer_names = buffer_names(ka, parameter_direction_t::inout);
     if (inout_buffer_names.empty()) {
         return;
     }
-    spdlog::debug("Initializing the work-copies of the in-out buffers with the pristine copies.");
+    spdlog::debug("Scheduling an initialization of the work-copies of the in-out buffers with the pristine copies.");
     for(const auto& inout_buffer_name : inout_buffer_names) {
         const auto& pristine_copy = context.buffers.device_side.inputs.at(inout_buffer_name);
         const auto& work_copy = context.buffers.device_side.outputs.at(inout_buffer_name);
@@ -345,7 +353,9 @@ void reset_working_copy_of_inout_buffers(execution_context_t& context)
             context.ecosystem == execution_ecosystem_t::opencl ? &context.opencl.queue : nullptr,
             work_copy, pristine_copy);
     }
-    gpu_sync(context);
+    if (context.options.sync_after_buffer_op) {
+        gpu_sync(context);
+    }
 }
 
 void write_data_to_file(

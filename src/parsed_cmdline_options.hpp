@@ -51,6 +51,8 @@ struct parsed_cmdline_options_t {
     include_paths_t preinclude_files;
     bool zero_output_buffers;
     bool clear_l2_cache;
+    bool sync_after_kernel_execution;
+    bool sync_after_buffer_op;
     bool write_output_buffers_to_files;
     bool overwrite_allowed;
     bool write_ptx_to_file;

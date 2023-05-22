@@ -54,23 +54,23 @@ device_buffers_map create_device_side_buffers(
     optional<cl::Context>                   opencl_context,
     const host_buffers_t&                   host_side_buffers);
 
-void zero_buffer(
+void schedule_zero_buffer(
     execution_ecosystem_t                  ecosystem,
     const device_buffer_type               buffer,
     const optional<const cuda::stream_t*>  cuda_stream,
     const cl::CommandQueue*                opencl_queue,
     const std::string&                     buffer_name);
 
-void zero_output_buffers(execution_context_t& context);
+void schedule_zero_output_buffers(execution_context_t& context);
 
-void zero_single_buffer(const execution_context_t& context, const device_buffer_type& buffer);
+void schedule_zero_single_buffer(const execution_context_t& context, const device_buffer_type& buffer);
 
 void create_device_side_buffers(execution_context_t& context);
 
 // Note: Will create buffers also for each inout buffers
 void create_host_side_output_buffers(execution_context_t& context);
 
-void reset_working_copy_of_inout_buffers(execution_context_t& context);
+void schedule_reset_of_inout_buffers_working_copy(execution_context_t& context);
 
 void write_buffers_to_files(execution_context_t& context);
 

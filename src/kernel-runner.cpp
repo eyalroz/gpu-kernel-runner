@@ -77,6 +77,8 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
         ("L,list-kernels,list,all-kernels,kernels,adapters,list-adapters", "List the (keys of the) kernels which may be run with this program")
         ("z,zero-output-buffers,zero-outputs", "Set the contents of output(-only) buffers to all-zeros", cxxopts::value<bool>()->default_value("false"))
         ("C,clear-l2-cache,clear-cache,clear-l2,clear-L2,clear-L2-cache,clear-cache-before-run", "(Attempt to) clear the GPU L2 cache before each run of the kernel", cxxopts::value<bool>()->default_value("false"))
+        ("sync-after-execution,sync-after-invocation", "Have the GPU finish all work for a given run before scheduling the next", cxxopts::value<bool>()->default_value("false"))
+        ("sync-after-buffer-op,sync-after-buffer-write", "Have the GPU finish all work for a given run after scheduling a buffer operation", cxxopts::value<bool>()->default_value("false"))
         ("language-standard,std", "Set the language standard to use for CUDA compilation (options: c++11, c++14, c++17)", cxxopts::value<string>())
         ("input-buffer-directory,in-dir,input-buffer-dir,input-buffers-directory,input-buffers-dir,inbuf-dir,inbufs,inbufs-dir,inbuf-directory,inbufs-directory,in-directory", "Base location for locating input buffers", cxxopts::value<string>()->default_value( filesystem::current_path().native() ))
         ("output-buffer-directory,output-buffer-dir,output-buffers-directory,output-buffers-dir,outbuf-dir,outbufs,outbufs-dir,outbuf-directory,outbufs-directory,out-directory", "Base location for writing output buffers", cxxopts::value<string>()->default_value( filesystem::current_path().native() ))
@@ -627,6 +629,8 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
     parsed_options.generate_debug_info = parse_result["generate-debug-info"].as<bool>();
     parsed_options.zero_output_buffers = parse_result["zero-output-buffers"].as<bool>();
     parsed_options.clear_l2_cache = parse_result["clear-l2-cache"].as<bool>();
+    parsed_options.sync_after_kernel_execution = parse_result["sync-after-execution"].as<bool>();
+    parsed_options.sync_after_buffer_op = parse_result["sync-after-buffer-op"].as<bool>();
 
     if (parse_result.count("block-dimensions") > 0) {
         auto dims = parse_result["block-dimensions"].as<std::vector<unsigned>>();
@@ -663,8 +667,6 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
         parsed_options.forced_launch_config_components.dynamic_shared_memory_size =
             parse_result["dynamic-shared-memory-size"].as<unsigned>();
     }
-
-//    parsed_options.compare_outputs_against_expected = parse_results["compare-outputs"].as<string>();
 
     if (parse_result.count("define") > 0) {
         const auto& parsed_defines = parse_result["define"].as<std::vector<string>>();
@@ -940,7 +942,7 @@ void generate_additional_scalar_arguments(execution_context_t& context)
     auto all_scalar_details = adapter.scalar_parameter_details();
 }
 
-void perform_single_run(execution_context_t& context, run_index_t run_index)
+void schedule_single_run(execution_context_t& context, run_index_t run_index)
 {
     if (spdlog::level_is_at_least(spdlog::level::debug)) {
         spdlog::debug("Preparing for kernel run {1:>{0}} of {2:>{0}} (1-based).",
@@ -948,38 +950,38 @@ void perform_single_run(execution_context_t& context, run_index_t run_index)
             run_index + 1, context.options.num_runs);
     }
     if (context.options.zero_output_buffers) {
-        zero_output_buffers(context);
+        schedule_zero_output_buffers(context);
     }
     if (context.options.clear_l2_cache) {
-        zero_single_buffer(context, context.buffers.device_side.l2_cache_clearing_gadget.value());
+        schedule_zero_single_buffer(context, context.buffers.device_side.l2_cache_clearing_gadget.value());
         spdlog::debug("Hopefully cleared the L2 cache by memset'ing a dummy buffer");
     }
-    reset_working_copy_of_inout_buffers(context);
+    schedule_reset_of_inout_buffers_working_copy(context);
 
     if (context.ecosystem == execution_ecosystem_t::cuda) {
-        launch_time_and_sync_cuda_kernel(context, run_index);
+        launch_and_time_cuda_kernel(context, run_index);
     }
     else {
-        launch_time_and_sync_opencl_kernel(context, run_index);
+        launch_and_time_opencl_kernel(context, run_index);
     }
-    if (context.options.time_with_events) {
-        const auto& duration_nsec = (context.durations.end()-1)->count();
-        spdlog::info("Event-measured execution time of kernel {1} (run {2:>{0}} of {3:>{0}}): {4} nsec",
-            util::naive_num_digits(context.options.num_runs),
-            context.options.kernel.function_name, run_index+1, context.options.num_runs, duration_nsec);
-    }
-
-
-    spdlog::debug("Kernel execution run complete.");
+    spdlog::debug("{0} {2:>{1}} done",
+        context.options.sync_after_kernel_execution ? "Scheduling of kernel run" : "Kernel run",
+        util::naive_num_digits(context.options.num_runs), run_index+1);
 }
 
 void finalize_kernel_arguments(execution_context_t& context)
 {
     spdlog::debug("Marshaling kernel arguments.");
     context.finalized_arguments = context.kernel_adapter_->marshal_kernel_arguments(context);
+    if (context.ecosystem == execution_ecosystem_t::opencl) {
+        set_opencl_kernel_arguments(context.opencl.built_kernel, context.finalized_arguments);
+    }
+    spdlog::debug("Finalized {} arguments for kernel function \"{}\"",
+        context.finalized_arguments.pointers.size() - 1,
+        context.options.kernel.function_name);
 }
 
-void configure_launch(execution_context_t& context)
+void prepare_kernel_launch_config(execution_context_t& context)
 {
     spdlog::debug("Creating a launch configuration.");
     auto lc_components = context.kernel_adapter_->make_launch_config(context);
@@ -1058,9 +1060,13 @@ void print_execution_durations(std::ostream& os, const durations_t& execution_du
     os << std::flush;
 }
 
-void handle_execution_durations(const execution_context_t &context)
+void handle_execution_durations(execution_context_t &context)
 {
     if (not context.options.time_with_events) { return; }
+    context.durations = (context.ecosystem == execution_ecosystem_t::cuda) ?
+        compute_durations(context.cuda.timing_events):
+        compute_durations(context.opencl.timing_events);
+
     if (context.options.print_execution_durations) {
         print_execution_durations(std::cout, context.durations);
     }
@@ -1102,6 +1108,18 @@ void finalize_preprocessor_definitions(execution_context_t& context)
             context.preprocessor_definitions.generated.valued);
 }
 
+void complete_execution(const execution_context_t& context)
+{
+    if (not context.options.sync_after_kernel_execution) {
+        if (context.ecosystem == execution_ecosystem_t::cuda) {
+            context.cuda.stream->synchronize();
+        }
+        else {
+            context.opencl.queue.finish();
+        }
+    }
+}
+
 int main(int argc, char** argv)
 {
     spdlog::set_level(spdlog::level::info);
@@ -1137,11 +1155,12 @@ int main(int argc, char** argv)
     copy_input_buffers_to_device(context);
 
     finalize_kernel_arguments(context);
-    configure_launch(context);
+    prepare_kernel_launch_config(context);
 
     for(run_index_t ri = 0; ri < context.options.num_runs; ri++) {
-        perform_single_run(context, ri);
+        schedule_single_run(context, ri);
     }
+    complete_execution(context);
     handle_execution_durations(context);
     if (context.options.write_output_buffers_to_files) {
         copy_outputs_from_device(context);

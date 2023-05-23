@@ -21,7 +21,6 @@
 #include <spdlog/cfg/env.h>
 
 #include <system_error>
-#include <cerrno>
 #include <iostream>
 #include <vector>
 
@@ -140,9 +139,9 @@ void collect_include_paths(execution_context_t& context)
 }
 
 std::string resolve_input_buffer_filename(
-    const execution_context_t&               context,
-    optional<string>                         buffer_cmdline_arg,
-    kernel_adapter::single_parameter_details buffer_param_details)
+    const execution_context_t&                      context,
+    optional<string>                                buffer_cmdline_arg,
+    const kernel_adapter::single_parameter_details& buffer_param_details)
 {
     const auto& name = buffer_param_details.name;
     // Note: We're willing to accept user-requested filenames as-is; but if we're
@@ -209,7 +208,7 @@ void resolve_buffer_filenames(execution_context_t& context)
 {
     // Note that, at this point, we assume all input buffer entries in the map
     // are resolved, i.e. engaged optionals.
-    const auto& ka = *(context.kernel_adapter_.get());
+    const auto& ka = *context.kernel_adapter_;
 
     const auto& args = context.kernel_arguments;
     auto params_with_args = util::keys(args);
@@ -322,7 +321,7 @@ void list_opencl_platforms()
             << platform.getInfo<CL_PLATFORM_NAME>() << " (by "
             << platform.getInfo<CL_PLATFORM_VENDOR>() << ")\n";
         platform_id++;
-    };
+    }
     std::cout << std::endl;
 }
 
@@ -348,13 +347,11 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
         // the kernel-specific command-line arguments
     bool user_asked_for_list_of_kernels = contains(parse_result, "list-kernels");
     bool user_asked_for_list_of_platforms = contains(parse_result, "list-opencl-platforms");
-    struct { bool key, function_name, source_file_path; } got;
-
-    got.source_file_path  = contains(parse_result, "kernel-source");
-    got.function_name     = contains(parse_result, "kernel-function");
-    got.key               = contains(parse_result, "kernel-key");
-
-    // Need to exit?
+    struct { bool key, function_name, source_file_path; } got {
+        contains(parse_result, "kernel-key"),
+        contains(parse_result, "kernel-function"),
+        contains(parse_result, "kernel-source")
+    };
 
     if (user_asked_for_help) {
         print_help_and_exit(options);
@@ -398,8 +395,8 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
 
         bool specified_cuda = contains(parse_result, "cuda");
         bool specified_opencl = contains(parse_result, "opencl");
-        bool use_opencl = specified_opencl ? parse_result["opencl"].as<bool>() : false;
-        bool use_cuda = specified_cuda ? parse_result["cuda"].as<bool>() : false;
+        bool use_opencl = specified_opencl and parse_result["opencl"].as<bool>();
+        bool use_cuda = specified_cuda and parse_result["cuda"].as<bool>();
 
         optional<execution_ecosystem_t> specified_exec_ecosystem = {};
         if (contains(parse_result, "execution-ecosystem")) {
@@ -487,8 +484,6 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
                 parsed_options.kernel.function_name);
         }
     }
-    // if we haven't got the function name, but have got the key - we'll factory-produce the
-    // adapter, then user it get the key.
 
     if (not got.key and (got.source_file_path or got.function_name)) {
         if (got.source_file_path) {
@@ -750,7 +745,7 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
 }
 
 // TODO: Yes, make execution_context_t a proper class... and be less lax with the initialization
-execution_context_t initialize_execution_context(parsed_cmdline_options_t parsed_options)
+execution_context_t initialize_execution_context(const parsed_cmdline_options_t& parsed_options)
 {
     // Somewhat redundant with later code
     ensure_gpu_device_validity(
@@ -1008,7 +1003,7 @@ void configure_launch(execution_context_t& context)
 void handle_compilation_log(bool compilation_succeeded, execution_context_t& context)
 {
     bool empty_log = context.compilation_log and
-        std::all_of(context.compilation_log.value().cbegin(),context.compilation_log.value().cend(),isspace) == true;
+        std::all_of(context.compilation_log.value().cbegin(),context.compilation_log.value().cend(),isspace);
 
     if (not compilation_succeeded) {
         if (not context.compilation_log or empty_log) {

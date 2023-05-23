@@ -42,12 +42,12 @@ std::string obtain_ptx(const cl::Program &built_program, device_id_t device_id)
 }
 
 std::string marshal_opencl_compilation_options(
-    bool                             compile_in_debug_mode,
-    bool                             generate_line_info,
-    include_paths_t                  include_paths,
-    preprocessor_definitions_t       valueless_definitions,
-    valued_preprocessor_definitions_t valued_definitions,
-    const std::vector<std::string>   extra_options)
+    bool                               hopefully_generate_debug_info,
+    bool                               generate_source_line_info,
+    include_paths_t                    include_paths,
+    preprocessor_definitions_t         valueless_definitions,
+    valued_preprocessor_definitions_t  valued_definitions,
+    const std::vector<std::string>     extra_options)
 {
     std::stringstream ss;
 
@@ -55,10 +55,10 @@ std::string marshal_opencl_compilation_options(
 //        ss << " --cl-std=" << language_standard;
 //    }
 
-    if (compile_in_debug_mode) {
-        ss << " -g";
+    if (hopefully_generate_debug_info) {
+        ss << " -g"; // May not do anything; official Khronos OpenCL semantics rather murky
     }
-    if (generate_line_info) {
+    if (generate_source_line_info) {
         ss << " -nv-line-info";
     }
 
@@ -139,8 +139,8 @@ opencl_compilation_result_t build_opencl_kernel(
     device_id_t device_id,
     const char* kernel_name,
     const char* kernel_source,
-    bool        compile_in_debug_mode,
-    bool        generate_line_info,
+    bool        generate_debug_info,
+    bool        generate_source_line_info,
     bool        need_ptx,
     const include_paths_t& finalized_include_dir_paths,
     const include_paths_t& preinclude_files,
@@ -162,8 +162,8 @@ opencl_compilation_result_t build_opencl_kernel(
     std::vector<cl::Device> wrapped_device{device}; // Yes, it's a dumb macro - but it's what OpenCL uses!
 
     std::string build_options = marshal_opencl_compilation_options(
-        compile_in_debug_mode,
-        generate_line_info,
+        generate_debug_info,
+        generate_source_line_info,
         finalized_include_dir_paths,
         preprocessor_definitions.valueless,
         preprocessor_definitions.valued,

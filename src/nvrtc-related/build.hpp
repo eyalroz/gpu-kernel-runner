@@ -103,8 +103,8 @@ compilation_result_t build_cuda_kernel(
     const char* kernel_source,
     const char* kernel_function_name,
     bool set_default_compilation_options,
-    bool debug_mode,
-    bool generate_line_info,
+    bool generate_debug_info,
+    bool generate_source_line_info,
     optional<const std::string> language_standard,
     const std::vector<std::string>& include_dir_paths,
     const std::vector<std::string>& preinclude_files,
@@ -121,8 +121,8 @@ compilation_result_t build_cuda_kernel(
     if (language_standard) {
         opts.set_language_dialect(language_standard.value());
     }
-    opts.generate_debug_info = debug_mode;
-    opts.generate_source_line_info = generate_line_info;
+    opts.generate_debug_info = generate_debug_info;
+    opts.generate_source_line_info = generate_source_line_info;
     if (set_default_compilation_options) {
         opts.default_execution_space_is_device = true;
         opts.set_target(context.device());

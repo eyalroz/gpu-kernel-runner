@@ -57,11 +57,11 @@ struct parsed_cmdline_options_t {
     bool always_print_compilation_log;
     bool write_compilation_log;
     bool print_execution_durations;
-    bool generate_line_info;
+    bool generate_source_line_info;
     bool set_default_compilation_options; // target GPU, language standard etc.
     bool compile_only;
 //    bool compare_outputs_against_expected;
-    bool compile_in_debug_mode;
+    bool generate_debug_info;
     filesystem::path ptx_output_file;
     filesystem::path compilation_log_file;
     filesystem::path execution_durations_file;

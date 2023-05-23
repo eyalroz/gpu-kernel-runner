@@ -56,14 +56,14 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
         ("d,dev,device", "Device index", cxxopts::value<int>()->default_value("0"))
         ("D,preprocessor-definition,define", "Set a preprocessor definition for NVRTC (can be used repeatedly; specify either DEFINITION or DEFINITION=VALUE)", cxxopts::value<std::vector<string>>())
         ("c,compile,compilation,compile-only", "Compile the kernel, but don't actually run it", cxxopts::value<bool>()->default_value("false"))
-        ("G,device-debug,debug,debug-mode,device-debug-mode", "Have the NVRTC compile the kernel in debug mode (no optimizations)", cxxopts::value<bool>()->default_value("false"))
+        ("G,debug-info,generate-debug-info,device-debug-info", "Generate debugging information for debugging the kernel (and possible avoid most/all optimizations)", cxxopts::value<bool>()->default_value("false"))
         ("P,write-ptx", "Write the intermediate representation code (PTX) resulting from the kernel compilation, to a file", cxxopts::value<bool>()->default_value("false"))
         ("ptx-output-file", "File to which to write the kernel's intermediate representation", cxxopts::value<string>())
         ("print-compilation-log", "Print the compilation log to the standard output", cxxopts::value<bool>()->default_value("false"))
         ("write-compilation-log", "Path of a file into which to write the compilation log (regardless of whether it's printed to standard output)", cxxopts::value<string>()->default_value(""))
         ("print-execution-durations,print-durations,print-time,print-times,execution-durations,report-duration,report-durations", "Print the execution duration, in nanoseconds, of each kernel invocation to the standard output", cxxopts::value<bool>()->default_value("false"))
         ("write-execution-durations,write-durations,write-time,write-times", "Path of a file into which to write the execution durations, in nanoseconds, for each kernel invocation (regardless of whether they're printed to standard output)", cxxopts::value<string>()->default_value(""))
-        ("generate-line-info,line-info", "Add source line information to the intermediate representation code (PTX)", cxxopts::value<bool>())
+        ("generate-source-line-info,generate-line-info,source-line-info,line-info", "Add source line information to the intermediate representation code (PTX)", cxxopts::value<bool>())
         ("b,local-work-size,block-dims,blockdim,block,block-dimensions", "Set grid block dimensions in threads  (OpenCL: local work size); a comma-separated list", cxxopts::value<std::vector<unsigned>>() )
         ("g,grid-dims,griddim,grid,grid-dimensions", "Set grid dimensions in blocks; a comma-separated list", cxxopts::value<std::vector<unsigned>>() )
         ("o,overall-work-size,overall-dimensions,overall-dims,overall,overall-grid-dimensions", "Set grid dimensions in threads (OpenCL: global work size); a comma-separated list", cxxopts::value<std::vector<unsigned>>() )
@@ -538,7 +538,7 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
     parsed_options.buffer_base_paths.output = parse_result["output-buffer-dir"].as<string>();
     parsed_options.write_ptx_to_file = parse_result["write-ptx"].as<bool>();
     parsed_options.set_default_compilation_options = not parse_result["no-default-compile-options"].as<bool>();
-    parsed_options.generate_line_info =
+    parsed_options.generate_source_line_info =
         (contains(parse_result, "generate-line-info")) ?
         parse_result["no-default-compile-options"].as<bool>() :
         parsed_options.set_default_compilation_options;
@@ -629,7 +629,7 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
         parsed_options.extra_compilation_options = parse_result["append-compilation-option"].as<std::vector<string>>();
     }
 
-    parsed_options.compile_in_debug_mode = parse_result["debug-mode"].as<bool>();
+    parsed_options.generate_debug_info = parse_result["generate-debug-info"].as<bool>();
     parsed_options.zero_output_buffers = parse_result["zero-output-buffers"].as<bool>();
     parsed_options.clear_l2_cache = parse_result["clear-l2-cache"].as<bool>();
 
@@ -846,8 +846,8 @@ bool build_kernel(execution_context_t& context)
             kernel_source,
             context.options.kernel.function_name.c_str(),
             context.options.set_default_compilation_options,
-            context.options.compile_in_debug_mode,
-            context.options.generate_line_info,
+            context.options.generate_debug_info,
+            context.options.generate_source_line_info,
             context.language_standard,
             context.finalized_include_dir_paths,
             context.options.preinclude_files,
@@ -875,8 +875,8 @@ bool build_kernel(execution_context_t& context)
             context.device_id,
             context.options.kernel.function_name.c_str(),
             kernel_source,
-            context.options.compile_in_debug_mode,
-            context.options.generate_line_info,
+            context.options.generate_debug_info,
+            context.options.generate_source_line_info,
             context.options.write_ptx_to_file,
             context.finalized_include_dir_paths,
             context.options.preinclude_files,

@@ -241,8 +241,6 @@ void resolve_buffer_filenames(execution_context_t& context)
 void parse_scalars(execution_context_t &context)
 {
     const auto& args = context.kernel_arguments;
-    auto params_with_args = util::keys(args);
-    spdlog::trace("Arguments have been specified on the command-line for parameters {}", params_with_args);
     auto& adapter = context.get_kernel_adapter();
     auto all_scalar_details = adapter.scalar_parameter_details();
     for(const auto& spd : all_scalar_details) {
@@ -794,10 +792,6 @@ void dealias_arguments(execution_context_t &context)
         return (iter == param_details.cend()) ? alias : iter->name;
     };
 
-    // This should work, but somehow doesn't:
-    // context.kernel_arguments = util::map_keys(context.options.aliased_kernel_arguments, key_mapper);
-    // ... so instead, let's inline that function:
-
     context.kernel_arguments = util::transform<argument_values_t>(
         context.options.aliased_kernel_arguments,
         [&key_mapper](const auto& pair) -> std::pair<string, string> {
@@ -805,6 +799,9 @@ void dealias_arguments(execution_context_t &context)
             const auto& value = pair.second;
             return {key_mapper(key), value};
         } );
+
+    auto params_with_args = util::keys(context.kernel_arguments);
+    spdlog::trace("Arguments have been specified on the command-line for parameters {}", params_with_args);
 }
 
 void finalize_kernel_function_name(execution_context_t& context)

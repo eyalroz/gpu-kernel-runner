@@ -105,6 +105,9 @@ inline float2 operator/(float2 lhs, float2 rhs) noexcept { return { lhs.x / rhs.
 inline float2& operator+=(float2& lhs, float2 rhs) noexcept { lhs = lhs + rhs; return lhs; }
 inline float2& operator-=(float2& lhs, float2 rhs) noexcept { lhs = lhs - rhs; return lhs; }
 
+inline bool operator==(float2 lhs, float2 rhs) noexcept { return lhs.x == rhs.x && lhs.y == rhs.y; }
+inline bool operator!=(float2 lhs, float2 rhs) noexcept { return lhs.x != rhs.x || lhs.y != rhs.y; }
+
 // float with float2
 
 inline float2 operator+(float lhs, float2 rhs) noexcept { return { lhs + rhs.x, lhs + rhs.y }; }
@@ -131,6 +134,9 @@ inline float4 operator/(float4 lhs, float4 rhs) noexcept { return { lhs.x / rhs.
 
 inline float4& operator+=(float4& lhs, float4 rhs) noexcept { lhs = lhs + rhs; return lhs; }
 inline float4& operator-=(float4& lhs, float4 rhs) noexcept { lhs = lhs + rhs; return lhs; }
+
+inline bool operator==(float4 lhs, float4 rhs) noexcept { return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z && lhs.w == rhs.w; }
+inline bool operator!=(float4 lhs, float4 rhs) noexcept { return lhs.x != rhs.x || lhs.y != rhs.y || lhs.z != rhs.z || lhs.w != rhs.w; }
 
 // float with float4
 

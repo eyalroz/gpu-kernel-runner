@@ -43,6 +43,7 @@ dim3 gridDim;
 #define __shared
 #define __constant
 #define __device__
+#define __restrict__
 #define __device_builtin__
 #define __DEVICE__
 

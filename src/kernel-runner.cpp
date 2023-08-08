@@ -82,7 +82,7 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
         ("language-standard,std", "Set the language standard to use for CUDA compilation (options: c++11, c++14, c++17)", cxxopts::value<string>())
         ("input-buffer-directory,in-dir,input-buffer-dir,input-buffers-directory,input-buffers-dir,inbuf-dir,inbufs,inbufs-dir,inbuf-directory,inbufs-directory,in-directory", "Base location for locating input buffers", cxxopts::value<string>()->default_value( filesystem::current_path().native() ))
         ("output-buffer-directory,output-buffer-dir,output-buffers-directory,output-buffers-dir,outbuf-dir,outbufs,outbufs-dir,outbuf-directory,outbufs-directory,out-directory", "Base location for writing output buffers", cxxopts::value<string>()->default_value( filesystem::current_path().native() ))
-        ("kernel-sources-dir,sources", "Base location for locating kernel source files", cxxopts::value<string>()->default_value( filesystem::current_path().native() ))
+        ("kernel-sources-dir,kernel-source-dir,kernel-source-directory,kernel-sources-directory,kernel-sources,source-dir,sources", "Base location for locating kernel source files", cxxopts::value<string>()->default_value( filesystem::current_path().native() ))
         ("h,help", "Print usage information")
         ;
     return options;

@@ -22,8 +22,8 @@
  * - Changing `max(x,y)`  into `fmax(x,y)`  (it's too risky to define a
  *   `max(x,y)` macro)
  */
-#ifndef PORT_FROM_OPENCL_TO_CUDA_CUH_
-#define PORT_FROM_OPENCL_TO_CUDA_CUH_
+#ifndef PORT_FROM_OPENCL_CUH_
+#define PORT_FROM_OPENCL_CUH_
 
 #ifndef __OPENCL_VERSION__
 
@@ -32,6 +32,11 @@
 #endif
 
 #include "cuda_syntax_for_ide_parser.cuh"
+
+#ifdef GKR_ENABLE_HALF_PRECISION
+#include <cuda_fp16.h>
+#include "half4.cuh"
+#endif
 
 #include <cstdint>
 #include <cstddef> // for size_t
@@ -82,34 +87,49 @@ using std::intptr_t;
 using std::uintptr_t;
 using std::size_t;
 
+// Note: These are semantically-unsound implementations, which do
+// not assume actual floatn alignment, and may result in a subotimal
+// choice of SASS instructions
+
 inline float2 vload2(size_t offset, const float* p)
 {
-    return reinterpret_cast<const float2*>(p)[offset];
+    return { p[offset], p[offset+1] };
+//    return reinterpret_cast<const float2*>(p)[offset];
 }
 
 inline void vstore2(const float2& value, size_t offset, float* p)
 {
-    reinterpret_cast<float2*>(p)[offset] = value;
+    p[offset  ] = value.x;
+    p[offset+1] = value.y;
+//    reinterpret_cast<float2*>(p)[offset] = value;
 }
 
 inline float3 vload3(size_t offset, const float* p)
 {
-    return reinterpret_cast<const float3*>(p)[offset];
+    return { p[offset], p[offset+1], p[offset+2] };
+//    return reinterpret_cast<const float3*>(p)[offset];
 }
-
 inline void vstore3(const float3& value, size_t offset, float* p)
 {
-    reinterpret_cast<float3*>(p)[offset] = value;
+    p[offset  ] = value.x;
+    p[offset+1] = value.y;
+    p[offset+2] = value.z;
+//    reinterpret_cast<float3*>(p)[offset] = value;
 }
 
 inline float4 vload4(size_t offset, const float* p)
 {
-    return reinterpret_cast<const float4*>(p)[offset];
+    return { p[offset], p[offset+1], p[offset+2], p[offset+3] };
+//    return reinterpret_cast<const float4*>(p)[offset];
 }
 
 inline void vstore4(const float4& value, size_t offset, float* p)
 {
-    reinterpret_cast<float4*>(p)[offset] = value;
+    p[offset  ] = value.x;
+    p[offset+1] = value.y;
+    p[offset+2] = value.z;
+    p[offset+3] = value.w;
+//    reinterpret_cast<float4*>(p)[offset] = value;
 }
 
 namespace detail {
@@ -332,7 +352,6 @@ inline float_array4& operator-=(float_array4& lhs, float4 rhs) noexcept
     return lhs;
 }
 
-
 // TODO: Add the operators involving float2's and arrays of 2 floats.
 // TODO: Add operators for other types, or template all of the above on the scalar type
 
@@ -361,4 +380,4 @@ inline float fdividef (float x, float y ) { return __fdividef(x, y); }
 */
 
 #endif // __OPENCL_VERSION__
-#endif // PORT_FROM_OPENCL_TO_CUDA_CUH_
+#endif // PORT_FROM_OPENCL_CUH_

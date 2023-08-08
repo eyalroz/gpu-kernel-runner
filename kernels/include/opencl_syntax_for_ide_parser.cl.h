@@ -26,18 +26,21 @@
 #define __kernel
 #define __restrict
 #define restrict
+typedef float half; // well, not really, but for syntax purposes this works I guess
 
 struct short2 { short x, y; };
 struct ushort2 { unsigned short x, y; };
 struct int2 { int x, y; };
 struct uint2 { unsigned int x, y; };
 struct float2 { float x, y; };
+struct half2 { half x, y; };
 
 struct short4 { short x, y, z, w; };
 struct ushort4 { unsigned short x, y, z, w; };
 struct int4 { int x, y, z, w; };
 struct uint4{ unsigned int x, y, z, w; };
 struct float4 { float x, y, z, w; };
+struct half4 { half x, y, z, w; };
 
 #define uchar unsigned char
 #define ushort unsigned short
@@ -97,6 +100,8 @@ unsigned int atomic_cmpxchg (volatile __local unsigned int *p , unsigned int cmp
 
 float select(float on_false, float on_true, int selector);
 
+// float2 with float2
+
 inline float2 operator+(float2 lhs, float2 rhs) noexcept { return { lhs.x + rhs.x, lhs.y + rhs.y }; }
 inline float2 operator-(float2 lhs, float2 rhs) noexcept { return { lhs.x - rhs.x, lhs.y - rhs.y }; }
 inline float2 operator*(float2 lhs, float2 rhs) noexcept { return { lhs.x * rhs.x, lhs.y * rhs.y }; }
@@ -154,6 +159,68 @@ inline float4 operator/(float4 lhs, float rhs) noexcept { return { lhs.x / rhs, 
 
 inline float4& operator+=(float4& lhs, float rhs) noexcept { lhs = lhs + rhs; return lhs; }
 inline float4& operator-=(float4& lhs, float rhs) noexcept { lhs = lhs + rhs; return lhs; }
+
+// ---- half2 and half4 ops
+
+// half2 with half2
+
+//inline half2 operator+(half2 lhs, half2 rhs) noexcept { return { lhs.x + rhs.x, lhs.y + rhs.y }; }
+//inline half2 operator-(half2 lhs, half2 rhs) noexcept { return { lhs.x - rhs.x, lhs.y - rhs.y }; }
+//inline half2 operator*(half2 lhs, half2 rhs) noexcept { return { lhs.x * rhs.x, lhs.y * rhs.y }; }
+//inline half2 operator/(half2 lhs, half2 rhs) noexcept { return { lhs.x / rhs.x, lhs.y / rhs.y }; }
+//
+//inline half2& operator+=(half2& lhs, half2 rhs) noexcept { lhs = lhs + rhs; return lhs; }
+//inline half2& operator-=(half2& lhs, half2 rhs) noexcept { lhs = lhs - rhs; return lhs; }
+//
+//inline bool operator==(half2 lhs, half2 rhs) noexcept { return lhs.x == rhs.x && lhs.y == rhs.y; }
+//inline bool operator!=(half2 lhs, half2 rhs) noexcept { return lhs.x != rhs.x || lhs.y != rhs.y; }
+
+// half with half2
+
+inline half2 operator+(half lhs, half2 rhs) noexcept { return { lhs + rhs.x, lhs + rhs.y }; }
+inline half2 operator-(half lhs, half2 rhs) noexcept { return { lhs - rhs.x, lhs - rhs.y }; }
+inline half2 operator*(half lhs, half2 rhs) noexcept { return { lhs * rhs.x, lhs * rhs.y }; }
+inline half2 operator/(half lhs, half2 rhs) noexcept { return { lhs / rhs.x, lhs / rhs.y }; }
+
+// half2 with half
+
+inline half2 operator+(half2 lhs, half rhs) noexcept { return { lhs.x + rhs, lhs.y + rhs }; }
+inline half2 operator-(half2 lhs, half rhs) noexcept { return { lhs.x - rhs, lhs.y - rhs }; }
+inline half2 operator*(half2 lhs, half rhs) noexcept { return { lhs.x * rhs, lhs.y * rhs }; }
+inline half2 operator/(half2 lhs, half rhs) noexcept { return { lhs.x / rhs, lhs.y / rhs }; }
+
+inline half2& operator+=(half2& lhs, half rhs) noexcept { lhs = lhs + rhs; return lhs; }
+inline half2& operator-=(half2& lhs, half rhs) noexcept { lhs = lhs - rhs; return lhs; }
+
+// half4 with half4
+
+inline half4 operator+(half4 lhs, half4 rhs) noexcept { return { lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z, lhs.w + rhs.w }; }
+inline half4 operator-(half4 lhs, half4 rhs) noexcept { return { lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z, lhs.w - rhs.w }; }
+inline half4 operator*(half4 lhs, half4 rhs) noexcept { return { lhs.x * rhs.x, lhs.y * rhs.y, lhs.z * rhs.z, lhs.w * rhs.w }; }
+inline half4 operator/(half4 lhs, half4 rhs) noexcept { return { lhs.x / rhs.x, lhs.y / rhs.y, lhs.z / rhs.z, lhs.w / rhs.w }; }
+
+inline half4& operator+=(half4& lhs, half4 rhs) noexcept { lhs = lhs + rhs; return lhs; }
+inline half4& operator-=(half4& lhs, half4 rhs) noexcept { lhs = lhs + rhs; return lhs; }
+
+inline bool operator==(half4 lhs, half4 rhs) noexcept { return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z && lhs.w == rhs.w; }
+inline bool operator!=(half4 lhs, half4 rhs) noexcept { return lhs.x != rhs.x || lhs.y != rhs.y || lhs.z != rhs.z || lhs.w != rhs.w; }
+
+// half with half4
+
+inline half4 operator+(half lhs, half4 rhs) noexcept { return { lhs + rhs.x, lhs + rhs.y, lhs + rhs.z, lhs + rhs.w }; }
+inline half4 operator-(half lhs, half4 rhs) noexcept { return { lhs - rhs.x, lhs - rhs.y, lhs - rhs.z, lhs - rhs.w }; }
+inline half4 operator*(half lhs, half4 rhs) noexcept { return { lhs * rhs.x, lhs * rhs.y, lhs * rhs.z, lhs * rhs.w }; }
+inline half4 operator/(half lhs, half4 rhs) noexcept { return { lhs / rhs.x, lhs / rhs.y, lhs / rhs.z, lhs / rhs.w }; }
+
+// half4 with half
+
+inline half4 operator+(half4 lhs, half rhs) noexcept { return { lhs.x + rhs, lhs.y + rhs, lhs.z + rhs, lhs.w + rhs }; }
+inline half4 operator-(half4 lhs, half rhs) noexcept { return { lhs.x - rhs, lhs.y - rhs, lhs.z - rhs, lhs.w - rhs }; }
+inline half4 operator*(half4 lhs, half rhs) noexcept { return { lhs.x * rhs, lhs.y * rhs, lhs.z * rhs, lhs.w * rhs }; }
+inline half4 operator/(half4 lhs, half rhs) noexcept { return { lhs.x / rhs, lhs.y / rhs, lhs.z / rhs, lhs.w / rhs }; }
+
+inline half4& operator+=(half4& lhs, half rhs) noexcept { lhs = lhs + rhs; return lhs; }
+inline half4& operator-=(half4& lhs, half rhs) noexcept { lhs = lhs + rhs; return lhs; }
 
 #endif // defined(__CDT_PARSER__) || defined (__JETBRAINS_IDE__)
 

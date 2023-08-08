@@ -50,6 +50,10 @@ dim3 gridDim;
 inline float __fdividef(float __a, float __b);
 inline float floorf(float __f);
 
+// These definitions are only correct w.r.t. size. Don't rely on them overmuch
+struct __nv_bfloat16 { float x; }
+struct __nv_bfloat162 { float x; }
+struct __nv_bfloat164 { float x,y; }
 
 #endif // defined(__CDT_PARSER__) || defined(__JETBRAINS_IDE__)
 

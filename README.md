@@ -30,16 +30,16 @@ __global__ void vectorAdd(
 and suppose that you've also created two files: 
 
 * `input_a`, containing the three characters `abc`;
-* `input_b`, containing 3 octets, each with values `003`.
+* `input_b`, containing 3 octets, each with values `03`.
 
 Now, if you run:
 ```
 kernel-runner \
-    --execution-ecosystem=cuda \
+    --execution-ecosystem cuda \
     --kernel-key bundled_with_runner/vector_add \
     --kernel-source vector_add.cu \
-    --block-dimensions=256,1,1 \
-    --grid-dimensions=1,1,1 \
+    --block-dimensions 256,1,1 \
+    --grid-dimensions 1,1,1 \
     --arg A=input_a --arg length=3 --arg B=input_b \
     -DA_LITTLE_EXTRA=2
 ```

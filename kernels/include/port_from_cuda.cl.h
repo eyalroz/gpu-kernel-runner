@@ -41,6 +41,10 @@
 #define __local_array __local
 #define __local_ptr __local
 
+// constexpr in C++ is mostly-discretionary; in OpenCL C we'll just
+// ignore it
+#define constexpr
+
 // This next definition is for "emulating" constexpr in OpenCL - or
 // using the next closest thing - a global `__constant` memory space
 // definition: The same syntax can be used in both OpenCL and CUDA,

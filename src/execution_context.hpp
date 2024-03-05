@@ -151,6 +151,13 @@ struct execution_context_t {
             str);
     }
 
+    template <typename T>
+    bool has_defined_value(char const* cptr, bool user_specified_only = false) const
+    {
+        std::string str{cptr};
+        return has_defined_value<T>(str, user_specified_only);
+    }
+
     const ::kernel_adapter& get_kernel_adapter() const { return *kernel_adapter_; }
 };
 

@@ -130,8 +130,8 @@ struct execution_context_t {
     {
         return ::get_defined_value<T>(
             user_specified ?
-                preprocessor_definitions.finalized.valued :
-                options.preprocessor_definitions.valued,
+                options.preprocessor_definitions.valued :
+                preprocessor_definitions.finalized.valued,
             str);
     }
 
@@ -146,7 +146,8 @@ struct execution_context_t {
     bool has_defined_value(const std::string& str, bool user_specified = false) const
     {
         return (bool) safe_get_defined_value<T>(user_specified ?
-            preprocessor_definitions.finalized.valued : options.preprocessor_definitions.valued,
+            options.preprocessor_definitions.valued :
+            preprocessor_definitions.finalized.valued,
             str);
     }
 

@@ -151,7 +151,7 @@ struct execution_context_t {
             str);
     }
 
-    const ::kernel_adapter& get_kernel_adapter() const { return *kernel_adapter_.get(); }
+    const ::kernel_adapter& get_kernel_adapter() const { return *kernel_adapter_; }
 };
 
 // TODO: This may not be such a good idea, rethink it.

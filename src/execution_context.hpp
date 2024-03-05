@@ -126,26 +126,26 @@ struct execution_context_t {
     durations_t durations; // The execution durations of each invocation of the kernel
 
     template <typename T>
-    T get_defined_value(const std::string& str, bool user_specified = false) const
+    T get_defined_value(const std::string& str, bool user_specified_only = false) const
     {
         return ::get_defined_value<T>(
-            user_specified ?
+            user_specified_only ?
                 options.preprocessor_definitions.valued :
                 preprocessor_definitions.finalized.valued,
             str);
     }
 
     template <typename T>
-    T get_defined_value(char const* cptr, bool user_specified = false) const
+    T get_defined_value(char const* cptr, bool user_specified_only = false) const
     {
         std::string str{cptr};
-        return get_defined_value<T>(str, user_specified);
+        return get_defined_value<T>(str, user_specified_only);
     }
 
     template <typename T>
-    bool has_defined_value(const std::string& str, bool user_specified = false) const
+    bool has_defined_value(const std::string& str, bool user_specified_only = false) const
     {
-        return (bool) safe_get_defined_value<T>(user_specified ?
+        return (bool) safe_get_defined_value<T>(user_specified_only ?
             options.preprocessor_definitions.valued :
             preprocessor_definitions.finalized.valued,
             str);

@@ -265,7 +265,7 @@ static size_t get_l2_cache_size(const execution_context_t& context)
 
 void create_device_side_buffers(execution_context_t& context)
 {
-    spdlog::debug("Creating GPU-side buffers.");
+    spdlog::debug("Creating {} GPU-side buffers.", context.buffers.host_side.inputs.size());
     context.buffers.device_side.inputs = create_device_side_buffers(
         context.ecosystem,
         context.cuda.context,

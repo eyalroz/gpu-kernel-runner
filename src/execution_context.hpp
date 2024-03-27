@@ -176,4 +176,9 @@ const Scalar& get_scalar_argument(const execution_context_t& context, const char
     return any_cast<const Scalar&>(type_erased_arg);
 }
 
+inline bool has_scalar_argument(const execution_context_t& context, const char* scalar_parameter_name)
+{
+    return util::contains(context.scalar_input_arguments.typed, scalar_parameter_name);
+}
+
 #endif /* EXECUTION_CONTEXT_HPP_ */

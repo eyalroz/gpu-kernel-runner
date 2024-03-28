@@ -348,7 +348,7 @@ void schedule_reset_of_inout_buffers_working_copy(execution_context_t& context)
     for(const auto& inout_buffer_name : inout_buffer_names) {
         const auto& pristine_copy = context.buffers.device_side.inputs.at(inout_buffer_name);
         const auto& work_copy = context.buffers.device_side.outputs.at(inout_buffer_name);
-        spdlog::debug("Initializing work-copy of inout buffer '{}'...", inout_buffer_name);
+        spdlog::debug("Initializing work-copy of inout buffer '{}'", inout_buffer_name);
         copy_buffer_on_device(context.ecosystem,
             context.ecosystem == execution_ecosystem_t::opencl ? &context.opencl.queue : nullptr,
             work_copy, pristine_copy);

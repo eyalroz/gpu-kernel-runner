@@ -157,7 +157,7 @@ std::string resolve_input_buffer_filename(
         return name;
     }
     else {
-        spdlog::debug("Fallback input filename search for for input buffer parameter '{}': No such file {}", name, (context.options.buffer_base_paths.input / name).native());
+        spdlog::debug("Fallback input filename search for input buffer parameter '{}': No such file {}", name, (context.options.buffer_base_paths.input / name).native());
     }
     for(const auto& alias : buffer_param_details.get_aliases()) {
         filesystem::path input_file_for_alias = context.options.buffer_base_paths.input / alias;
@@ -165,7 +165,7 @@ std::string resolve_input_buffer_filename(
             return alias;
         }
         else {
-            spdlog::debug("Fallback input filename search for for input buffer parameter '{}': No such file {}", name, input_file_for_alias.native());
+            spdlog::debug("Fallback input filename search for input buffer parameter '{}': No such file {}", name, input_file_for_alias.native());
         }
     }
     die("Cannot locate an input buffer file for parameter {}", name);

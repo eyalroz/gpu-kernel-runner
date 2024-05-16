@@ -91,25 +91,26 @@ using std::size_t;
 // not assume actual floatn alignment, and may result in a subotimal
 // choice of SASS instructions
 
-inline float2 vload2(size_t offset, const float* p)
+__device__ inline float2 vload2(size_t offset, const float* p)
 {
     return { p[offset], p[offset+1] };
 //    return reinterpret_cast<const float2*>(p)[offset];
 }
 
-inline void vstore2(const float2& value, size_t offset, float* p)
+__device__ inline void vstore2(const float2& value, size_t offset, float* p)
 {
     p[offset  ] = value.x;
     p[offset+1] = value.y;
 //    reinterpret_cast<float2*>(p)[offset] = value;
 }
 
-inline float3 vload3(size_t offset, const float* p)
+__device__ inline float3 vload3(size_t offset, const float* p)
 {
     return { p[offset], p[offset+1], p[offset+2] };
 //    return reinterpret_cast<const float3*>(p)[offset];
 }
-inline void vstore3(const float3& value, size_t offset, float* p)
+
+__device__ inline void vstore3(const float3& value, size_t offset, float* p)
 {
     p[offset  ] = value.x;
     p[offset+1] = value.y;
@@ -117,13 +118,13 @@ inline void vstore3(const float3& value, size_t offset, float* p)
 //    reinterpret_cast<float3*>(p)[offset] = value;
 }
 
-inline float4 vload4(size_t offset, const float* p)
+__device__ inline float4 vload4(size_t offset, const float* p)
 {
     return { p[offset], p[offset+1], p[offset+2], p[offset+3] };
 //    return reinterpret_cast<const float4*>(p)[offset];
 }
 
-inline void vstore4(const float4& value, size_t offset, float* p)
+__device__ inline void vstore4(const float4& value, size_t offset, float* p)
 {
     p[offset  ] = value.x;
     p[offset+1] = value.y;
@@ -134,7 +135,7 @@ inline void vstore4(const float4& value, size_t offset, float* p)
 
 namespace detail {
 
-inline unsigned int get_dim3_element(const dim3& d3, int index)
+__device__ inline unsigned int get_dim3_element(const dim3& d3, int index)
 {
     switch (index) {
     case 0:  return d3.x;
@@ -146,19 +147,19 @@ inline unsigned int get_dim3_element(const dim3& d3, int index)
 
 } // namespace detail
 
-inline unsigned int get_local_id(int dimension_index)
+__device__ inline unsigned int get_local_id(int dimension_index)
 {
     return detail::get_dim3_element(threadIdx, dimension_index);
 }
 
-inline unsigned int get_group_id(int dimension_index)
+__device__ inline unsigned int get_group_id(int dimension_index)
 {
     return detail::get_dim3_element(blockIdx, dimension_index);
 }
 
 // TODO: Support for larger-than-2^31 grids
 //template <typename Size = size_t>
-inline size_t get_global_id(int dimension_index)
+__device__ inline size_t get_global_id(int dimension_index)
 {
     // Note: We could have used:
     //
@@ -177,32 +178,31 @@ inline size_t get_global_id(int dimension_index)
     }
 }
 
-inline unsigned int get_local_size(uint dimension_index)
+__device__ inline unsigned int get_local_size(unsigned dimension_index)
 {
     return detail::get_dim3_element(blockDim, dimension_index);
 }
 
-inline unsigned int get_num_groups(uint dimension_index)
+__device__ inline unsigned int get_num_groups(unsigned dimension_index)
 {
     return detail::get_dim3_element(gridDim, dimension_index);
 }
 
-inline size_t get_global_size(uint dimension_index)
+__device__ inline size_t get_global_size(unsigned dimension_index)
 {
     return static_cast<size_t>(get_num_groups(dimension_index)) * get_local_size(dimension_index);
 }
 
-
-inline void barrier(int kind)
+__device__ inline void barrier(int kind)
 {
 //    assert(kind == CLK_LOCAL_MEM_FENCE);
     __syncthreads();
 }
 
 template <typename T>
-inline unsigned int convert_uint(const T& x) { return static_cast<unsigned int>(x); }
+constexpr __device__ inline unsigned int convert_uint(const T& x) { return static_cast<unsigned int>(x); }
 
-inline int2 convert_int2(const float2& v)
+constexpr __device__ inline int2 convert_int2(const float2& v)
 {
     return {
         static_cast<int>(v.x),
@@ -210,23 +210,23 @@ inline int2 convert_int2(const float2& v)
     };
 }
 
-inline float2 floor(const float2& v) { return { floorf(v.x), floorf(v.y) }; }
-inline float4 floor(const float4& v)
+constexpr __device__ inline float2 floor(const float2& v) { return { floorf(v.x), floorf(v.y) }; }
+constexpr __device__ inline float4 floor(const float4& v)
 {
     return { floorf(v.x), floorf(v.y), floorf(v.z), floorf(v.w) };
 }
 
-template <typename T> inline int   convert_int  (const T& x) { return static_cast<int>(x);   }
-template <typename T> inline float convert_float(const T& x) { return static_cast<float>(x); }
+template <typename T> constexpr __device__ inline int   convert_int  (const T& x) { return static_cast<int>(x);   }
+template <typename T> constexpr __device__ inline float convert_float(const T& x) { return static_cast<float>(x); }
 
-inline float  native_recip(float  x) { return __frcp_rn(x); }
-inline double native_recip(double x) { return __drcp_rn(x); }
+__device__ inline float  native_recip(float  x) { return __frcp_rn(x); }
+__device__ inline double native_recip(double x) { return __drcp_rn(x); }
 
-inline float  native_sqrt(float x)   { return sqrtf(x); }
-inline double native_sqrt(double x)  { return sqrt(x);  }
+__device__ inline float  native_sqrt(float x)   { return sqrtf(x); }
+__device__ inline double native_sqrt(double x)  { return sqrt(x);  }
 
-inline float  native_rsqrt(float x)  { return rsqrtf(x); }
-inline double native_rsqrt(double x) { return rsqrt(x);  }
+__device__ inline float  native_rsqrt(float x)  { return rsqrtf(x); }
+__device__ inline double native_rsqrt(double x) { return rsqrt(x);  }
 
 //template <typename T, typename Selector>
 //T select(T on_false, T on_true, Selector selector);
@@ -243,7 +243,7 @@ template <> struct is_opencl_vectorized<float2> { static constexpr const bool va
 // TODO: Fill in more vector types
 
 template <typename Scalar>
-inline Scalar select(
+__device__ inline Scalar select(
     Scalar on_false,
     Scalar on_true,
     int selector)
@@ -254,63 +254,119 @@ inline Scalar select(
 
 // Arithmetic and assignment operators for vectorized types
 
+// int2 with int2
+
+constexpr __device__ inline int2 operator+(int2 lhs, int2 rhs) noexcept { return { lhs.x + rhs.x, lhs.y + rhs.y }; }
+constexpr __device__ inline int2 operator-(int2 lhs, int2 rhs) noexcept { return { lhs.x - rhs.x, lhs.y - rhs.y }; }
+constexpr __device__ inline int2 operator*(int2 lhs, int2 rhs) noexcept { return { lhs.x * rhs.x, lhs.y * rhs.y }; }
+constexpr __device__ inline int2 operator/(int2 lhs, int2 rhs) noexcept { return { lhs.x / rhs.x, lhs.y / rhs.y }; }
+
+constexpr __device__ inline int2& operator+=(int2& lhs, int2 rhs) noexcept { lhs = lhs + rhs; return lhs; }
+constexpr __device__ inline int2& operator-=(int2& lhs, int2 rhs) noexcept { lhs = lhs - rhs; return lhs; }
+
+// int with int2
+
+constexpr __device__ inline int2 operator+(int lhs, int2 rhs) noexcept { return { lhs + rhs.x, lhs + rhs.y }; }
+constexpr __device__ inline int2 operator-(int lhs, int2 rhs) noexcept { return { lhs - rhs.x, lhs - rhs.y }; }
+constexpr __device__ inline int2 operator*(int lhs, int2 rhs) noexcept { return { lhs * rhs.x, lhs * rhs.y }; }
+constexpr __device__ inline int2 operator/(int lhs, int2 rhs) noexcept { return { lhs / rhs.x, lhs / rhs.y }; }
+
+// int2 with int
+
+constexpr __device__ inline int2 operator+(int2 lhs, int rhs) noexcept { return { lhs.x + rhs, lhs.y + rhs }; }
+constexpr __device__ inline int2 operator-(int2 lhs, int rhs) noexcept { return { lhs.x - rhs, lhs.y - rhs }; }
+constexpr __device__ inline int2 operator*(int2 lhs, int rhs) noexcept { return { lhs.x * rhs, lhs.y * rhs }; }
+constexpr __device__ inline int2 operator/(int2 lhs, int rhs) noexcept { return { lhs.x / rhs, lhs.y / rhs }; }
+
+constexpr __device__ inline int2& operator+=(int2& lhs, int rhs) noexcept { lhs = lhs + rhs; return lhs; }
+constexpr __device__ inline int2& operator-=(int2& lhs, int rhs) noexcept { lhs = lhs - rhs; return lhs; }
+
+// int4 with int4
+
+__device__ inline int4 operator+(int4 lhs, int4 rhs) noexcept { return { lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z, lhs.w + rhs.w }; }
+__device__ inline int4 operator-(int4 lhs, int4 rhs) noexcept { return { lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z, lhs.w - rhs.w }; }
+__device__ inline int4 operator*(int4 lhs, int4 rhs) noexcept { return { lhs.x * rhs.x, lhs.y * rhs.y, lhs.z * rhs.z, lhs.w * rhs.w }; }
+__device__ inline int4 operator/(int4 lhs, int4 rhs) noexcept { return { lhs.x / rhs.x, lhs.y / rhs.y, lhs.z / rhs.z, lhs.w / rhs.w }; }
+
+__device__ inline int4& operator+=(int4& lhs, int4 rhs) noexcept { lhs = lhs + rhs; return lhs; }
+__device__ inline int4& operator-=(int4& lhs, int4 rhs) noexcept { lhs = lhs + rhs; return lhs; }
+
+// int with int4
+
+__device__ inline int4 operator+(int lhs, int4 rhs) noexcept { return { lhs + rhs.x, lhs + rhs.y, lhs + rhs.z, lhs + rhs.w }; }
+__device__ inline int4 operator-(int lhs, int4 rhs) noexcept { return { lhs - rhs.x, lhs - rhs.y, lhs - rhs.z, lhs - rhs.w }; }
+__device__ inline int4 operator*(int lhs, int4 rhs) noexcept { return { lhs * rhs.x, lhs * rhs.y, lhs * rhs.z, lhs * rhs.w }; }
+__device__ inline int4 operator/(int lhs, int4 rhs) noexcept { return { lhs / rhs.x, lhs / rhs.y, lhs / rhs.z, lhs / rhs.w }; }
+
+// int4 with int
+
+__device__ inline int4 operator+(int4 lhs, int rhs) noexcept { return { lhs.x + rhs, lhs.y + rhs, lhs.z + rhs, lhs.w + rhs }; }
+__device__ inline int4 operator-(int4 lhs, int rhs) noexcept { return { lhs.x - rhs, lhs.y - rhs, lhs.z - rhs, lhs.w - rhs }; }
+__device__ inline int4 operator*(int4 lhs, int rhs) noexcept { return { lhs.x * rhs, lhs.y * rhs, lhs.z * rhs, lhs.w * rhs }; }
+__device__ inline int4 operator/(int4 lhs, int rhs) noexcept { return { lhs.x / rhs, lhs.y / rhs, lhs.z / rhs, lhs.w / rhs }; }
+
+__device__ inline int4& operator+=(int4& lhs, int rhs) noexcept { lhs = lhs + rhs; return lhs; }
+__device__ inline int4& operator-=(int4& lhs, int rhs) noexcept { lhs = lhs + rhs; return lhs; }
+
+
+
 // float2 with float2
 
-inline float2 operator+(float2 lhs, float2 rhs) noexcept { return { lhs.x + rhs.x, lhs.y + rhs.y }; }
-inline float2 operator-(float2 lhs, float2 rhs) noexcept { return { lhs.x - rhs.x, lhs.y - rhs.y }; }
-inline float2 operator*(float2 lhs, float2 rhs) noexcept { return { lhs.x * rhs.x, lhs.y * rhs.y }; }
-inline float2 operator/(float2 lhs, float2 rhs) noexcept { return { lhs.x / rhs.x, lhs.y / rhs.y }; }
+constexpr __device__ inline float2 operator+(float2 lhs, float2 rhs) noexcept { return { lhs.x + rhs.x, lhs.y + rhs.y }; }
+constexpr __device__ inline float2 operator-(float2 lhs, float2 rhs) noexcept { return { lhs.x - rhs.x, lhs.y - rhs.y }; }
+constexpr __device__ inline float2 operator*(float2 lhs, float2 rhs) noexcept { return { lhs.x * rhs.x, lhs.y * rhs.y }; }
+constexpr __device__ inline float2 operator/(float2 lhs, float2 rhs) noexcept { return { lhs.x / rhs.x, lhs.y / rhs.y }; }
 
-inline float2& operator+=(float2& lhs, float2 rhs) noexcept { lhs = lhs + rhs; return lhs; }
-inline float2& operator-=(float2& lhs, float2 rhs) noexcept { lhs = lhs - rhs; return lhs; }
+constexpr __device__ inline float2& operator+=(float2& lhs, float2 rhs) noexcept { lhs = lhs + rhs; return lhs; }
+constexpr __device__ inline float2& operator-=(float2& lhs, float2 rhs) noexcept { lhs = lhs - rhs; return lhs; }
 
 // float with float2
 
-inline float2 operator+(float lhs, float2 rhs) noexcept { return { lhs + rhs.x, lhs + rhs.y }; }
-inline float2 operator-(float lhs, float2 rhs) noexcept { return { lhs - rhs.x, lhs - rhs.y }; }
-inline float2 operator*(float lhs, float2 rhs) noexcept { return { lhs * rhs.x, lhs * rhs.y }; }
-inline float2 operator/(float lhs, float2 rhs) noexcept { return { lhs / rhs.x, lhs / rhs.y }; }
+constexpr __device__ inline float2 operator+(float lhs, float2 rhs) noexcept { return { lhs + rhs.x, lhs + rhs.y }; }
+constexpr __device__ inline float2 operator-(float lhs, float2 rhs) noexcept { return { lhs - rhs.x, lhs - rhs.y }; }
+constexpr __device__ inline float2 operator*(float lhs, float2 rhs) noexcept { return { lhs * rhs.x, lhs * rhs.y }; }
+constexpr __device__ inline float2 operator/(float lhs, float2 rhs) noexcept { return { lhs / rhs.x, lhs / rhs.y }; }
 
 // float2 with float
 
-inline float2 operator+(float2 lhs, float rhs) noexcept { return { lhs.x + rhs, lhs.y + rhs }; }
-inline float2 operator-(float2 lhs, float rhs) noexcept { return { lhs.x - rhs, lhs.y - rhs }; }
-inline float2 operator*(float2 lhs, float rhs) noexcept { return { lhs.x * rhs, lhs.y * rhs }; }
-inline float2 operator/(float2 lhs, float rhs) noexcept { return { lhs.x / rhs, lhs.y / rhs }; }
+constexpr __device__ inline float2 operator+(float2 lhs, float rhs) noexcept { return { lhs.x + rhs, lhs.y + rhs }; }
+constexpr __device__ inline float2 operator-(float2 lhs, float rhs) noexcept { return { lhs.x - rhs, lhs.y - rhs }; }
+constexpr __device__ inline float2 operator*(float2 lhs, float rhs) noexcept { return { lhs.x * rhs, lhs.y * rhs }; }
+constexpr __device__ inline float2 operator/(float2 lhs, float rhs) noexcept { return { lhs.x / rhs, lhs.y / rhs }; }
 
-inline float2& operator+=(float2& lhs, float rhs) noexcept { lhs = lhs + rhs; return lhs; }
-inline float2& operator-=(float2& lhs, float rhs) noexcept { lhs = lhs - rhs; return lhs; }
+constexpr __device__ inline float2& operator+=(float2& lhs, float rhs) noexcept { lhs = lhs + rhs; return lhs; }
+constexpr __device__ inline float2& operator-=(float2& lhs, float rhs) noexcept { lhs = lhs - rhs; return lhs; }
 
 // float4 with float4
 
-inline float4 operator+(float4 lhs, float4 rhs) noexcept { return { lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z, lhs.w + rhs.w }; }
-inline float4 operator-(float4 lhs, float4 rhs) noexcept { return { lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z, lhs.w - rhs.w }; }
-inline float4 operator*(float4 lhs, float4 rhs) noexcept { return { lhs.x * rhs.x, lhs.y * rhs.y, lhs.z * rhs.z, lhs.w * rhs.w }; }
-inline float4 operator/(float4 lhs, float4 rhs) noexcept { return { lhs.x / rhs.x, lhs.y / rhs.y, lhs.z / rhs.z, lhs.w / rhs.w }; }
+__device__ inline float4 operator+(float4 lhs, float4 rhs) noexcept { return { lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z, lhs.w + rhs.w }; }
+__device__ inline float4 operator-(float4 lhs, float4 rhs) noexcept { return { lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z, lhs.w - rhs.w }; }
+__device__ inline float4 operator*(float4 lhs, float4 rhs) noexcept { return { lhs.x * rhs.x, lhs.y * rhs.y, lhs.z * rhs.z, lhs.w * rhs.w }; }
+__device__ inline float4 operator/(float4 lhs, float4 rhs) noexcept { return { lhs.x / rhs.x, lhs.y / rhs.y, lhs.z / rhs.z, lhs.w / rhs.w }; }
 
-inline float4& operator+=(float4& lhs, float4 rhs) noexcept { lhs = lhs + rhs; return lhs; }
-inline float4& operator-=(float4& lhs, float4 rhs) noexcept { lhs = lhs + rhs; return lhs; }
+__device__ inline float4& operator+=(float4& lhs, float4 rhs) noexcept { lhs = lhs + rhs; return lhs; }
+__device__ inline float4& operator-=(float4& lhs, float4 rhs) noexcept { lhs = lhs + rhs; return lhs; }
 
 // float with float4
 
-inline float4 operator+(float lhs, float4 rhs) noexcept { return { lhs + rhs.x, lhs + rhs.y, lhs + rhs.z, lhs + rhs.w }; }
-inline float4 operator-(float lhs, float4 rhs) noexcept { return { lhs - rhs.x, lhs - rhs.y, lhs - rhs.z, lhs - rhs.w }; }
-inline float4 operator*(float lhs, float4 rhs) noexcept { return { lhs * rhs.x, lhs * rhs.y, lhs * rhs.z, lhs * rhs.w }; }
-inline float4 operator/(float lhs, float4 rhs) noexcept { return { lhs / rhs.x, lhs / rhs.y, lhs / rhs.z, lhs / rhs.w }; }
+__device__ inline float4 operator+(float lhs, float4 rhs) noexcept { return { lhs + rhs.x, lhs + rhs.y, lhs + rhs.z, lhs + rhs.w }; }
+__device__ inline float4 operator-(float lhs, float4 rhs) noexcept { return { lhs - rhs.x, lhs - rhs.y, lhs - rhs.z, lhs - rhs.w }; }
+__device__ inline float4 operator*(float lhs, float4 rhs) noexcept { return { lhs * rhs.x, lhs * rhs.y, lhs * rhs.z, lhs * rhs.w }; }
+__device__ inline float4 operator/(float lhs, float4 rhs) noexcept { return { lhs / rhs.x, lhs / rhs.y, lhs / rhs.z, lhs / rhs.w }; }
 
 // float4 with float
 
-inline float4 operator+(float4 lhs, float rhs) noexcept { return { lhs.x + rhs, lhs.y + rhs, lhs.z + rhs, lhs.w + rhs }; }
-inline float4 operator-(float4 lhs, float rhs) noexcept { return { lhs.x - rhs, lhs.y - rhs, lhs.z - rhs, lhs.w - rhs }; }
-inline float4 operator*(float4 lhs, float rhs) noexcept { return { lhs.x * rhs, lhs.y * rhs, lhs.z * rhs, lhs.w * rhs }; }
-inline float4 operator/(float4 lhs, float rhs) noexcept { return { lhs.x / rhs, lhs.y / rhs, lhs.z / rhs, lhs.w / rhs }; }
+__device__ inline float4 operator+(float4 lhs, float rhs) noexcept { return { lhs.x + rhs, lhs.y + rhs, lhs.z + rhs, lhs.w + rhs }; }
+__device__ inline float4 operator-(float4 lhs, float rhs) noexcept { return { lhs.x - rhs, lhs.y - rhs, lhs.z - rhs, lhs.w - rhs }; }
+__device__ inline float4 operator*(float4 lhs, float rhs) noexcept { return { lhs.x * rhs, lhs.y * rhs, lhs.z * rhs, lhs.w * rhs }; }
+__device__ inline float4 operator/(float4 lhs, float rhs) noexcept { return { lhs.x / rhs, lhs.y / rhs, lhs.z / rhs, lhs.w / rhs }; }
 
-inline float4& operator+=(float4& lhs, float rhs) noexcept { lhs = lhs + rhs; return lhs; }
-inline float4& operator-=(float4& lhs, float rhs) noexcept { lhs = lhs + rhs; return lhs; }
+__device__ inline float4& operator+=(float4& lhs, float rhs) noexcept { lhs = lhs + rhs; return lhs; }
+__device__ inline float4& operator-=(float4& lhs, float rhs) noexcept { lhs = lhs + rhs; return lhs; }
 
 // float4 with array of 4 floats
 
-inline float4 as_float4(float const(& floats)[4]) noexcept
+__device__ inline float4 as_float4(float const(& floats)[4]) noexcept
 {
     float4 result;
     result.x = floats[0];
@@ -324,17 +380,17 @@ inline float4 as_float4(float const(& floats)[4]) noexcept
 
 typedef float float_array4[4];
 
-inline float_array4& as_float_array(float4& floats) noexcept
+__device__ inline float_array4& as_float_array(float4& floats) noexcept
 {
     return reinterpret_cast<float_array4 &>(floats);
 }
 
-inline float4 operator+(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = as_float4(lhs); return lhs_ + rhs; }
-inline float4 operator-(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = as_float4(lhs); return lhs_ - rhs; }
-inline float4 operator*(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = as_float4(lhs); return lhs_ * rhs; }
-inline float4 operator/(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = as_float4(lhs); return lhs_ / rhs; }
+__device__ inline float4 operator+(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = as_float4(lhs); return lhs_ + rhs; }
+__device__ inline float4 operator-(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = as_float4(lhs); return lhs_ - rhs; }
+__device__ inline float4 operator*(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = as_float4(lhs); return lhs_ * rhs; }
+__device__ inline float4 operator/(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = as_float4(lhs); return lhs_ / rhs; }
 
-inline float_array4& operator+=(float_array4& lhs, float4 rhs) noexcept
+__device__ inline float_array4& operator+=(float_array4& lhs, float4 rhs) noexcept
 {
     lhs[0] += rhs.x;
     lhs[1] += rhs.y;
@@ -343,7 +399,7 @@ inline float_array4& operator+=(float_array4& lhs, float4 rhs) noexcept
     return lhs;
 }
 
-inline float_array4& operator-=(float_array4& lhs, float4 rhs) noexcept
+__device__ inline float_array4& operator-=(float_array4& lhs, float4 rhs) noexcept
 {
     lhs[0] -= rhs.x;
     lhs[1] -= rhs.y;
@@ -355,9 +411,11 @@ inline float_array4& operator-=(float_array4& lhs, float4 rhs) noexcept
 // TODO: Add the operators involving float2's and arrays of 2 floats.
 // TODO: Add operators for other types, or template all of the above on the scalar type
 
-inline float fdividef (float x, float y ) { return __fdividef(x, y); }
+#ifndef __CLANG_CUDA_MATH_H__
+__device__ inline float fdividef (float x, float y ) { return __fdividef(x, y); }
     // Note: We don't need to define fdivide - that's already defined, strangely enough
     // (and __fdivide isn't).
+#endif // __CLANG_CUDA_MATH_H__
 
 /**
  * The following macro is intended to allow the same syntax for constructing compound types

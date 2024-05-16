@@ -17,6 +17,7 @@
 #define OPENCL_SYNTAX_FOR_IDE_PARSER_CL_H_
 
 #if defined(__CDT_PARSER__) || defined (__JETBRAINS_IDE__)
+#ifndef __CUDA_ARCH__
 
 #define __kernel
 #define __global
@@ -222,6 +223,7 @@ inline half4 operator/(half4 lhs, half rhs) noexcept { return { lhs.x / rhs, lhs
 inline half4& operator+=(half4& lhs, half rhs) noexcept { lhs = lhs + rhs; return lhs; }
 inline half4& operator-=(half4& lhs, half rhs) noexcept { lhs = lhs + rhs; return lhs; }
 
+#endif // __CUDA_ARCH__
 #endif // defined(__CDT_PARSER__) || defined (__JETBRAINS_IDE__)
 
 #endif // OPENCL_SYNTAX_FOR_IDE_PARSER_CL_H_

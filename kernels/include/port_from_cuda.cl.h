@@ -4,8 +4,8 @@
  * @brief CUDA-flavor definitions for porting CUDA kernel code to OpenCL
  * with fewer changes required.
  *
- * @copyright (c) 2020-2023, GE HealthCare
- * @copyright (c) 2020-2023, Eyal Rozenberg
+ * @copyright (c) 2020-2024, GE HealthCare
+ * @copyright (c) 2020-2024, Eyal Rozenberg
  *
  * @license BSD 3-clause license; see the `LICENSE` file or
  * @url https://opensource.org/licenses/BSD-3-Clause
@@ -13,15 +13,17 @@
  * @note {Can be used for writing kernels targeting both CUDA and OpenCL
  * at once (alongside @ref port_from_opencl.cuh ).}
  *
- * @note Changes you'll need to make on your own:
+ * @note Conventions you will need to follow:
  *
- * - Replace `__local` / `__shared` with one of the aliases provided here
- *   (@ref __local_array , @ref __local_var , @ref __local_ptr )
- * - Dynamic shared memory access mechanism (`extern __shared` vs passing
- *   via an argument)
- * - Changing `max(x,y)`  into `fmax(x,y)`  (it's too risky to define a
- *   `max(x,y)` macro)
-  *
+ *  | Instead of                | Use                                                | Explanation/Note                             |
+ *  |:--------------------------|:---------------------------------------------------|:---------------------------------------------|
+ *  | `__local` / `__shared`    | `__local_array` , `__local_var` or `__local_ptr` ) | Let a macro sort out thememory space marking |
+ *  | `max(x,y)`                | `fmax(x,y)`                                        | it's too risky to define a `max(x,y)` macro  |
+ *  | struct foo = { 12, 3.4 }; | struct foo = make_compound(foo){ 12, 3.4; }        | Allow for different construction syntax      |
+ *  | constexpr                 | either CONSTEXPR_OR_CONSTANT_MEM, or an enum       |                                              |
+ *
+ * @note Use of dynamic shared memory is very different between OpenCL and CUDA, you'll
+ * have to either avoid it or work the differences out yourself.
  */
 #ifndef PORT_FROM_CUDA_TO_OPENCL_CL_H_
 #define PORT_FROM_CUDA_TO_OPENCL_CL_H_

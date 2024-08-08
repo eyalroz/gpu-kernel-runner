@@ -55,8 +55,10 @@
 #define __global
 #define __private
 #define __kernel extern "C" __global__
+#ifndef restrict
 #define restrict __restrict__
 #define __restrict __restrict__
+#endif // restrict
 // and note __local is missing!
 
 // For porting, the OpenCL kernel should replace __local
@@ -77,10 +79,10 @@
 template <typename T>
 T asin(const T& x);
 
-using uchar = std::uint8_t;
-using ushort = std::uint16_t;
-using uint = std::uint32_t;
-using ulong = std::uint64_t;
+using uchar = unsigned char;
+using ushort = unsigned short;
+using uint = unsigned int;
+using ulong = unsigned long;
 
 // Note: CUDA guarantees that the sizes of non-unsigned char, short, int and long
 // are the same as in OpenCL: 1, 2, 4, 8 bytes respectively.
@@ -235,25 +237,199 @@ __device__ inline double native_rsqrt(double x) { return rsqrt(x);  }
 //T select(T on_false, T on_true, Selector selector);
 
 template <typename T>
-struct is_opencl_vectorized { static constexpr const bool value = false; };
+struct opencl_vector_width { static constexpr const int value = 1; };
 
-template <> struct is_opencl_vectorized<int4> { static constexpr const bool value = true; };
-template <> struct is_opencl_vectorized<uint4> { static constexpr const bool value = true; };
-template <> struct is_opencl_vectorized<float4> { static constexpr const bool value = true; };
-template <> struct is_opencl_vectorized<int2> { static constexpr const bool value = true; };
-template <> struct is_opencl_vectorized<uint2> { static constexpr const bool value = true; };
-template <> struct is_opencl_vectorized<float2> { static constexpr const bool value = true; };
-// TODO: Fill in more vector types
+template <> struct opencl_vector_width<short4>  { static constexpr const int value = 4; };
+template <> struct opencl_vector_width<ushort4> { static constexpr const int value = 4; };
+template <> struct opencl_vector_width<int4>    { static constexpr const int value = 4; };
+template <> struct opencl_vector_width<uint4>   { static constexpr const int value = 4; };
+template <> struct opencl_vector_width<long4>   { static constexpr const int value = 4; };
+template <> struct opencl_vector_width<ulong4>  { static constexpr const int value = 4; };
+#ifdef GKR_ENABLE_HALF_PRECISION
+template <> struct opencl_vector_width<half4>   { static constexpr const int value = 4; };
+#endif
+template <> struct opencl_vector_width<float4>  { static constexpr const int value = 4; };
+template <> struct opencl_vector_width<double4> { static constexpr const int value = 4; };
+
+template <> struct opencl_vector_width<short2>  { static constexpr const int value = 2; };
+template <> struct opencl_vector_width<ushort2> { static constexpr const int value = 2; };
+template <> struct opencl_vector_width<int2>    { static constexpr const int value = 2; };
+template <> struct opencl_vector_width<uint2>   { static constexpr const int value = 2; };
+template <> struct opencl_vector_width<long2>   { static constexpr const int value = 2; };
+template <> struct opencl_vector_width<ulong2>  { static constexpr const int value = 2; };
+#ifdef GKR_ENABLE_HALF_PRECISION
+template <> struct opencl_vector_width<half2>   { static constexpr const int value = 2; };
+#endif
+template <> struct opencl_vector_width<float2>  { static constexpr const int value = 2; };
+template <> struct opencl_vector_width<double2> { static constexpr const int value = 2; };
+
+template <size_t VectorWidth>
+struct opencl_vectorized;
+
+template <> struct opencl_vectorized<1>
+{
+    using short_ = short;
+    using int_ = int;
+    using long_ = long;
+    using ushort_ = ushort;
+    using uint = uint;
+    using ulong_ = ulong;
+#ifdef GKR_ENABLE_HALF_PRECISION
+    using half_ = half;
+#endif
+    using float_ = float;
+    using double_ = double;
+};
+
+template <> struct opencl_vectorized<2>
+{
+    using short_ = short2;
+    using int_ = int2;
+    using long_ = long2;
+    using ushort_ = ushort2;
+    using uint = uint2;
+    using ulong_ = ulong2;
+#ifdef GKR_ENABLE_HALF_PRECISION
+    using half_ = half2;
+#endif
+    using float_ = float2;
+    using double_ = double2;
+};
+
+template <> struct opencl_vectorized<4>
+{
+    using short_ = short4;
+    using int_ = int4;
+    using long_ = long4;
+    using ushort_ = ushort4;
+    using uint = uint4;
+    using ulong_ = ulong4;
+#ifdef GKR_ENABLE_HALF_PRECISION
+    using half_ = half4;
+#endif
+    using float_ = float4;
+    using double_ = double4;
+};
 
 template <typename Scalar>
-__device__ inline Scalar select(
+constexpr __device__ inline Scalar select(
     Scalar on_false,
     Scalar on_true,
     int selector)
 {
-	static_assert(is_opencl_vectorized<Scalar>::value == false, "Don't use this on vector types");
+	static_assert(opencl_vector_width<Scalar>::value > 1, "Don't use this on vector types");
     return selector ? on_true : on_false;
 }
+
+namespace detail_ {
+
+template <typename I, I Value>
+struct integral_constant {
+    static constexpr I value = Value;
+    using value_type = I;
+    using type = integral_constant;
+
+    constexpr operator value_type() const noexcept { return value; }
+    constexpr value_type operator()() const noexcept { return value; }
+};
+
+template <typename OpenCLVector, size_t VectorWidth>
+constexpr inline typename opencl_vectorized<VectorWidth>::int_ isequal(OpenCLVector lhs, OpenCLVector rhs);
+
+template <typename OpenCLVector> constexpr inline opencl_vectorized<1>::int_ isequal(integral_constant<int, 1>, OpenCLVector lhs, OpenCLVector rhs) { return lhs == rhs; }
+template <typename OpenCLVector> constexpr inline opencl_vectorized<2>::int_ isequal(integral_constant<int, 2>, OpenCLVector lhs, OpenCLVector rhs) { return { lhs.x == rhs.x, lhs.y == rhs.y }; }
+template <typename OpenCLVector> constexpr inline opencl_vectorized<4>::int_ isequal(integral_constant<int, 4>, OpenCLVector lhs, OpenCLVector rhs) { return { lhs.x == rhs.x, lhs.y == rhs.y, lhs.z == rhs.z, lhs.w == rhs.w }; }
+
+template <typename OpenCLVector, size_t VectorWidth>
+constexpr inline typename opencl_vectorized<VectorWidth>::int_ isnotequal(OpenCLVector lhs, OpenCLVector rhs);
+
+template <typename OpenCLVector> constexpr inline opencl_vectorized<1>::int_ isnotequal(integral_constant<int, 1>, OpenCLVector lhs, OpenCLVector rhs) { return lhs != rhs; }
+template <typename OpenCLVector> constexpr inline opencl_vectorized<2>::int_ isnotequal(integral_constant<int, 2>, OpenCLVector lhs, OpenCLVector rhs) { return { lhs.x != rhs.x, lhs.y != rhs.y }; }
+template <typename OpenCLVector> constexpr inline opencl_vectorized<4>::int_ isnotequal(integral_constant<int, 4>, OpenCLVector lhs, OpenCLVector rhs) { return { lhs.x != rhs.x, lhs.y != rhs.y, lhs.z != rhs.z, lhs.w != rhs.w }; }
+
+template <typename OpenCLVector, size_t VectorWidth>
+constexpr inline typename opencl_vectorized<VectorWidth>::int_ isless(OpenCLVector lhs, OpenCLVector rhs);
+
+template <typename OpenCLVector> constexpr inline opencl_vectorized<1>::int_ isless(integral_constant<int, 1>, OpenCLVector lhs, OpenCLVector rhs) { return lhs < rhs; }
+template <typename OpenCLVector> constexpr inline opencl_vectorized<2>::int_ isless(integral_constant<int, 2>, OpenCLVector lhs, OpenCLVector rhs) { return {lhs.x < rhs.x, lhs.y < rhs.y}; }
+template <typename OpenCLVector> constexpr inline opencl_vectorized<4>::int_ isless(integral_constant<int, 4>, OpenCLVector lhs, OpenCLVector rhs) { return { lhs.x < rhs.x, lhs.y < rhs.y, lhs.z < rhs.z, lhs.w < rhs.w }; }
+
+template <typename OpenCLVector, size_t VectorWidth>
+constexpr inline bool all(OpenCLVector v);
+
+template <typename OpenCLVector> constexpr inline bool all(integral_constant<int, 1>, OpenCLVector v) { return v.x; }
+template <typename OpenCLVector> constexpr inline bool all(integral_constant<int, 2>, OpenCLVector v) { return v.x and v.y; }
+template <typename OpenCLVector> constexpr inline bool all(integral_constant<int, 4>, OpenCLVector v) { return v.x and v.y and v.z and v.w; }
+
+template <typename OpenCLVector, size_t VectorWidth>
+constexpr inline bool any(OpenCLVector v);
+
+template <typename OpenCLVector> constexpr inline bool any(integral_constant<int, 1>, OpenCLVector v) { return v.x; }
+template <typename OpenCLVector> constexpr inline bool any(integral_constant<int, 2>, OpenCLVector v) { return v.x or v.y; }
+template <typename OpenCLVector> constexpr inline bool any(integral_constant<int, 4>, OpenCLVector v) { return v.x or v.y or v.z or v.w; }
+
+} // namespace detail_
+
+template <typename OpenCLVector>
+constexpr inline typename opencl_vectorized<opencl_vector_width<OpenCLVector>::value>::int_ isequal(OpenCLVector x, OpenCLVector y)
+{
+    enum { vector_width = opencl_vector_width<OpenCLVector>::value };
+    using vector_width_type = detail_::integral_constant<int, vector_width>;
+    return detail_::isequal(vector_width_type{}, x,y);
+}
+
+template <typename OpenCLVector>
+constexpr inline typename opencl_vectorized<opencl_vector_width<OpenCLVector>::value>::int_ isnotequal(OpenCLVector x, OpenCLVector y)
+{
+    enum { vector_width = opencl_vector_width<OpenCLVector>::value };
+    using vector_width_type = detail_::integral_constant<int, vector_width>;
+    return detail_::isnotequal(vector_width_type{}, x,y);
+}
+
+template <typename OpenCLVector>
+constexpr inline typename opencl_vectorized<opencl_vector_width<OpenCLVector>::value>::int_ isless(OpenCLVector x, OpenCLVector y)
+{
+    enum { vector_width = opencl_vector_width<OpenCLVector>::value };
+    using vector_width_type = detail_::integral_constant<int, vector_width>;
+    return detail_::isless(vector_width_type{}, x, y);
+}
+
+template <typename OpenCLVector>
+constexpr inline bool all(OpenCLVector v)
+{
+    enum { vector_width = opencl_vector_width<OpenCLVector>::value };
+    using vector_width_type = detail_::integral_constant<int, vector_width>;
+    return detail_::all(vector_width_type{}, v);
+}
+
+template <typename OpenCLVector>
+constexpr inline bool any(OpenCLVector v)
+{
+    enum { vector_width = opencl_vector_width<OpenCLVector>::value };
+    using vector_width_type = detail_::integral_constant<int, vector_width>;
+    return detail_::any(vector_width_type{}, v);
+}
+
+
+template <typename OpenCLVector>
+constexpr inline typename opencl_vectorized<opencl_vector_width<OpenCLVector>::value>::int_ isgreater(OpenCLVector x, OpenCLVector y)
+{
+    return isless(y, x);
+}
+
+template <typename OpenCLVector>
+constexpr inline typename opencl_vectorized<opencl_vector_width<OpenCLVector>::value>::int_ isgreaterqual(OpenCLVector x, OpenCLVector y)
+{
+    return not isless(x, y);
+}
+
+template <typename OpenCLVector>
+constexpr inline typename opencl_vectorized<opencl_vector_width<OpenCLVector>::value>::int_ islessequal(OpenCLVector x, OpenCLVector y)
+{
+    return not isgreater(x, y);
+}
+
+/* Missing vector-type functions: bitselect, any, all, signbit, isordered, isunordered, bitselect */
 
 // Arithmetic and assignment operators for vectorized types
 

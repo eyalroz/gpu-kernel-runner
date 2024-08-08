@@ -53,6 +53,8 @@
 // with CUDA actually producing `constexpr`, and OpenCL using `__constant`
 #define CONSTEXPR_OR_CONSTANT_MEM __constant
 
+#define static_assert(COND,MSG) typedef char static_assertion_at_line_##__LINE__[(COND)?1:-1]
+
 
 #if defined(__CDT_PARSER__) || defined (__JETBRAINS_IDE__)
 #include "opencl_syntax_for_ide_parser.cl.h"

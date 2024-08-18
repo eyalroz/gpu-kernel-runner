@@ -28,42 +28,66 @@
 #ifndef PORT_FROM_OPENCL_CUH_
 #define PORT_FROM_OPENCL_CUH_
 
+#ifdef __cplusplus
+
+#ifndef USHORTHANDS_DEFINED
+typedef unsigned char  uchar;
+typedef unsigned short ushort;
+typedef unsigned int   uint;
+typedef unsigned long  ulong;
+#endif // USHORTHANDS_DEFINED
+
+/**
+ * The following macro is intended to allow the same syntax for constructing compound types
+ * in both OpenCL and CUDA. In CUDA, we would write float2 { foo, bar }; but in OpenCL we
+ * would write that (float2) { foo, bar };
+ */
+#ifndef make_compound
+#define make_compound(_compound_type) _compound_type
+#endif
+#endif // __cplusplus
+
 #ifndef __OPENCL_VERSION__
 
 #if __cplusplus < 201103L
 #error "This file requires compiling using C++11 or later"
 #endif
 
-#include "cuda_syntax_for_ide_parser.cuh"
-
 #ifdef GKR_ENABLE_HALF_PRECISION
 #include <cuda_fp16.h>
 #include "half4.cuh"
 #endif
 
+#if !defined(__CDT_PARSER__) && !defined (__JETBRAINS_IDE__)
+// Parsers may fail to recognize a reasonable default-C++-headers path for kernel files
 #include <cstdint>
 #include <cstddef> // for size_t
 #include <climits>
-    // We don't really need this here directly,
-    // but failure to include it makes NVRTC
+#endif
+    // We don't really need these files directly, but failure to include them makes NVRTC
     // take another file rather than our NVRTC-safe climits stub
-
 
 #include <vector_types.h>
 
-// These defined terms are used in OpenCL and not part of the C++ language
+// These defined terms are used in OpenCL and not part of the C++ language, nor used in CUDA as such
 #define __global
 #define __private
+
+#ifndef __kernel
 #define __kernel extern "C" __global__
+#endif
+
 #ifndef restrict
 #define restrict __restrict__
 #define __restrict __restrict__
 #endif // restrict
 // and note __local is missing!
 
-// For porting, the OpenCL kernel should replace __local
+// To be portable, the OpenCL kernel should replace __local
 // with one of the following - to indicate which uses of it require
 // decorating with CUDA's __shared__ for per-block memory allocation.
+// Then, each of the two port_from_ECOSYSTEM files wihh replace these
+// definitions with something ecosystem-specific as necessary.
 #define __local_array __shared__
 #define __local_variable __shared__
 #define __local_ptr
@@ -79,43 +103,42 @@
 template <typename T>
 T asin(const T& x);
 
-using uchar = unsigned char;
-using ushort = unsigned short;
-using uint = unsigned int;
-using ulong = unsigned long;
-
 // Note: CUDA guarantees that the sizes of non-unsigned char, short, int and long
 // are the same as in OpenCL: 1, 2, 4, 8 bytes respectively.
 
+#if !defined(__CDT_PARSER__) && !defined (__JETBRAINS_IDE__)
+// The IDEs (well, at least JetBrians) seem to already know about these types in
+// the global namespace
 using std::ptrdiff_t;
 using std::intptr_t;
 using std::uintptr_t;
 using std::size_t;
+#endif
 
 // Note: These are semantically-unsound implementations, which do
 // not assume actual floatn alignment, and may result in a subotimal
 // choice of SASS instructions
 
-__device__ inline float2 vload2(size_t offset, const float* p)
+constexpr __device__ inline float2 vload2(size_t offset, const float* p)
 {
     return { p[offset], p[offset+1] };
 //    return reinterpret_cast<const float2*>(p)[offset];
 }
 
-__device__ inline void vstore2(const float2& value, size_t offset, float* p)
+constexpr __device__ inline void vstore2(const float2& value, size_t offset, float* p)
 {
     p[offset  ] = value.x;
     p[offset+1] = value.y;
 //    reinterpret_cast<float2*>(p)[offset] = value;
 }
 
-__device__ inline float3 vload3(size_t offset, const float* p)
+constexpr __device__ inline float3 vload3(size_t offset, const float* p)
 {
     return { p[offset], p[offset+1], p[offset+2] };
 //    return reinterpret_cast<const float3*>(p)[offset];
 }
 
-__device__ inline void vstore3(const float3& value, size_t offset, float* p)
+constexpr __device__ inline void vstore3(const float3& value, size_t offset, float* p)
 {
     p[offset  ] = value.x;
     p[offset+1] = value.y;
@@ -123,13 +146,13 @@ __device__ inline void vstore3(const float3& value, size_t offset, float* p)
 //    reinterpret_cast<float3*>(p)[offset] = value;
 }
 
-__device__ inline float4 vload4(size_t offset, const float* p)
+constexpr  __device__ inline float4 vload4(size_t offset, const float* p)
 {
     return { p[offset], p[offset+1], p[offset+2], p[offset+3] };
 //    return reinterpret_cast<const float4*>(p)[offset];
 }
 
-__device__ inline void vstore4(const float4& value, size_t offset, float* p)
+constexpr __device__ inline void vstore4(const float4& value, size_t offset, float* p)
 {
     p[offset  ] = value.x;
     p[offset+1] = value.y;
@@ -152,19 +175,19 @@ __device__ inline unsigned int get_dim3_element(const dim3& d3, int index)
 
 } // namespace detail
 
-__device__ inline unsigned int get_local_id(int dimension_index)
+constexpr __device__ inline unsigned int get_local_id(int dimension_index)
 {
     return detail::get_dim3_element(threadIdx, dimension_index);
 }
 
-__device__ inline unsigned int get_group_id(int dimension_index)
+constexpr __device__ inline unsigned int get_group_id(int dimension_index)
 {
     return detail::get_dim3_element(blockIdx, dimension_index);
 }
 
 // TODO: Support for larger-than-2^31 grids
 //template <typename Size = size_t>
-__device__ inline size_t get_global_id(int dimension_index)
+constexpr __device__ inline size_t get_global_id(int dimension_index)
 {
     // Note: We could have used:
     //
@@ -183,17 +206,17 @@ __device__ inline size_t get_global_id(int dimension_index)
     }
 }
 
-__device__ inline unsigned int get_local_size(unsigned dimension_index)
+constexpr __device__ inline unsigned int get_local_size(unsigned dimension_index)
 {
     return detail::get_dim3_element(blockDim, dimension_index);
 }
 
-__device__ inline unsigned int get_num_groups(unsigned dimension_index)
+constexpr __device__ inline unsigned int get_num_groups(unsigned dimension_index)
 {
     return detail::get_dim3_element(gridDim, dimension_index);
 }
 
-__device__ inline size_t get_global_size(unsigned dimension_index)
+constexpr __device__ inline size_t get_global_size(unsigned dimension_index)
 {
     return static_cast<size_t>(get_num_groups(dimension_index)) * get_local_size(dimension_index);
 }
@@ -204,8 +227,9 @@ __device__ inline void barrier(int kind)
     __syncthreads();
 }
 
-template <typename T>
-constexpr __device__ inline unsigned int convert_uint(const T& x) { return static_cast<unsigned int>(x); }
+template <typename T> constexpr __device__ inline unsigned int convert_uint (const T& x) { return static_cast<unsigned int>(x); }
+template <typename T> constexpr __device__ inline int          convert_int  (const T& x) { return static_cast<int>(x);   }
+template <typename T> constexpr __device__ inline float        convert_float(const T& x) { return static_cast<float>(x); }
 
 constexpr __device__ inline int2 convert_int2(const float2& v)
 {
@@ -215,14 +239,15 @@ constexpr __device__ inline int2 convert_int2(const float2& v)
     };
 }
 
+// TODO: More scalar and vectorized type convert functions; see:
+// https://registry.khronos.org/OpenCL/sdk/3.0/docs/man/html/convert_T.html
+
 constexpr __device__ inline float2 floor(const float2& v) { return { floorf(v.x), floorf(v.y) }; }
 constexpr __device__ inline float4 floor(const float4& v)
 {
     return { floorf(v.x), floorf(v.y), floorf(v.z), floorf(v.w) };
 }
 
-template <typename T> constexpr __device__ inline int   convert_int  (const T& x) { return static_cast<int>(x);   }
-template <typename T> constexpr __device__ inline float convert_float(const T& x) { return static_cast<float>(x); }
 
 __device__ inline float  native_recip(float  x) { return __frcp_rn(x); }
 __device__ inline double native_recip(double x) { return __drcp_rn(x); }
@@ -624,12 +649,6 @@ __device__ inline float fdividef (float x, float y ) { return __fdividef(x, y); 
     // (and __fdivide isn't).
 #endif // __CLANG_CUDA_MATH_H__
 
-/**
- * The following macro is intended to allow the same syntax for constructing compound types
- * in both OpenCL and CUDA. In CUDA, we would write float2 { foo, bar }; but in OpenCL we
- * would write that (float2) { foo, bar };
- */
-#define make_compound(_compound_type) _compound_type
 
 /*
  * The ternary selection operator (?:) operates on three expressions (exp1 ? exp2 : exp3).

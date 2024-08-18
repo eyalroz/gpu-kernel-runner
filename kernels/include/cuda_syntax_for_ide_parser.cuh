@@ -44,7 +44,7 @@ struct dim3 {
 //#endif
 #ifndef __CUDA_BUILTIN_VAR
 #define __CUDA_BUILTIN_VAR                                                     \
-  extern const __attribute__((device)) __attribute__((weak))
+extern const __attribute__((device)) __attribute__((weak))
 __CUDA_BUILTIN_VAR __cuda_builtin_threadIdx_t threadIdx;
 __CUDA_BUILTIN_VAR __cuda_builtin_blockIdx_t blockIdx;
 __CUDA_BUILTIN_VAR __cuda_builtin_blockDim_t blockDim;

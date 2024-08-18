@@ -19,35 +19,65 @@
 #if defined(__CDT_PARSER__) || defined (__JETBRAINS_IDE__)
 #ifndef __CUDA_ARCH__
 
+#ifndef CONCAT_IDENTIFIERS
+#define CONCAT_IDENTIFIERS_INNER(_token1, _token2) _token1 ## _token2
+#define CONCAT_IDENTIFIERS(_token1, _token2) CONCAT_IDENTIFIERS_INNER(_token1, _token2)
+#endif // CONCAT_IDENTIFIERS
+
 #define __kernel
 #define __global
 #define __private
 #define __constant const
 #define __local
 #define __kernel
-#define __restrict
+
+#ifndef restrict
 #define restrict
+#define __restrict
+#endif // restrict
+
+#ifndef USHORTHANDS_DEFINED
+typedef unsigned char  uchar;
+typedef unsigned short ushort;
+typedef unsigned int   uint;
+typedef unsigned long  ulong;
+#endif
+typedef unsigned long  size_t;
 typedef float half; // well, not really, but for syntax purposes this works I guess
 
-struct short2 { short x, y; };
-struct ushort2 { unsigned short x, y; };
-struct int2 { int x, y; };
-struct uint2 { unsigned int x, y; };
-struct float2 { float x, y; };
-struct half2 { half x, y; };
+#define TYPEDEF_STRUCT_OF_2(_tp) struct CONCAT_IDENTIFIERS(_tp, 2) { _tp x, y; }
+TYPEDEF_STRUCT_OF_2(char);
+TYPEDEF_STRUCT_OF_2(uchar);
+TYPEDEF_STRUCT_OF_2(short);
+TYPEDEF_STRUCT_OF_2(ushort);
+TYPEDEF_STRUCT_OF_2(int);
+TYPEDEF_STRUCT_OF_2(uint);
+TYPEDEF_STRUCT_OF_2(long);
+TYPEDEF_STRUCT_OF_2(ulong);
+TYPEDEF_STRUCT_OF_2(half);
+TYPEDEF_STRUCT_OF_2(float);
+TYPEDEF_STRUCT_OF_2(double);
 
-struct short4 { short x, y, z, w; };
-struct ushort4 { unsigned short x, y, z, w; };
-struct int4 { int x, y, z, w; };
-struct uint4{ unsigned int x, y, z, w; };
-struct float4 { float x, y, z, w; };
-struct half4 { half x, y, z, w; };
+#define TYPEDEF_STRUCT_OF_4(_tp) struct CONCAT_IDENTIFIERS(_tp, 4) { _tp x, y, z, w; }
+TYPEDEF_STRUCT_OF_4(char);
+TYPEDEF_STRUCT_OF_4(uchar);
+TYPEDEF_STRUCT_OF_4(short);
+TYPEDEF_STRUCT_OF_4(ushort);
+TYPEDEF_STRUCT_OF_4(int);
+TYPEDEF_STRUCT_OF_4(uint);
+TYPEDEF_STRUCT_OF_4(long);
+TYPEDEF_STRUCT_OF_4(ulong);
+TYPEDEF_STRUCT_OF_4(half);
+TYPEDEF_STRUCT_OF_4(float);
+TYPEDEF_STRUCT_OF_4(double);
 
-#define uchar unsigned char
-#define ushort unsigned short
-#define uint unsigned int
-#define ulong unsigned long
-#define size_t unsigned long
+//
+//struct short4 { short x, y, z, w; };
+//struct ushort4 { unsigned short x, y, z, w; };
+//struct int4 { int x, y, z, w; };
+//struct uint4{ unsigned int x, y, z, w; };
+//struct float4 { float x, y, z, w; };
+//struct half4 { half x, y, z, w; };
 
 #define convert_int(_x) (int) (_x)
 #define convert_float(_x) (float) (_x)
@@ -68,15 +98,14 @@ inline void vstore4(const float4& value, size_t offset, float* p);
 double asin(double x);
 float asinf(float x);
 
+#ifndef max
 #define max(x,y) x
 #define min(x,y) x
+#endif
 
+#ifndef barrier
 #define barrier(_x) do {} while(0)
-
-typedef uchar  uint8_t;
-typedef ushort uint16_t;
-typedef uint   uint32_t;
-typedef ulong  uint64_t;
+#endif
 
 uint get_work_dim();
 size_t get_global_size(uint dimindx);
@@ -224,6 +253,7 @@ inline half4& operator+=(half4& lhs, half rhs) noexcept { lhs = lhs + rhs; retur
 inline half4& operator-=(half4& lhs, half rhs) noexcept { lhs = lhs + rhs; return lhs; }
 
 #endif // __CUDA_ARCH__
+
 #endif // defined(__CDT_PARSER__) || defined (__JETBRAINS_IDE__)
 
 #endif // OPENCL_SYNTAX_FOR_IDE_PARSER_CL_H_

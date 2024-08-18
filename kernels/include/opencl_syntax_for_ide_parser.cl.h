@@ -42,8 +42,11 @@ typedef unsigned short ushort;
 typedef unsigned int   uint;
 typedef unsigned long  ulong;
 #endif
+
 typedef unsigned long  size_t;
+#if !defined(__CUDA_FP16_H__) && !defined(GKR_ENABLE_HALF_PRECISION)
 typedef float half; // well, not really, but for syntax purposes this works I guess
+#endif
 
 #define TYPEDEF_STRUCT_OF_2(_tp) struct CONCAT_IDENTIFIERS(_tp, 2) { _tp x, y; }
 TYPEDEF_STRUCT_OF_2(char);

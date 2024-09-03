@@ -29,7 +29,6 @@
 #define PORT_FROM_OPENCL_CUH_
 
 #ifdef __cplusplus
-
 #ifndef USHORTHANDS_DEFINED
 typedef unsigned char  uchar;
 typedef unsigned short ushort;
@@ -37,12 +36,12 @@ typedef unsigned int   uint;
 typedef unsigned long  ulong;
 #endif // USHORTHANDS_DEFINED
 
+#ifndef make_compound
 /**
  * The following macro is intended to allow the same syntax for constructing compound types
  * in both OpenCL and CUDA. In CUDA, we would write float2 { foo, bar }; but in OpenCL we
  * would write that (float2) { foo, bar };
  */
-#ifndef make_compound
 #define make_compound(_compound_type) _compound_type
 #endif
 #endif // __cplusplus
@@ -78,8 +77,14 @@ typedef unsigned long  ulong;
 #endif
 
 #ifndef restrict
+#if defined(__CDT_PARSER__) || defined (__JETBRAINS_IDE__)
+// The parsers are rather intolerant of restrict'ng C arrays.
+#define restrict
+#define __restrict
+#else
 #define restrict __restrict__
 #define __restrict __restrict__
+#endif
 #endif // restrict
 // and note __local is missing!
 
@@ -336,6 +341,10 @@ template <> struct opencl_vectorized<4>
     using double_ = double4;
 };
 
+template <typename OpenCLVector>
+using to_ints = opencl_vectorized<opencl_vector_width<OpenCLVector>::value>::int_;
+
+
 template <typename Scalar>
 constexpr __device__ inline Scalar select(
     Scalar on_false,
@@ -358,64 +367,68 @@ struct integral_constant {
     constexpr value_type operator()() const noexcept { return value; }
 };
 
+template <int Value>
+using int_constant = integral_constant<int, Value>;
+
+
 template <typename OpenCLVector, size_t VectorWidth>
 constexpr inline typename opencl_vectorized<VectorWidth>::int_ isequal(OpenCLVector lhs, OpenCLVector rhs);
 
-template <typename OpenCLVector> constexpr inline opencl_vectorized<1>::int_ isequal(integral_constant<int, 1>, OpenCLVector lhs, OpenCLVector rhs) { return lhs == rhs; }
-template <typename OpenCLVector> constexpr inline opencl_vectorized<2>::int_ isequal(integral_constant<int, 2>, OpenCLVector lhs, OpenCLVector rhs) { return { lhs.x == rhs.x, lhs.y == rhs.y }; }
-template <typename OpenCLVector> constexpr inline opencl_vectorized<4>::int_ isequal(integral_constant<int, 4>, OpenCLVector lhs, OpenCLVector rhs) { return { lhs.x == rhs.x, lhs.y == rhs.y, lhs.z == rhs.z, lhs.w == rhs.w }; }
+template <typename OpenCLVector> constexpr inline opencl_vectorized<1>::int_ isequal(int_constant<1>, OpenCLVector lhs, OpenCLVector rhs) { return lhs == rhs; }
+template <typename OpenCLVector> constexpr inline opencl_vectorized<2>::int_ isequal(int_constant<2>, OpenCLVector lhs, OpenCLVector rhs) { return { lhs.x == rhs.x, lhs.y == rhs.y }; }
+template <typename OpenCLVector> constexpr inline opencl_vectorized<4>::int_ isequal(int_constant<4>, OpenCLVector lhs, OpenCLVector rhs) { return { lhs.x == rhs.x, lhs.y == rhs.y, lhs.z == rhs.z, lhs.w == rhs.w }; }
 
 template <typename OpenCLVector, size_t VectorWidth>
 constexpr inline typename opencl_vectorized<VectorWidth>::int_ isnotequal(OpenCLVector lhs, OpenCLVector rhs);
 
-template <typename OpenCLVector> constexpr inline opencl_vectorized<1>::int_ isnotequal(integral_constant<int, 1>, OpenCLVector lhs, OpenCLVector rhs) { return lhs != rhs; }
-template <typename OpenCLVector> constexpr inline opencl_vectorized<2>::int_ isnotequal(integral_constant<int, 2>, OpenCLVector lhs, OpenCLVector rhs) { return { lhs.x != rhs.x, lhs.y != rhs.y }; }
-template <typename OpenCLVector> constexpr inline opencl_vectorized<4>::int_ isnotequal(integral_constant<int, 4>, OpenCLVector lhs, OpenCLVector rhs) { return { lhs.x != rhs.x, lhs.y != rhs.y, lhs.z != rhs.z, lhs.w != rhs.w }; }
+template <typename OpenCLVector> constexpr inline opencl_vectorized<1>::int_ isnotequal(int_constant<1>, OpenCLVector lhs, OpenCLVector rhs) { return lhs != rhs; }
+template <typename OpenCLVector> constexpr inline opencl_vectorized<2>::int_ isnotequal(int_constant<2>, OpenCLVector lhs, OpenCLVector rhs) { return { lhs.x != rhs.x, lhs.y != rhs.y }; }
+template <typename OpenCLVector> constexpr inline opencl_vectorized<4>::int_ isnotequal(int_constant<4>, OpenCLVector lhs, OpenCLVector rhs) { return { lhs.x != rhs.x, lhs.y != rhs.y, lhs.z != rhs.z, lhs.w != rhs.w }; }
 
 template <typename OpenCLVector, size_t VectorWidth>
 constexpr inline typename opencl_vectorized<VectorWidth>::int_ isless(OpenCLVector lhs, OpenCLVector rhs);
 
-template <typename OpenCLVector> constexpr inline opencl_vectorized<1>::int_ isless(integral_constant<int, 1>, OpenCLVector lhs, OpenCLVector rhs) { return lhs < rhs; }
-template <typename OpenCLVector> constexpr inline opencl_vectorized<2>::int_ isless(integral_constant<int, 2>, OpenCLVector lhs, OpenCLVector rhs) { return {lhs.x < rhs.x, lhs.y < rhs.y}; }
-template <typename OpenCLVector> constexpr inline opencl_vectorized<4>::int_ isless(integral_constant<int, 4>, OpenCLVector lhs, OpenCLVector rhs) { return { lhs.x < rhs.x, lhs.y < rhs.y, lhs.z < rhs.z, lhs.w < rhs.w }; }
+template <typename OpenCLVector> constexpr inline opencl_vectorized<1>::int_ isless(int_constant<1>, OpenCLVector lhs, OpenCLVector rhs) { return lhs < rhs; }
+template <typename OpenCLVector> constexpr inline opencl_vectorized<2>::int_ isless(int_constant<2>, OpenCLVector lhs, OpenCLVector rhs) { return {lhs.x < rhs.x, lhs.y < rhs.y}; }
+template <typename OpenCLVector> constexpr inline opencl_vectorized<4>::int_ isless(int_constant<4>, OpenCLVector lhs, OpenCLVector rhs) { return { lhs.x < rhs.x, lhs.y < rhs.y, lhs.z < rhs.z, lhs.w < rhs.w }; }
 
 template <typename OpenCLVector, size_t VectorWidth>
 constexpr inline bool all(OpenCLVector v);
 
-template <typename OpenCLVector> constexpr inline bool all(integral_constant<int, 1>, OpenCLVector v) { return v.x; }
-template <typename OpenCLVector> constexpr inline bool all(integral_constant<int, 2>, OpenCLVector v) { return v.x and v.y; }
-template <typename OpenCLVector> constexpr inline bool all(integral_constant<int, 4>, OpenCLVector v) { return v.x and v.y and v.z and v.w; }
+template <typename OpenCLVector> constexpr inline bool all(int_constant<1>, OpenCLVector v) { return v.x; }
+template <typename OpenCLVector> constexpr inline bool all(int_constant<2>, OpenCLVector v) { return v.x and v.y; }
+template <typename OpenCLVector> constexpr inline bool all(int_constant<4>, OpenCLVector v) { return v.x and v.y and v.z and v.w; }
 
 template <typename OpenCLVector, size_t VectorWidth>
 constexpr inline bool any(OpenCLVector v);
 
-template <typename OpenCLVector> constexpr inline bool any(integral_constant<int, 1>, OpenCLVector v) { return v.x; }
-template <typename OpenCLVector> constexpr inline bool any(integral_constant<int, 2>, OpenCLVector v) { return v.x or v.y; }
-template <typename OpenCLVector> constexpr inline bool any(integral_constant<int, 4>, OpenCLVector v) { return v.x or v.y or v.z or v.w; }
+template <typename OpenCLVector> constexpr inline bool any(int_constant<1>, OpenCLVector v) { return v.x; }
+template <typename OpenCLVector> constexpr inline bool any(int_constant<2>, OpenCLVector v) { return v.x or v.y; }
+template <typename OpenCLVector> constexpr inline bool any(int_constant<4>, OpenCLVector v) { return v.x or v.y or v.z or v.w; }
 
 } // namespace detail_
 
 template <typename OpenCLVector>
-constexpr inline typename opencl_vectorized<opencl_vector_width<OpenCLVector>::value>::int_ isequal(OpenCLVector x, OpenCLVector y)
+constexpr inline to_ints<OpenCLVector> isequal(OpenCLVector x, OpenCLVector y)
 {
     enum { vector_width = opencl_vector_width<OpenCLVector>::value };
-    using vector_width_type = detail_::integral_constant<int, vector_width>;
+    using vector_width_type = detail_::int_constant<vector_width>;
     return detail_::isequal(vector_width_type{}, x,y);
 }
 
 template <typename OpenCLVector>
-constexpr inline typename opencl_vectorized<opencl_vector_width<OpenCLVector>::value>::int_ isnotequal(OpenCLVector x, OpenCLVector y)
+constexpr inline to_ints<OpenCLVector> isnotequal(OpenCLVector x, OpenCLVector y)
 {
     enum { vector_width = opencl_vector_width<OpenCLVector>::value };
-    using vector_width_type = detail_::integral_constant<int, vector_width>;
+    using vector_width_type = detail_::int_constant<vector_width>;
     return detail_::isnotequal(vector_width_type{}, x,y);
 }
 
 template <typename OpenCLVector>
-constexpr inline typename opencl_vectorized<opencl_vector_width<OpenCLVector>::value>::int_ isless(OpenCLVector x, OpenCLVector y)
+constexpr inline to_ints<OpenCLVector> isless(OpenCLVector x, OpenCLVector y)
 {
     enum { vector_width = opencl_vector_width<OpenCLVector>::value };
-    using vector_width_type = detail_::integral_constant<int, vector_width>;
+    using vector_width_type = detail_::int_constant<vector_width>;
     return detail_::isless(vector_width_type{}, x, y);
 }
 
@@ -423,7 +436,7 @@ template <typename OpenCLVector>
 constexpr inline bool all(OpenCLVector v)
 {
     enum { vector_width = opencl_vector_width<OpenCLVector>::value };
-    using vector_width_type = detail_::integral_constant<int, vector_width>;
+    using vector_width_type = detail_::int_constant<vector_width>;
     return detail_::all(vector_width_type{}, v);
 }
 
@@ -431,25 +444,25 @@ template <typename OpenCLVector>
 constexpr inline bool any(OpenCLVector v)
 {
     enum { vector_width = opencl_vector_width<OpenCLVector>::value };
-    using vector_width_type = detail_::integral_constant<int, vector_width>;
+    using vector_width_type = detail_::int_constant<vector_width>;
     return detail_::any(vector_width_type{}, v);
 }
 
 
 template <typename OpenCLVector>
-constexpr inline typename opencl_vectorized<opencl_vector_width<OpenCLVector>::value>::int_ isgreater(OpenCLVector x, OpenCLVector y)
+constexpr inline to_ints<OpenCLVector> isgreater(OpenCLVector x, OpenCLVector y)
 {
     return isless(y, x);
 }
 
 template <typename OpenCLVector>
-constexpr inline typename opencl_vectorized<opencl_vector_width<OpenCLVector>::value>::int_ isgreaterqual(OpenCLVector x, OpenCLVector y)
+constexpr inline to_ints<OpenCLVector> isgreaterqual(OpenCLVector x, OpenCLVector y)
 {
     return not isless(x, y);
 }
 
 template <typename OpenCLVector>
-constexpr inline typename opencl_vectorized<opencl_vector_width<OpenCLVector>::value>::int_ islessequal(OpenCLVector x, OpenCLVector y)
+constexpr inline to_ints<OpenCLVector> islessequal(OpenCLVector x, OpenCLVector y)
 {
     return not isgreater(x, y);
 }
@@ -515,30 +528,30 @@ constexpr __device__ inline int2& operator-=(int2& lhs, int rhs) noexcept { lhs 
 
 // int4 with int4
 
-__device__ inline int4 operator+(int4 lhs, int4 rhs) noexcept { return { lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z, lhs.w + rhs.w }; }
-__device__ inline int4 operator-(int4 lhs, int4 rhs) noexcept { return { lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z, lhs.w - rhs.w }; }
-__device__ inline int4 operator*(int4 lhs, int4 rhs) noexcept { return { lhs.x * rhs.x, lhs.y * rhs.y, lhs.z * rhs.z, lhs.w * rhs.w }; }
-__device__ inline int4 operator/(int4 lhs, int4 rhs) noexcept { return { lhs.x / rhs.x, lhs.y / rhs.y, lhs.z / rhs.z, lhs.w / rhs.w }; }
+constexpr __device__ inline int4 operator+(int4 lhs, int4 rhs) noexcept { return { lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z, lhs.w + rhs.w }; }
+constexpr __device__ inline int4 operator-(int4 lhs, int4 rhs) noexcept { return { lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z, lhs.w - rhs.w }; }
+constexpr __device__ inline int4 operator*(int4 lhs, int4 rhs) noexcept { return { lhs.x * rhs.x, lhs.y * rhs.y, lhs.z * rhs.z, lhs.w * rhs.w }; }
+constexpr __device__ inline int4 operator/(int4 lhs, int4 rhs) noexcept { return { lhs.x / rhs.x, lhs.y / rhs.y, lhs.z / rhs.z, lhs.w / rhs.w }; }
 
-__device__ inline int4& operator+=(int4& lhs, int4 rhs) noexcept { lhs = lhs + rhs; return lhs; }
-__device__ inline int4& operator-=(int4& lhs, int4 rhs) noexcept { lhs = lhs + rhs; return lhs; }
+constexpr __device__ inline int4& operator+=(int4& lhs, int4 rhs) noexcept { lhs = lhs + rhs; return lhs; }
+constexpr __device__ inline int4& operator-=(int4& lhs, int4 rhs) noexcept { lhs = lhs + rhs; return lhs; }
 
 // int with int4
 
-__device__ inline int4 operator+(int lhs, int4 rhs) noexcept { return { lhs + rhs.x, lhs + rhs.y, lhs + rhs.z, lhs + rhs.w }; }
-__device__ inline int4 operator-(int lhs, int4 rhs) noexcept { return { lhs - rhs.x, lhs - rhs.y, lhs - rhs.z, lhs - rhs.w }; }
-__device__ inline int4 operator*(int lhs, int4 rhs) noexcept { return { lhs * rhs.x, lhs * rhs.y, lhs * rhs.z, lhs * rhs.w }; }
-__device__ inline int4 operator/(int lhs, int4 rhs) noexcept { return { lhs / rhs.x, lhs / rhs.y, lhs / rhs.z, lhs / rhs.w }; }
+constexpr __device__ inline int4 operator+(int lhs, int4 rhs) noexcept { return { lhs + rhs.x, lhs + rhs.y, lhs + rhs.z, lhs + rhs.w }; }
+constexpr __device__ inline int4 operator-(int lhs, int4 rhs) noexcept { return { lhs - rhs.x, lhs - rhs.y, lhs - rhs.z, lhs - rhs.w }; }
+constexpr __device__ inline int4 operator*(int lhs, int4 rhs) noexcept { return { lhs * rhs.x, lhs * rhs.y, lhs * rhs.z, lhs * rhs.w }; }
+constexpr __device__ inline int4 operator/(int lhs, int4 rhs) noexcept { return { lhs / rhs.x, lhs / rhs.y, lhs / rhs.z, lhs / rhs.w }; }
 
 // int4 with int
 
-__device__ inline int4 operator+(int4 lhs, int rhs) noexcept { return { lhs.x + rhs, lhs.y + rhs, lhs.z + rhs, lhs.w + rhs }; }
-__device__ inline int4 operator-(int4 lhs, int rhs) noexcept { return { lhs.x - rhs, lhs.y - rhs, lhs.z - rhs, lhs.w - rhs }; }
-__device__ inline int4 operator*(int4 lhs, int rhs) noexcept { return { lhs.x * rhs, lhs.y * rhs, lhs.z * rhs, lhs.w * rhs }; }
-__device__ inline int4 operator/(int4 lhs, int rhs) noexcept { return { lhs.x / rhs, lhs.y / rhs, lhs.z / rhs, lhs.w / rhs }; }
+constexpr __device__ inline int4 operator+(int4 lhs, int rhs) noexcept { return { lhs.x + rhs, lhs.y + rhs, lhs.z + rhs, lhs.w + rhs }; }
+constexpr __device__ inline int4 operator-(int4 lhs, int rhs) noexcept { return { lhs.x - rhs, lhs.y - rhs, lhs.z - rhs, lhs.w - rhs }; }
+constexpr __device__ inline int4 operator*(int4 lhs, int rhs) noexcept { return { lhs.x * rhs, lhs.y * rhs, lhs.z * rhs, lhs.w * rhs }; }
+constexpr __device__ inline int4 operator/(int4 lhs, int rhs) noexcept { return { lhs.x / rhs, lhs.y / rhs, lhs.z / rhs, lhs.w / rhs }; }
 
-__device__ inline int4& operator+=(int4& lhs, int rhs) noexcept { lhs = lhs + rhs; return lhs; }
-__device__ inline int4& operator-=(int4& lhs, int rhs) noexcept { lhs = lhs + rhs; return lhs; }
+constexpr __device__ inline int4& operator+=(int4& lhs, int rhs) noexcept { lhs = lhs + rhs; return lhs; }
+constexpr __device__ inline int4& operator-=(int4& lhs, int rhs) noexcept { lhs = lhs + rhs; return lhs; }
 
 
 
@@ -571,34 +584,34 @@ constexpr __device__ inline float2& operator-=(float2& lhs, float rhs) noexcept 
 
 // float4 with float4
 
-__device__ inline float4 operator+(float4 lhs, float4 rhs) noexcept { return { lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z, lhs.w + rhs.w }; }
-__device__ inline float4 operator-(float4 lhs, float4 rhs) noexcept { return { lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z, lhs.w - rhs.w }; }
-__device__ inline float4 operator*(float4 lhs, float4 rhs) noexcept { return { lhs.x * rhs.x, lhs.y * rhs.y, lhs.z * rhs.z, lhs.w * rhs.w }; }
-__device__ inline float4 operator/(float4 lhs, float4 rhs) noexcept { return { lhs.x / rhs.x, lhs.y / rhs.y, lhs.z / rhs.z, lhs.w / rhs.w }; }
+constexpr __device__ inline float4 operator+(float4 lhs, float4 rhs) noexcept { return { lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z, lhs.w + rhs.w }; }
+constexpr __device__ inline float4 operator-(float4 lhs, float4 rhs) noexcept { return { lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z, lhs.w - rhs.w }; }
+constexpr __device__ inline float4 operator*(float4 lhs, float4 rhs) noexcept { return { lhs.x * rhs.x, lhs.y * rhs.y, lhs.z * rhs.z, lhs.w * rhs.w }; }
+constexpr __device__ inline float4 operator/(float4 lhs, float4 rhs) noexcept { return { lhs.x / rhs.x, lhs.y / rhs.y, lhs.z / rhs.z, lhs.w / rhs.w }; }
 
-__device__ inline float4& operator+=(float4& lhs, float4 rhs) noexcept { lhs = lhs + rhs; return lhs; }
-__device__ inline float4& operator-=(float4& lhs, float4 rhs) noexcept { lhs = lhs + rhs; return lhs; }
+constexpr __device__ inline float4& operator+=(float4& lhs, float4 rhs) noexcept { lhs = lhs + rhs; return lhs; }
+constexpr __device__ inline float4& operator-=(float4& lhs, float4 rhs) noexcept { lhs = lhs + rhs; return lhs; }
 
 // float with float4
 
-__device__ inline float4 operator+(float lhs, float4 rhs) noexcept { return { lhs + rhs.x, lhs + rhs.y, lhs + rhs.z, lhs + rhs.w }; }
-__device__ inline float4 operator-(float lhs, float4 rhs) noexcept { return { lhs - rhs.x, lhs - rhs.y, lhs - rhs.z, lhs - rhs.w }; }
-__device__ inline float4 operator*(float lhs, float4 rhs) noexcept { return { lhs * rhs.x, lhs * rhs.y, lhs * rhs.z, lhs * rhs.w }; }
-__device__ inline float4 operator/(float lhs, float4 rhs) noexcept { return { lhs / rhs.x, lhs / rhs.y, lhs / rhs.z, lhs / rhs.w }; }
+constexpr __device__ inline float4 operator+(float lhs, float4 rhs) noexcept { return { lhs + rhs.x, lhs + rhs.y, lhs + rhs.z, lhs + rhs.w }; }
+constexpr __device__ inline float4 operator-(float lhs, float4 rhs) noexcept { return { lhs - rhs.x, lhs - rhs.y, lhs - rhs.z, lhs - rhs.w }; }
+constexpr __device__ inline float4 operator*(float lhs, float4 rhs) noexcept { return { lhs * rhs.x, lhs * rhs.y, lhs * rhs.z, lhs * rhs.w }; }
+constexpr __device__ inline float4 operator/(float lhs, float4 rhs) noexcept { return { lhs / rhs.x, lhs / rhs.y, lhs / rhs.z, lhs / rhs.w }; }
 
 // float4 with float
 
-__device__ inline float4 operator+(float4 lhs, float rhs) noexcept { return { lhs.x + rhs, lhs.y + rhs, lhs.z + rhs, lhs.w + rhs }; }
-__device__ inline float4 operator-(float4 lhs, float rhs) noexcept { return { lhs.x - rhs, lhs.y - rhs, lhs.z - rhs, lhs.w - rhs }; }
-__device__ inline float4 operator*(float4 lhs, float rhs) noexcept { return { lhs.x * rhs, lhs.y * rhs, lhs.z * rhs, lhs.w * rhs }; }
-__device__ inline float4 operator/(float4 lhs, float rhs) noexcept { return { lhs.x / rhs, lhs.y / rhs, lhs.z / rhs, lhs.w / rhs }; }
+constexpr __device__ inline float4 operator+(float4 lhs, float rhs) noexcept { return { lhs.x + rhs, lhs.y + rhs, lhs.z + rhs, lhs.w + rhs }; }
+constexpr __device__ inline float4 operator-(float4 lhs, float rhs) noexcept { return { lhs.x - rhs, lhs.y - rhs, lhs.z - rhs, lhs.w - rhs }; }
+constexpr __device__ inline float4 operator*(float4 lhs, float rhs) noexcept { return { lhs.x * rhs, lhs.y * rhs, lhs.z * rhs, lhs.w * rhs }; }
+constexpr __device__ inline float4 operator/(float4 lhs, float rhs) noexcept { return { lhs.x / rhs, lhs.y / rhs, lhs.z / rhs, lhs.w / rhs }; }
 
-__device__ inline float4& operator+=(float4& lhs, float rhs) noexcept { lhs = lhs + rhs; return lhs; }
-__device__ inline float4& operator-=(float4& lhs, float rhs) noexcept { lhs = lhs + rhs; return lhs; }
+constexpr __device__ inline float4& operator+=(float4& lhs, float rhs) noexcept { lhs = lhs + rhs; return lhs; }
+constexpr __device__ inline float4& operator-=(float4& lhs, float rhs) noexcept { lhs = lhs + rhs; return lhs; }
 
 // float4 with array of 4 floats
 
-__device__ inline float4 as_float4(float const(& floats)[4]) noexcept
+constexpr __device__ inline float4 as_float4(float const(& floats)[4]) noexcept
 {
     float4 result;
     result.x = floats[0];
@@ -617,12 +630,12 @@ __device__ inline float_array4& as_float_array(float4& floats) noexcept
     return reinterpret_cast<float_array4 &>(floats);
 }
 
-__device__ inline float4 operator+(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = as_float4(lhs); return lhs_ + rhs; }
-__device__ inline float4 operator-(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = as_float4(lhs); return lhs_ - rhs; }
-__device__ inline float4 operator*(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = as_float4(lhs); return lhs_ * rhs; }
-__device__ inline float4 operator/(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = as_float4(lhs); return lhs_ / rhs; }
+constexpr __device__ inline float4 operator+(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = as_float4(lhs); return lhs_ + rhs; }
+constexpr __device__ inline float4 operator-(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = as_float4(lhs); return lhs_ - rhs; }
+constexpr __device__ inline float4 operator*(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = as_float4(lhs); return lhs_ * rhs; }
+constexpr __device__ inline float4 operator/(float_array4& lhs, float4 rhs) noexcept { float4 lhs_ = as_float4(lhs); return lhs_ / rhs; }
 
-__device__ inline float_array4& operator+=(float_array4& lhs, float4 rhs) noexcept
+constexpr __device__ inline float_array4& operator+=(float_array4& lhs, float4 rhs) noexcept
 {
     lhs[0] += rhs.x;
     lhs[1] += rhs.y;
@@ -631,7 +644,7 @@ __device__ inline float_array4& operator+=(float_array4& lhs, float4 rhs) noexce
     return lhs;
 }
 
-__device__ inline float_array4& operator-=(float_array4& lhs, float4 rhs) noexcept
+constexpr __device__ inline float_array4& operator-=(float_array4& lhs, float4 rhs) noexcept
 {
     lhs[0] -= rhs.x;
     lhs[1] -= rhs.y;
@@ -662,6 +675,13 @@ __device__ inline float fdividef (float x, float y ) { return __fdividef(x, y); 
  * type used by the vector operand and widened to the same type as the vector type. This resulting
  * matching type is the type of the entire expression.
 */
+
+__forceinline__ __device__ void syncWarp()
+{
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300
+    __syncwarp();
+#endif
+}
 
 #endif // __OPENCL_VERSION__
 #endif // PORT_FROM_OPENCL_CUH_

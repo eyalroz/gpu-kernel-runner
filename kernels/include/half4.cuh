@@ -144,12 +144,12 @@ typedef __half4 half4;
 #undef __CPP_VERSION_AT_LEAST_11_FP16
 #endif /* defined(__CPP_VERSION_AT_LEAST_11_FP16) */
 
-__host__ __device__ const __half2 * as_halves(const __half4& h4)
+inline __host__ __device__ const __half2 * as_halves(const __half4& h4)
 {
      return reinterpret_cast<const __half2 *>(&(h4));
 }
 
-__host__ __device__ float4 __half42float4(const __half4 h4)
+inline __host__ __device__ float4 __half42float4(const __half4 h4)
 {
     const __half2* halves = as_halves(h4);
     float2 xy = __half22float2(halves[0]);

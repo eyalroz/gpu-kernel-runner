@@ -90,7 +90,7 @@ TYPEDEF_STRUCT_OF_4(double);
 #define fmax(x, y) (x)
 #define fmin(x, y) (x)
 
-#define barrier()
+#define barrier(...)
 #define native_recip(x) (x)
 
 inline float2 vload2(size_t offset, const float* p);

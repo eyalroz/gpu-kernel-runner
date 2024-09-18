@@ -13,11 +13,11 @@
  * @note Can be used for writing kernels targeting both CUDA and OpenCL
  * at once (alongside @ref port_from_cuda.cl.h ).
  *
- * @note Conventions you will need to follow: 
+ * @note Conventions you will need to follow:
  *
  *  | Instead of                | Use                                                | Explanation/Note                             |
  *  |:--------------------------|:---------------------------------------------------|:---------------------------------------------|
- *  | `__local` / `__shared`    | `__local_array` , `__local_var` or `__local_ptr` ) | Let a macro sort out thememory space marking | 
+ *  | `__local` / `__shared`    | `__local_array` , `__local_var` or `__local_ptr` ) | Let a macro sort out thememory space marking |
  *  | `max(x,y)`                | `fmax(x,y)`                                        | it's too risky to define a `max(x,y)` macro  |
  *  | struct foo = { 12, 3.4 }; | struct foo = make_compound(foo){ 12, 3.4; }        | Allow for different construction syntax      |
  *  | constexpr                 | either CONSTEXPR_OR_CONSTANT_MEM, or an enum       |                                              |

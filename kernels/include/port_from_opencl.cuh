@@ -29,18 +29,23 @@
 #define PORT_FROM_OPENCL_CUH_
 
 #ifdef __cplusplus
-#ifndef USHORTHANDS_DEFINED
+#ifndef UNSIGNED_INTEGRAL_SHORTHANDS_DEFINED
 typedef unsigned char  uchar;
 typedef unsigned short ushort;
 typedef unsigned int   uint;
 typedef unsigned long  ulong;
-#endif // USHORTHANDS_DEFINED
+#endif // UNSIGNED_INTEGRAL_SHORTHANDS_DEFINED
 
 #ifndef make_compound
 /**
  * The following macro is intended to allow the same syntax for constructing compound types
- * in both OpenCL and CUDA. In CUDA, we would write float2 { foo, bar }; but in OpenCL we
- * would write that (float2) { foo, bar };
+ * in both OpenCL and CUDA:
+ *
+ *   - In CUDA, we construct like so:   float2  { foo, bar };
+ *   - in OpenCL we construct like so: (float2) { foo, bar };
+ *
+ * To bridge the difference, we always use a constructing macro, which is translated to
+ * the appropriate syntax.
  */
 #define make_compound(_compound_type) _compound_type
 #endif
@@ -168,7 +173,8 @@ constexpr __device__ inline void vstore4(const float4& value, size_t offset, flo
 
 namespace detail {
 
-__device__ inline unsigned int get_dim3_element(const dim3& d3, int index)
+constexpr __device__ inline unsigned int
+get_dim3_element(const dim3& d3, int index)
 {
     switch (index) {
     case 0:  return d3.x;

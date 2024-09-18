@@ -36,7 +36,7 @@
 #define __restrict
 #endif // restrict
 
-#ifndef USHORTHANDS_DEFINED
+#ifndef UNSIGNED_INTEGRAL_SHORTHANDS_DEFINED
 typedef unsigned char  uchar;
 typedef unsigned short ushort;
 typedef unsigned int   uint;

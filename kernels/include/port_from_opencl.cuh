@@ -57,7 +57,7 @@ typedef unsigned long  ulong;
 #error "This file requires compiling using C++11 or later"
 #endif
 
-#ifdef GKR_ENABLE_HALF_PRECISION
+#ifdef PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
 #include <cuda_fp16.h>
 #include "half4.cuh"
 #endif
@@ -281,7 +281,7 @@ template <> struct opencl_vector_width<int4>    { static constexpr const int val
 template <> struct opencl_vector_width<uint4>   { static constexpr const int value = 4; };
 template <> struct opencl_vector_width<long4>   { static constexpr const int value = 4; };
 template <> struct opencl_vector_width<ulong4>  { static constexpr const int value = 4; };
-#ifdef GKR_ENABLE_HALF_PRECISION
+#ifdef PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
 template <> struct opencl_vector_width<half4>   { static constexpr const int value = 4; };
 #endif
 template <> struct opencl_vector_width<float4>  { static constexpr const int value = 4; };
@@ -293,7 +293,7 @@ template <> struct opencl_vector_width<int2>    { static constexpr const int val
 template <> struct opencl_vector_width<uint2>   { static constexpr const int value = 2; };
 template <> struct opencl_vector_width<long2>   { static constexpr const int value = 2; };
 template <> struct opencl_vector_width<ulong2>  { static constexpr const int value = 2; };
-#ifdef GKR_ENABLE_HALF_PRECISION
+#ifdef PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
 template <> struct opencl_vector_width<half2>   { static constexpr const int value = 2; };
 #endif
 template <> struct opencl_vector_width<float2>  { static constexpr const int value = 2; };
@@ -310,7 +310,7 @@ template <> struct opencl_vectorized<1>
     using ushort_ = ushort;
     using uint = uint;
     using ulong_ = ulong;
-#ifdef GKR_ENABLE_HALF_PRECISION
+#ifdef PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
     using half_ = half;
 #endif
     using float_ = float;
@@ -325,7 +325,7 @@ template <> struct opencl_vectorized<2>
     using ushort_ = ushort2;
     using uint = uint2;
     using ulong_ = ulong2;
-#ifdef GKR_ENABLE_HALF_PRECISION
+#ifdef PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
     using half_ = half2;
 #endif
     using float_ = float2;
@@ -340,7 +340,7 @@ template <> struct opencl_vectorized<4>
     using ushort_ = ushort4;
     using uint = uint4;
     using ulong_ = ulong4;
-#ifdef GKR_ENABLE_HALF_PRECISION
+#ifdef PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
     using half_ = half4;
 #endif
     using float_ = float4;

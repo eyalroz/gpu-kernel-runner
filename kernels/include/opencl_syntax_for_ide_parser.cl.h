@@ -44,7 +44,7 @@ typedef unsigned long  ulong;
 #endif
 
 typedef unsigned long  size_t;
-#if !defined(__CUDA_FP16_H__) && !defined(GKR_ENABLE_HALF_PRECISION)
+#if !defined(__CUDA_FP16_H__) && !defined(PORT_FROM_OPENCL_ENABLE_HALF_PRECISION)
 typedef float half; // well, not really, but for syntax purposes this works I guess
 #endif
 

@@ -82,11 +82,17 @@ inline double __drcp_rn(double x) { return native_recip(x); }
  * actually has many such primitives in C-style, not overloaded. Let's "implement"
  * some of them.
  *
- * @note Some functions are commented-out. They are available in CUDA, and
- * apparently not available in OpenCL 3.0.
+ * @note
+ * 1. Some functions are commented-out. They are available in CUDA, and
+ *    apparently not available in OpenCL 3.0.
+ * 2. no nanf
+ * 3. For doubles, the CUDA and OpenCL function names are identical
  *
- * @note no nanf
+ * @{
  */
+
+// Single-precision (i.e. FP32, float)
+
 inline float acosf (float x) { return acos(x); }
 inline float acoshf (float x) { return acosh(x); }
 inline float asinf (float x) { return asin(x); }
@@ -177,6 +183,30 @@ inline float truncf (float x) { return trunc(x); }
 // TODO: Make sure behavior doesn't change regardless of the compilation flags
 inline float  fdividef (float  x, float  y) { return x / y; }
 inline double fdivide  (double x, double y) { return x / y; }
+
+// half-precision (i.e. FP16, half)
+
+#ifdef PORT_FROM_CUDA_ENABLE_HALF_PRECISION
+/**
+ * Math function definitions for half-precision, rather than OpenCL's overridden
+ * all-type functions
+ */
+inline half hceil(const half x) { ceil(h); }
+inline half hcos(const half x) { cos(x); }
+inline half hexp(const half x) { exp(x); }
+inline half hexp10(const half x) { exp10(x); }
+inline half hexp2(const half x) { exp2(x); }
+inline half hfloor(const half x) { floor(x); }
+inline half hlog(const half x) { log(x); }
+inline half hlog10(const half x) { log10(x); }
+inline half hlog2(const half x) { log3(x); }
+// inline half hrcp(const half x) { rcp(x); }
+inline half hrint(const half x) { rint(x); }
+inline half hrsqrt(const half x) { rsqrt(x); }
+inline half hsin(const half x) { sin(x); }
+inline half hsqrt(const half x) { sqrt(x); }
+inline half htrunc(const half x) { trunc(x); }
+#endif // PORT_FROM_CUDA_ENABLE_HALF_PRECISION
 
 #endif // __CUDA_ARCH__
 

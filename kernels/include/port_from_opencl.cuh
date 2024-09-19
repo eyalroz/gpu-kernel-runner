@@ -348,7 +348,7 @@ template <> struct opencl_vectorized<4>
 };
 
 template <typename OpenCLVector>
-using to_ints = opencl_vectorized<opencl_vector_width<OpenCLVector>::value>::int_;
+using to_ints = typename opencl_vectorized<opencl_vector_width<OpenCLVector>::value>::int_;
 
 
 template <typename Scalar>
@@ -619,12 +619,7 @@ constexpr __device__ inline float4& operator-=(float4& lhs, float rhs) noexcept 
 
 constexpr __device__ inline float4 as_float4(float const(& floats)[4]) noexcept
 {
-    float4 result;
-    result.x = floats[0];
-    result.y = floats[1];
-    result.z = floats[2];
-    result.w = floats[3];
-    return result;
+    return { floats[0], floats[1], floats[2], floats[3] };
 }
 
 // array of 4 floats with float4

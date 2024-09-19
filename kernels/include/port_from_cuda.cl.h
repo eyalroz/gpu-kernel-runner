@@ -73,7 +73,9 @@ inline double __drcp_rn(double x) { return native_recip(x); }
  * in both OpenCL and CUDA. In CUDA, we would write float2 { foo, bar }; but in OpenCL we
  * would write that (float2) { foo, bar };
  */
+#ifndef make_compound
 #define make_compound(_compound_type) (_compound_type)
+#endif
 
 /**
  * OpenCL has (non-C-like) overloaded math primitives, while CUDA, ironically,

@@ -216,15 +216,17 @@ constexpr I round_up_to_power_of_2(I x, I2 power_of_2) noexcept
 namespace detail {
 template <typename T>
 struct irange { T min, max; };
-} // namespace detail {
+} // namespace detail
 
-template <typename T>
-inline bool in_range(T x, std::initializer_list<T> l)
+template <typename T, typename U>
+inline bool in_range(T x, std::initializer_list<U> l)
 {
+    static_assert(std::is_convertible<T, U>::value, "The value must be convertible to the same type as the range extrema.");
     if (l.size() != 2) {
-        throw std::invalid_argument("in_range passed something other than a min-and-max initializzation list.");
+        throw std::invalid_argument("in_range passed something other than a min-and-max initialization list.");
     }
-    return (x >= *l.begin()) and (x <= *(l.begin()+1));
+    auto x_ = static_cast<U>(x);
+    return (x_ >= *l.begin()) and (x_ <= *(l.begin()+1));
 }
 
 //template <typename T>

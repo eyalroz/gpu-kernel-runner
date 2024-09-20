@@ -54,13 +54,16 @@ DISABLE_WARNING_POP
 // floats can be serialized and de-serialized with perfect accuracy if we
 // use 9 decimal digits (17 for double values)
 
+using launch_config_dimensions_t = std::array<std::size_t, 3>;
+
 struct optional_launch_config_components_t {
     static constexpr const dim3 maximum_possible_grid_dimensions { 0x7FFFFFFF, 0x1111, 0x1111 }; // = 2^31 - 1, 2^16 - 1, 2^16 - 1
+    using dims_type = launch_config_dimensions_t;
 
-    optional<std::array<std::size_t, 3>>   grid_dimensions;
+    optional<dims_type>   grid_dimensions;
     // We're assuming only one of the following two is set.
-    optional<std::array<std::size_t, 3>>   block_dimensions;
-    optional<std::array<std::size_t, 3>>   overall_grid_dimensions;
+    optional<dims_type>   block_dimensions;
+    optional<dims_type>   overall_grid_dimensions;
 
     optional<cuda::memory::shared::size_t> dynamic_shared_memory_size;
     // TODO: Add an optional boolean for cooperativity

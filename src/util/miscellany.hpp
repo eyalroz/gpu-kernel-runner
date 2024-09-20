@@ -271,6 +271,32 @@ int naive_num_digits(I number)
     return digits + 1; // Note: 0 has a single digit
 }
 
+#if __cplusplus >= 201402L
+template <typename S, typename T = S>
+constexpr typename std::common_type<S,T>::type gcd(S u, T v) noexcept
+{
+// TODO: Shouldn't we first cast everything into the common type?
+while (v != 0) {
+    auto remainder = u % v;
+    u = v;
+    v = remainder;
+    }
+    return u;
+}
+#else
+template <typename S, typename T = S>
+constexpr KAT_FHD typename std::common_type<S,T>::type gcd(S u, T v) noexcept
+{
+        return (v == 0) ? u : gcd<std::common_type<S,T>::type>(v, u % v);
+}
+#endif
+
+template <typename S, typename T = S>
+constexpr typename std::common_type<S,T>::type lcm(S u, T v) noexcept
+{
+using result_type = typename std::common_type<S,T>::type;
+return (result_type{u} / gcd(u,v)) * v;
+}
 
 } // namespace util
 

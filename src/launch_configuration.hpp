@@ -217,6 +217,24 @@ struct optional_launch_config_components_t {
     }
 };
 
+inline bool has_zeros(const optional_launch_config_components_t::dims_type& dims_component) {
+    return util::contains(dims_component, 0);
+}
+
+inline bool has_zeros(optional<optional_launch_config_components_t::dims_type> maybe_dims) {
+    return maybe_dims and has_zeros(maybe_dims.value());
+}
+
+/// Was the kernel adapter "lazy", neglecting to initialize one of the dimensions?
+/// that dimension may be zero-initialized...
+inline bool has_zeros(optional_launch_config_components_t lc_components)
+{
+    return
+        has_zeros(lc_components.block_dimensions) or
+        has_zeros(lc_components.grid_dimensions) or
+        has_zeros(lc_components.overall_grid_dimensions);
+}
+
 inline launch_configuration_type realize_launch_config(
     const optional_launch_config_components_t& components,
     execution_ecosystem_t                    ecosystem)

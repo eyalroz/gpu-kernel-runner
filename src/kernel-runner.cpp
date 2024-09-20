@@ -1001,6 +1001,12 @@ void prepare_kernel_launch_config(execution_context_t& context)
 {
     spdlog::debug("Creating a launch configuration.");
     auto lc_components = context.kernel_adapter_->make_launch_config(context);
+    has_zeros(lc_components) and die(
+        "The kernel adapter provided invalid launch configuration components, containing zero-dimensions: "
+        "{}{}{}",
+        has_zeros(lc_components.block_dimensions) ? "block dimensions  " : "",
+        has_zeros(lc_components.grid_dimensions) ? "grid dimensions  " : "",
+        has_zeros(lc_components.overall_grid_dimensions) ? "overall grid dimensions" : "");
     lc_components.deduce_missing();
     context.kernel_launch_configuration = realize_launch_config(lc_components, context.ecosystem);
 

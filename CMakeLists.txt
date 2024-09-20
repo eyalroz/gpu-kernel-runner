@@ -23,7 +23,7 @@ include(CompileWithWarnings)
 # There seem to be some cl.hpp changes in some CUDA 11 versions;
 # need to test with that before supporting it. 10.2 has not been tested but should hopefully be fine
 find_package(CUDAToolkit 10.1 REQUIRED)
-find_package(spdlog 1.13.0 REQUIRED)
+find_package(spdlog 1.14.0 REQUIRED)
 find_package(cuda-api-wrappers 0.6.7 REQUIRED)
 find_package(Python REQUIRED)
 

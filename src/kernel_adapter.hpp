@@ -193,7 +193,6 @@ public:
     virtual void generate_additional_preprocessor_definitions(execution_context_t&) const { }
 
     virtual scalar_arguments_map generate_additional_scalar_arguments(execution_context_t&) const { return {}; }
-    virtual bool input_sizes_are_valid(const execution_context_t&) const { return true; }
     virtual bool extra_validity_checks(const execution_context_t&) const { return true; }
     virtual optional<std::string> default_language_standard(execution_ecosystem_t) const { return {}; }
 

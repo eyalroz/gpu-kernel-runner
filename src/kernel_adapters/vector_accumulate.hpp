@@ -16,8 +16,8 @@ public:
     const parameter_details_type& parameter_details() const override
     {
         static const parameter_details_type pd = {
-            buffer_details("A", inout).alias("accumulator"),
-            buffer_details("B", input),
+            buffer_details("A", inout, buffer_size_calc).alias("accumulator"),
+            buffer_details("B", input, buffer_size_calc),
             scalar_details<length_type>("length").aliases({"size", "num_elements", "nelements"}),
         };
         return pd;
@@ -32,7 +32,18 @@ public:
         return generated;
     }
 
-    virtual bool input_sizes_are_valid(const execution_context_t& context) const override
+    static std::size_t buffer_size_calc(
+        const host_buffers_t&,
+        const scalar_arguments_map& scalar_arguments,
+        const preprocessor_definitions_t&,
+        const valued_preprocessor_definitions_t&,
+        const optional_launch_config_components_t&)
+    {
+        auto length = get_scalar_argument<length_type>(scalar_arguments, "length");
+        return length; // each element is of size 1...
+    }
+
+    virtual bool extra_validity_checks(const execution_context_t& context) const override
     {
         const auto& a = context.buffers.host_side.inputs.at("A");
         const auto& b = context.buffers.host_side.inputs.at("B");

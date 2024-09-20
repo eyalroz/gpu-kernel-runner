@@ -912,12 +912,31 @@ void validate_scalars(execution_context_t& context)
     }
 }
 
+void validate_input_buffer_sizes(execution_context_t& context)
+{
+    spdlog::debug("Validating input buffer sizes");
+    auto& all_params = context.kernel_adapter_->parameter_details();
+    auto input_buffer_details = util::filter(all_params,
+        [&](const auto& param_details) {
+            return is_input(param_details.direction) and param_details.kind == kernel_parameters::kind_t::buffer;
+        });
+    for (auto const& buffer_details : input_buffer_details) {
+        auto const &buffer = context.buffers.host_side.inputs[buffer_details.name];
+        if (buffer_details.size_calculator) {
+            auto calculated = apply_size_calc(buffer_details.size_calculator, context);
+            (calculated == buffer.size()) or die(
+                "Input buffer {} expected has size {} bytes, but its size calculator requires a size of {}}",
+                buffer_details.name, buffer.size(), calculated);
+            spdlog::trace("Input buffer {} has size {} bytes, as expected by size calculator}",
+                buffer_details.name, buffer.size());
+        }
+    }
+}
+
 void validate_arguments(execution_context_t& context)
 {
     validate_scalars(context);
-
-    spdlog::debug("Validating input sizes");
-    context.get_kernel_adapter().input_sizes_are_valid(context) or die("Input buffer sizes are invalid, cannot execute kernel");
+    validate_input_buffer_sizes(context);
 
     if (not context.kernel_adapter_->extra_validity_checks(context)) {
         // TODO: Have the kernel adapter report an error instead of just a boolean;
@@ -925,7 +944,7 @@ void validate_arguments(execution_context_t& context)
         // return a runtime_error (?)
         die("The combination of input arguments (scalars and buffers) and preprocessor definitions is invalid.");
     }
-    spdlog::info("Kernel arguments are fully valid (scalars and buffers, including any inout)");
+    spdlog::info("Kernel arguments are fully valid (scalars and input buffers, including any inout)");
 }
 
 void generate_additional_scalar_arguments(execution_context_t& context)

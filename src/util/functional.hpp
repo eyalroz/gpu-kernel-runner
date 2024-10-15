@@ -62,7 +62,7 @@ template<typename Container, typename F>
 Container filter(const Container& container, F predicate)
 {
     Container filtered;
-    std::copy_if(container.cbegin(), container.cend(), std::inserter(filtered, filtered.begin()), predicate);
+    std::copy_if(container.cbegin(), container.cend(), std::inserter(filtered, filtered.end()), predicate);
     return filtered;
 }
 

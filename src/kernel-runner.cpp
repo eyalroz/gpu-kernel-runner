@@ -680,7 +680,7 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
                 default:
                     auto defined_term = definition.substr(0, equals_pos);
                     auto value = definition.substr(equals_pos + 1);
-                    spdlog::trace("Preprocessor definition: {} with value {}", defined_term, value);
+                    spdlog::trace("Preprocessor definition: {}={}", defined_term, value);
                     parsed_options.preprocessor_definitions.valued[defined_term] = value;
             }
         }
@@ -925,7 +925,7 @@ void validate_input_buffer_sizes(execution_context_t& context)
         if (buffer_details.size_calculator) {
             auto calculated = apply_size_calc(buffer_details.size_calculator, context);
             (calculated == buffer.size()) or die(
-                "Input buffer {} expected has size {} bytes, but its size calculator requires a size of {}}",
+                "Input buffer {} expected has size {} bytes, but its size calculator requires a size of {}",
                 buffer_details.name, buffer.size(), calculated);
             spdlog::trace("Input buffer {} has size {} bytes, as expected by size calculator}",
                 buffer_details.name, buffer.size());
@@ -1105,7 +1105,7 @@ void generate_additional_preprocessor_defines(execution_context_t& context)
                     generated.valueless.size(), generated.valued.size());
     }
     for(const auto& valued_def : generated.valued) {
-        spdlog::debug("Generated preprocessor definition: {} with value {}", valued_def.first, valued_def.second);
+        spdlog::debug("Generated preprocessor definition: {}={}", valued_def.first, valued_def.second);
     }
     for(const auto& valueless_def : generated.valueless) {
         spdlog::debug("Generated preprocessor definition: {}", valueless_def);

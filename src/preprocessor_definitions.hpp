@@ -53,6 +53,12 @@ optional<T> safe_get_defined_value(const valued_preprocessor_definitions_t& map,
     return util::from_string<T>(find_result->second);
 }
 
+/**
+ *  Retrieve and cast a value provided as a KEY=VALUE preprocsser definition, given the KEY string.
+ *
+ *  @note the cast is safe, using @ref `util::from_string`; but is not infallible.
+ *  @throws A runtime_error on parsing failure
+ */
 template <typename T>
 T get_defined_value(const valued_preprocessor_definitions_t& map, const std::string& defined_term)
 {

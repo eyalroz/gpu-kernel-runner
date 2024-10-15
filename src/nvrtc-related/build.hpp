@@ -111,6 +111,9 @@ compilation_result_t build_cuda_kernel(
     const split_preprocessor_definitions_t& preprocessor_definitions,
     const std::vector<std::string>& extra_compilation_options)
 {
+    auto nvrtc_version = cuda::version_numbers::nvrtc();
+    spdlog::debug("Preparing to build the kernel using CUDA's nvrtc JIT compilation, version {}.{} ...",
+        nvrtc_version.major, nvrtc_version.minor);
     // TODO: Consider mentioning the kernel function name in the program name.
     auto program = cuda::rtc::program::create<cuda::cuda_cpp>(kernel_source_file_path)
         .set_source(kernel_source)

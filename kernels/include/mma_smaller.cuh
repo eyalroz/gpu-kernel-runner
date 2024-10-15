@@ -48,8 +48,8 @@
  * Users Notice.
  */
 #pragma once
-#ifndef CUDA_MMA_SMALLER_HPP_
-#define CUDA_MMA_SMALLER_HPP_
+#ifndef CUDA_MMA_SMALLER_CUH_
+#define CUDA_MMA_SMALLER_CUH_
 
 #include <mma.h>
 
@@ -195,7 +195,7 @@ namespace wmma {
 #undef __CUDA_MMA_DEVICE_DECL__
 
 #if defined(__CUDA_ARCH__)
-#include "mma-smaller.hpp"
+#include "mma_smaller.hpp"
 #endif /* defined(__CUDA_ARCH__) */
 
-#endif // CUDA_MMA_SMALLER_HPP_
+#endif // CUDA_MMA_SMALLER_CUH_

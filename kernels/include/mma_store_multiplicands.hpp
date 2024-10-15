@@ -4,7 +4,7 @@
  * @copyright (c) 2024 Eyal Rozenberg <eyalroz1@gmx.com>.
  * @copyright (c) 2024 GE Healthcare.
  *
- * @note may require conditioning on Ampere-or-greater
+ * @note may require conditioning on Ampere-or-greater architecture.
  *
  * @license BSD 3-Clause license:
  *
@@ -38,19 +38,18 @@
 #ifndef CUDA_MMA_STORE_MULTIPLICANDS_HPP
 #define CUDA_MMA_STORE_MULTIPLICANDS_HPP
 
-#ifndef CUDA_MMA_STORE_MULTIPLICANDS_HPP
-#error "Do not include this file independently of 'cuda-mma-smaller.cuh'."
-#endif
-
-// Include this from within mma-smaller.cuh !
-
 #if defined(__cplusplus) && defined(__CUDACC__)
+
+#if defined(__CUDA_ARCH__)
+#include "mma_smaller.cuh"
+#endif /* defined(__CUDA_ARCH__) */
+
+#include <mma.h>
 
 #if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 700
 
 #include <cuda_fp16.h>
 #include <cuda_bf16.h>
-
 
 #define __CUDA_MMA_DEVICE_DECL__ static __device__ __inline__
 
@@ -77,20 +76,6 @@ namespace detail {
   template <typename T>
   T remove_ref_helper(T&&);
 
-
-__CUDA_MMA_DEVICE_DECL__ unsigned lane_id() {
-  // We can use the special register...
-  //
-  // unsigned ret;
-  // asm volatile("mov.u32 %0, %laneid;" : "=r"(ret));
-  // return ret;s
-  //
-  // ... or just be more straightforward (and assume the X dimension has full warps)
-  enum { warp_size = 32 };
-  constexpr const auto lane_id_mask = warp_size - 1;
-  return threadIdx.x & lane_id_mask;  
-}
-
 /* // an inclusive integer range
 struct range { int first, last; }
 
@@ -103,7 +88,7 @@ bool is_in_one_of(int i, range r1, range r2) { return is_in(i, r1) or is_in(i, r
   //
   // Load functions for fragments of shape m16n8k16
   //
-  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(fragment<matrix_a, 16, 8, 16, __half, row_major>& a, __half* p, unsigned ldm)
+  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_a, 16, 8, 16, __half, row_major> const & a, unsigned ldm)
   {
     // TODO: Account for ldm
     using fragment_type = decltype(detail::remove_ref_helper(a));
@@ -135,7 +120,7 @@ bool is_in_one_of(int i, range r1, range r2) { return is_in(i, r1) or is_in(i, r
     }
   }
 
-  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(fragment<matrix_a, 16, 8, 16, __half, col_major>& a, __half* p, unsigned ldm)
+  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_a, 16, 8, 16, __half, col_major> const & a, unsigned ldm)
   {
     // TODO: Account for ldm
     using fragment_type = decltype(detail::remove_ref_helper(a));
@@ -161,7 +146,7 @@ bool is_in_one_of(int i, range r1, range r2) { return is_in(i, r1) or is_in(i, r
     }
   } 
 
-  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(fragment<matrix_b,16, 8, 16, __half, row_major>& a, __half* p, unsigned ldm)
+  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_b,16, 8, 16, __half, row_major> const & a, unsigned ldm)
   {
     // TODO: Account for ldm
     using fragment_type = decltype(detail::remove_ref_helper(a));
@@ -189,7 +174,7 @@ bool is_in_one_of(int i, range r1, range r2) { return is_in(i, r1) or is_in(i, r
     }
   }
 
-  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(fragment<matrix_b,16, 8, 16, __half, col_major>& a, __half* p, unsigned ldm)
+  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_b,16, 8, 16, __half, col_major> const & a, unsigned ldm)
   {
     // TODO: Account for ldm
     using fragment_type = decltype(detail::remove_ref_helper(a));
@@ -217,7 +202,10 @@ bool is_in_one_of(int i, range r1, range r2) { return is_in(i, r1) or is_in(i, r
     }
   }
 
-  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(fragment<accumulator,16, 8, 16, __half>& a, __half* p, unsigned ldm, layout_t layout)
+/*
+  // Can probably safely delete this
+
+  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<accumulator,16, 8, 16, __half> const & a, unsigned ldm, layout_t layout)
   {
     // TODO: Account for ldm
     using fragment_type = decltype(detail::remove_ref_helper(a));
@@ -241,11 +229,12 @@ bool is_in_one_of(int i, range r1, range r2) { return is_in(i, r1) or is_in(i, r
       p[pos] = a.x[i];
     }
   }
+*/
 
   // 
   // Store functions for fragments of shape m8n8k4
   // 
-  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(fragment<matrix_a, 8, 8, 4, __half, row_major>& a, __half* p, unsigned ldm) {
+  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_a, 8, 8, 4, __half, row_major> const & a, unsigned ldm) {
     asm("trap;"); // not yet tested
     // Note: NOT like the column-major function
     // TODO: Account for ldm
@@ -276,7 +265,7 @@ bool is_in_one_of(int i, range r1, range r2) { return is_in(i, r1) or is_in(i, r
     }
   }
 
-  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(fragment<matrix_a, 8, 8, 4, __half, col_major>& a, __half *p, unsigned ldm) {
+  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_a, 8, 8, 4, __half, col_major> const & a, unsigned ldm) {
     asm("trap;"); // not yet tested
     // Same as row_major except for is_row_major
     // TODO: Account for ldm
@@ -305,7 +294,7 @@ bool is_in_one_of(int i, range r1, range r2) { return is_in(i, r1) or is_in(i, r
     }
   }
 
-  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(fragment<matrix_b, 8, 8, 4, __half, row_major>& a, __half *p, unsigned ldm) {
+  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_b, 8, 8, 4, __half, row_major> const & a, unsigned ldm) {
     asm("trap;");
     // NOTE: NOT LIKE THE COL-MAJOR CASE
     // TODO: Account for ldm; update this code if we change the corresponding, untested, store_matrix_sync
@@ -328,7 +317,7 @@ bool is_in_one_of(int i, range r1, range r2) { return is_in(i, r1) or is_in(i, r
     }
   }
 
-  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(fragment<matrix_b, 8, 8, 4, __half, col_major>& a, __half *p, unsigned ldm) {
+  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_b, 8, 8, 4, __half, col_major> const & a, unsigned ldm) {
     asm("trap;");
     // NOTE: NOT LIKE THE COL-MAJOR CASE
     // TODO: Account for ldm; update this code if we change the corresponding, untested, load_matrix_sync
@@ -354,7 +343,7 @@ bool is_in_one_of(int i, range r1, range r2) { return is_in(i, r1) or is_in(i, r
   //
   // Load functions for fragments of shape m16n8k8
   // 
-  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(fragment<matrix_a, 16, 8, 8, __half, row_major>& a, __half *p, unsigned ldm) {
+  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_a, 16, 8, 8, __half, row_major> const & a, unsigned ldm) {
     // TODO: Account for ldm; update this code if we change the corresponding, untested, load_matrix_sync
     using fragment_type = decltype(detail::remove_ref_helper(a));
     static constexpr const bool is_row_major = true;
@@ -382,7 +371,7 @@ bool is_in_one_of(int i, range r1, range r2) { return is_in(i, r1) or is_in(i, r
     }
   }
 
-  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(fragment<matrix_a, 16, 8, 8, __half, col_major>& a, __half *p, unsigned ldm) {
+  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_a, 16, 8, 8, __half, col_major> const & a, unsigned ldm) {
     // TODO: Account for ldm; update this code if we change the corresponding, untested, load_matrix_sync
     using fragment_type = decltype(detail::remove_ref_helper(a));
     static constexpr const bool is_row_major = false;
@@ -407,7 +396,7 @@ bool is_in_one_of(int i, range r1, range r2) { return is_in(i, r1) or is_in(i, r
     }
   }
 
-  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(fragment<matrix_b, 16, 8, 8, __half, row_major>& a, __half *p, unsigned ldm) {
+  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_b, 16, 8, 8, __half, row_major> const & a, unsigned ldm) {
     // TODO: Account for ldm; update this code if we change the corresponding, untested, load_matrix_sync
     using fragment_type = decltype(detail::remove_ref_helper(a));
     static constexpr const bool is_row_major = true;
@@ -434,7 +423,7 @@ bool is_in_one_of(int i, range r1, range r2) { return is_in(i, r1) or is_in(i, r
     }
   }
 
-  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(fragment<matrix_b, 16, 8, 8, __half, col_major>& a, __half *p, unsigned ldm) {
+  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_b, 16, 8, 8, __half, col_major> const & a, unsigned ldm) {
     // TODO: Account for ldm; update this code if we change the corresponding, untested, load_matrix_sync
     using fragment_type = decltype(detail::remove_ref_helper(a));
     static constexpr const bool is_row_major = false;

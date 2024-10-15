@@ -2,6 +2,7 @@
  * Copyright 2017-2020 NVIDIA Corporation.  All rights reserved.
  * Copyright 2024 Eyal Rozenberg <eyalroz1@gmx.com>.
  * Copyright 2024 GE Healthcare.  All rights reserved.
+ * Copyright 2024 Eyal Rozenberg <eyalroz1@gmx.com>.
  *
  * NOTICE TO LICENSEE:
  *
@@ -53,10 +54,10 @@
 #define CUDA_MMA_SMALLER_HPP_
 
 #ifndef CUDA_MMA_SMALLER_CUH_
-#error "Do not include this file independently of 'cuda-mma-smaller.cuh'."
+#error "Do not include this file independently of 'mma_smaller.cuh'."
 #endif
 
-// Include this from within mma-smaller.cuh !
+// Include this from within mma_smaller.cuh !
 
 #if defined(__cplusplus) && defined(__CUDACC__)
 
@@ -65,7 +66,7 @@
 #include <cuda_fp16.h>
 #include <cuda_bf16.h>
 
-#include "mma-smaller-intrinsics.hpp"
+#include "mma_smaller_intrinsics.hpp"
 
 
 #define __CUDA_MMA_DEVICE_DECL__ static __device__ __inline__
@@ -277,7 +278,7 @@ bool is_in_one_of(int i, range r1, range r2) { return is_in(i, r1) or is_in(i, r
     // TODO: Double-check code involving ldm
     // we take this value explicitly.
     using fragment_type = decltype(detail::remove_ref_helper(a));
-    static constexpr const bool is_row_major = true;
+    //static constexpr const bool is_row_major = true;
     enum { M = 8, N = 8, K = 4 };
     enum { num_rows = M, num_cols = K };
     auto lane_id = detail::lane_id();

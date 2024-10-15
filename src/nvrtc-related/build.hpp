@@ -130,6 +130,9 @@ compilation_result_t build_cuda_kernel(
         opts.default_execution_space_is_device = true;
         opts.set_target(context.device());
     }
+    else {
+        spdlog::debug("As requested, NOT setting a compilation option describing the target compute capability");
+    }
     // TODO: Note the copying of strings and maps here; can we move all of these instead?
     opts.additional_include_paths = include_dir_paths;
     opts.preinclude_files = preinclude_files;

@@ -83,6 +83,7 @@ protected:
     static constexpr const auto inout  = parameter_direction_t::inout;
     static constexpr const bool is_required = kernel_parameters::is_required;
     static constexpr const bool isnt_required = kernel_parameters::isnt_required;
+    static constexpr const bool is_not_required = kernel_parameters::isnt_required;
 
 public: // constructors & destructor
     kernel_adapter() = default;

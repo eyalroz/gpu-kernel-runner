@@ -929,6 +929,8 @@ void validate_input_buffer_sizes(execution_context_t& context)
                 buffer_details.name, buffer.size(), calculated);
             spdlog::trace("Input buffer {} has size {} bytes, as expected by size calculator}",
                 buffer_details.name, buffer.size());
+        } else{
+            spdlog::trace("No size calculator for buffer {}; assuming size is valid", buffer_details.name);
         }
     }
 }

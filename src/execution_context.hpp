@@ -125,7 +125,7 @@ struct execution_context_t {
     launch_configuration_type kernel_launch_configuration;
     durations_t durations; // The execution durations of each invocation of the kernel
 
-    template <typename T>
+    template <typename T = std::string>
     T get_defined_value(const std::string& str, bool user_specified_only = false) const
     {
         return ::get_defined_value<T>(
@@ -135,27 +135,25 @@ struct execution_context_t {
             str);
     }
 
-    template <typename T>
+    template <typename T = std::string>
     T get_defined_value(char const* cptr, bool user_specified_only = false) const
     {
         std::string str{cptr};
         return get_defined_value<T>(str, user_specified_only);
     }
 
-    template <typename T>
-    bool has_defined_value(const std::string& str, bool user_specified_only = false) const
+    bool has_defined_value(const std::string& defined_term, bool user_specified_only = false) const
     {
-        return (bool) safe_get_defined_value<T>(user_specified_only ?
+        auto const& map = user_specified_only ?
             options.preprocessor_definitions.valued :
-            preprocessor_definitions.finalized.valued,
-            str);
+            preprocessor_definitions.finalized.valued;
+        return (map.find(defined_term) != map.end());
     }
 
-    template <typename T>
-    bool has_defined_value(char const* cptr, bool user_specified_only = false) const
+    bool has_defined_value(char const* defined_term, bool user_specified_only = false) const
     {
-        std::string str{cptr};
-        return has_defined_value<T>(str, user_specified_only);
+        std::string defined_term_ {defined_term};
+        return has_defined_value(defined_term_, user_specified_only);
     }
 
     const ::kernel_adapter& get_kernel_adapter() const { return *kernel_adapter_; }
@@ -179,6 +177,7 @@ const Scalar& get_scalar_argument(const scalar_arguments_map& scalars, const cha
 template <typename Scalar>
 const Scalar& get_scalar_argument(const execution_context_t& context, const char* scalar_parameter_name)
 {
+    // If scalar argument generation has already occurred, they will be searched too
     return get_scalar_argument<Scalar>(context.scalar_input_arguments.typed, scalar_parameter_name);
 }
 

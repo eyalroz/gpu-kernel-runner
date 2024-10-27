@@ -28,30 +28,36 @@ template <typename T, typename Key>
 struct has_find_method<T, Key, decltype(void(std::declval<T>().find(std::declval<const Key&>())))> : std::true_type {};
 
 template <typename Container, typename Key>
-typename Container::const_iterator find(
+auto find(
     [[maybe_unused]] std::true_type has_find_method,
-    const Container& container,
+    Container& container,
     const Key& x)
 {
     return container.find(x);
 }
 
 template <typename Container, typename Key>
-typename Container::const_iterator find(
+auto find(
     [[maybe_unused]] std::false_type doesnt_have_find_method,
-    const Container& container,
+    Container& container,
     const Key& x)
 {
-    return std::find(std::cbegin(container), std::cend(container), x);
+    return std::find(std::begin(container), std::end(container), x);
 }
 
 } // namespace detail
 
 template <typename Container, typename Key>
-typename Container::const_iterator find(const Container& container, const Key& x)
+auto find(Container& container, const Key& x)
 {
     using container_has_find = std::integral_constant<bool, detail::has_find_method<Container, Key>::value>;
     return detail::find(container_has_find{}, container, x);
+}
+
+template <typename Container, typename Predicate>
+typename Container::iterator find_if(Container& container, const Predicate& pred)
+{
+    return  std::find_if(std::begin(container), std::end(container), pred);
 }
 
 template <typename Container, typename Key>
@@ -60,7 +66,22 @@ bool contains(const Container& container, const Key& key)
     return find(container, key) != std::cend(container);
 }
 
+template <typename Container, typename Key>
+bool remove_first(Container& container, const Key& key)
+{
+    auto it = find(container, key);
+    auto found = (it != container.end());
+    if (found) {
+        container.erase(it);
+    }
+    return found;
+}
 
+template <typename Container, typename Key>
+void remove(Container& container, const Key& key)
+{
+    std::remove(container.begin(), container.end(), key);
+}
 // This is a bit ugly, but we don't have ranges
 template <typename Map>
 std::unordered_set<typename Map::key_type>

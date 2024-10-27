@@ -132,6 +132,7 @@ public: // constructors & destructor
     struct single_preprocessor_definition_details {
         const char* name;
         bool required;
+        const char *default_value;
     };
 
     // TODO: This should really be a span (and then we wouldn't

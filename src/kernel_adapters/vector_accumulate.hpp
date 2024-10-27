@@ -74,7 +74,7 @@ public:
     preprocessor_definition_details_type preprocessor_definition_details() const override
     {
         static const preprocessor_definition_details_type preprocessor_definitions = {
-            { "A_LITTLE_EXTRA", isnt_required },
+            { "A_LITTLE_EXTRA", isnt_required, "1" },
         };
         return preprocessor_definitions;
     }

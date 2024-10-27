@@ -1101,6 +1101,18 @@ void handle_execution_durations(execution_context_t &context)
     }
 }
 
+void apply_preprocessor_definition_defaults(execution_context_t& context)
+{
+    auto ppds_with_defaults = util::filter(
+        context.get_kernel_adapter().preprocessor_definition_details(),
+        [](const auto& spd) { return spd.default_value != nullptr;});
+    for(auto const& ppd : ppds_with_defaults) {
+        if (not util::contains(context.options.preprocessor_definitions.valued, ppd.name)) {
+            context.preprocessor_definitions.generated.valued.emplace(ppd.name, ppd.default_value);
+        }
+    }
+}
+
 void generate_additional_preprocessor_defines(execution_context_t& context)
 {
     spdlog::debug("Generating additional preprocessor definitions");
@@ -1159,6 +1171,7 @@ int main(int argc, char** argv)
         resolve_buffer_filenames(context);
     }
 
+    apply_preprocessor_definition_defaults(context);
     generate_additional_preprocessor_defines(context);
     finalize_preprocessor_definitions(context);
     ensure_necessary_terms_were_defined(context);

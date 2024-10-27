@@ -111,7 +111,7 @@ template <typename Container>
 Container union_(const Container& set_1, const Container& set_2)
 {
     Container result;
-    set_union(
+    std::set_union(
         std::cbegin(set_1), std::cend(set_1),
         std::cbegin(set_2), std::cend(set_2),
         std::inserter(result, std::begin(result))
@@ -148,10 +148,19 @@ LHSContainer intersection(const LHSContainer& lhs, const RHSContainer& rhs)
 template <typename Container>
 Container difference(const Container& lhs, const Container& rhs)
 {
+/*
     // TODO: This is an inefficient implementation; we could use a counting map for amortized-linear-time complexity
     Container result;
     std::copy_if(lhs.begin(), lhs.end(), std::inserter(result, result.end()),
         [&rhs] (const auto& needle) { return rhs.find(needle) == rhs.end(); });
+    return result;
+*/
+    Container result;
+    std::set_difference(
+        std::cbegin(lhs), std::cend(rhs),
+        std::cbegin(lhs), std::cend(rhs),
+        std::inserter(result, std::begin(result))
+    );
     return result;
 }
 

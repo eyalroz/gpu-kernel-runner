@@ -97,6 +97,52 @@ struct compilation_result_t {
     optional<std::string> mangled_signature;
 };
 
+/**
+ * We let the user specify an arbitrary set of "extra" compilation options; however, some of
+ * these might clahs with, or duplicate, options our code itself sets. NVRTC (as of CUDA 12.6)
+ * is rather picky about these situations, even if one is jus trepliacing the same switch more
+ * than once. Ideally, the options class itself should contain code which removes duplicates
+ * from the extra options and identifes clashes, but - it doesn't, for now, so let's do something
+ * quick-and-dirty with a few options we know are problematic for NVRTC.
+ *
+ * @param options The NVRTC compilation option - the ones we set in "proper" fields and
+ * additional options, most/all specified by the user
+ */
+void opportunistically_remove_duplicates(cuda::rtc::compilation_options_t<cuda::cuda_cpp>& options)
+{
+    auto& extra = options.extra_options;
+    if (options.default_execution_space_is_device) {
+        util::remove(extra, "--device-as-default-execution-space");
+    }
+
+    // Note: assuming the dialect spec using the same arg, e.g. "--std=c++14", rather than a separate
+    // one, "--std c++14"
+
+    if (options.language_dialect) {
+        const char dialect_param_prefix[] = "--std=";
+        auto it = util::find_if(extra, [&](const std::string& s) {
+            return s.substr(0, strlen(dialect_param_prefix)) == dialect_param_prefix;
+        } );
+        if (it != extra.end()) {
+            auto main_opts_cpp_dialect_name = cuda::rtc::detail_::cpp_dialect_names[static_cast<int>(*options.language_dialect)];
+            auto extra_opts_dialect_name = it->substr(std::strlen(dialect_param_prefix));
+            if (main_opts_cpp_dialect_name != extra_opts_dialect_name) {
+                options.set_language_dialect(extra_opts_dialect_name);
+            }
+            extra.erase(it);
+        }
+    }
+    auto it = util::find(extra, "--device-as-default-execution-space" );
+    if (it != extra.end()) {
+        options.default_execution_space_is_device = true;
+        extra.erase(it);
+    }
+//
+//    if (options.language_dialect) {
+//        util::remove(extra, "--device-as-default-execution-space");
+//    }
+}
+
 compilation_result_t build_cuda_kernel(
     const cuda::context_t& context,
     const char* kernel_source_file_path,
@@ -139,6 +185,9 @@ compilation_result_t build_cuda_kernel(
     opts.no_value_defines = preprocessor_definitions.valueless;
     opts.valued_defines = preprocessor_definitions.valued;
     opts.extra_options = extra_compilation_options;
+
+    // Ugly kludge :-(
+    opportunistically_remove_duplicates(opts);
 
     spdlog::debug("Kernel compilation generated-command-line arguments: \"{}\"", render(opts));
 

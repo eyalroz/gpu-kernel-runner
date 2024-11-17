@@ -1016,10 +1016,10 @@ void prepare_kernel_launch_config(execution_context_t& context)
     auto bd = lc_components.block_dimensions.value();
     auto ogd = lc_components.overall_grid_dimensions.value();
 
-    spdlog::info("Launch configuration: Block dimensions:   {:>9} x {:>5} x {:>5} threads", bd[0],bd[1], bd[2]);
-    spdlog::info("Launch configuration: Grid dimensions:    {:>9} x {:>5} x {:>5} blocks ", gd[0], gd[1], gd[2]);
-    spdlog::info("                                          -----------------------------------");
-    spdlog::info("Launch configuration: Overall dimensions: {:>9} x {:>5} x {:>5} threads", ogd[0], ogd[1], ogd[2]);
+    spdlog::info("Launch configuration: Block dimensions:   {:>11} x {:>5} x {:>5} = {:15} threads", bd[0], bd[1], bd[2], bd[0] * bd[1] * bd[2]);
+    spdlog::info("Launch configuration: Grid dimensions:    {:>11} x {:>5} x {:>5} = {:15} blocks ", gd[0], gd[1], gd[2], gd[0] * gd[1] * gd[2]);
+    spdlog::info("                                          ----------------------------------------------------");
+    spdlog::info("Launch configuration: Overall dimensions: {:>11} x {:>5} x {:>5} = {:15} threads", ogd[0], ogd[1], ogd[2], ogd[0] * ogd[1] * ogd[2]);
     if (context.ecosystem == execution_ecosystem_t::cuda) {
         spdlog::info("Launch configuration: Dynamic shared memory:  {} bytes", lc_components.dynamic_shared_memory_size.value_or(0));
     }

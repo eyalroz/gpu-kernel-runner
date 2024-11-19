@@ -82,6 +82,7 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
         ("language-standard,std", "Set the language standard to use for CUDA compilation (options: c++11, c++14, c++17)", cxxopts::value<string>())
         ("input-buffer-directory,in-dir,input-buffer-dir,input-buffers-directory,input-buffers-dir,inbuf-dir,inbufs,inbufs-dir,inbuf-directory,inbufs-directory,in-directory", "Base location for locating input buffers", cxxopts::value<string>()->default_value( filesystem::current_path().native() ))
         ("output-buffer-directory,output-buffer-dir,output-buffers-directory,output-buffers-dir,outbuf-dir,outbufs,outbufs-dir,outbuf-directory,outbufs-directory,out-directory", "Base location for writing output buffers", cxxopts::value<string>()->default_value( filesystem::current_path().native() ))
+        ("accept-oversized-inputs,accept-oversized,allow-oversized-inputs,allow-oversized,lax-size-validation", "Accept input buffers exceeding the expected size calculated for them", cxxopts::value<bool>()->default_value("false"))
         ("kernel-sources-dir,kernel-source-dir,kernel-source-directory,kernel-sources-directory,kernel-sources,source-dir,sources", "Base location for locating kernel source files", cxxopts::value<string>()->default_value( filesystem::current_path().native() ))
         ("h,help", "Print usage information")
         ;
@@ -629,6 +630,7 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
     parsed_options.clear_l2_cache = parse_result["clear-l2-cache"].as<bool>();
     parsed_options.sync_after_kernel_execution = parse_result["sync-after-execution"].as<bool>();
     parsed_options.sync_after_buffer_op = parse_result["sync-after-buffer-op"].as<bool>();
+    parsed_options.accept_oversized_inputs = parse_result["accept-oversized-inputs"].as<bool>();
 
     if (parse_result.count("block-dimensions") > 0) {
         auto dims = parse_result["block-dimensions"].as<std::vector<unsigned>>();
@@ -924,13 +926,22 @@ void validate_input_buffer_sizes(execution_context_t& context)
         auto const &buffer = context.buffers.host_side.inputs[buffer_details.name];
         if (buffer_details.size_calculator) {
             auto calculated = apply_size_calc(buffer_details.size_calculator, context);
-            (calculated == buffer.size()) or die(
-                "Input buffer {} expected has size {} bytes, but its size calculator requires a size of {}",
-                buffer_details.name, buffer.size(), calculated);
-            spdlog::trace("Input buffer {} has size {} bytes, as expected by size calculator}",
+            if ((context.options.accept_oversized_inputs and calculated > buffer.size()) or
+                (not context.options.accept_oversized_inputs and calculated != buffer.size())) {
+                die("Input buffer {} expected has size {} bytes, but its size calculator requires a size of {}",
+                    buffer_details.name, buffer.size(), calculated);
+            }
+            if (context.options.accept_oversized_inputs and calculated < buffer.size())
+            {
+                spdlog::info("Input buffer {} has size {} bytes, exceeding calculator-expected size of {}",
+                    buffer_details.name, buffer.size(), calculated);
+            }
+            else {
+                spdlog::trace("Input buffer {} has size {} bytes, as expected by size calculator}",
                 buffer_details.name, buffer.size());
+            }
         } else{
-            spdlog::trace("No size calculator for buffer {}; assuming size is valid", buffer_details.name);
+            spdlog::debug("No size calculator for buffer {}; assuming size is valid", buffer_details.name);
         }
     }
 }

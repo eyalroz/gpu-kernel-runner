@@ -64,6 +64,7 @@ struct parsed_cmdline_options_t {
     bool compile_only;
 //    bool compare_outputs_against_expected;
     bool generate_debug_info;
+    bool accept_oversized_inputs;
     filesystem::path ptx_output_file;
     filesystem::path compilation_log_file;
     filesystem::path execution_durations_file;

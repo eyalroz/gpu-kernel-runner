@@ -67,24 +67,27 @@ bool check_potential_cuda_include_dir(filesystem::path candidate_dir)
 // of code - certainly if you want it to work on MacOs Windows as well as Linux.
 optional<std::string> locate_cuda_include_directory()
 {
-
     filesystem::path candidate;
-#ifdef CUDA_INCLUDE_DIR
-    candidate = CUDA_INCLUDE_DIR;
-    if (check_potential_cuda_include_dir(candidate)) {
-        return candidate.native();
-    }
-#endif
+
     constexpr const char *cuda_root_env_var_names[] = { "CUDA_ROOT", "CUDA_PATH", "CUDA_DIR" };
     for (auto env_var_name : cuda_root_env_var_names) {
         auto cuda_root_env_dir = util::get_env(env_var_name);
         if (cuda_root_env_dir) {
             candidate = filesystem::path(cuda_root_env_dir.value()) / "include";
             if (check_potential_cuda_include_dir(candidate)) {
+                spdlog::trace( "Using the CUDA include directory specified in {}, "
+                   "to append to  the compilation options", env_var_name);
                 return candidate.native();
             }
         }
     }
+
+#ifdef CUDA_INCLUDE_DIR
+    candidate = CUDA_INCLUDE_DIR;
+    if (check_potential_cuda_include_dir(candidate)) {
+        return candidate.native();
+    }
+#endif
     // TODO: Check the PATH for the CUDA binaries dir
     return nullopt;
 }
@@ -111,8 +114,10 @@ struct compilation_result_t {
 void opportunistically_remove_duplicates(cuda::rtc::compilation_options_t<cuda::cuda_cpp>& options)
 {
     auto& extra = options.extra_options;
+	spdlog::trace("Before duplicate removal, extra args are: {}", extra);
     if (options.default_execution_space_is_device) {
         util::remove(extra, "--device-as-default-execution-space");
+		spdlog::debug("Removed redundnat command-line arg {} ", "--device-as-default-execution-space");
     }
 
     // Note: assuming the dialect spec using the same arg, e.g. "--std=c++14", rather than a separate
@@ -137,10 +142,7 @@ void opportunistically_remove_duplicates(cuda::rtc::compilation_options_t<cuda::
         options.default_execution_space_is_device = true;
         extra.erase(it);
     }
-//
-//    if (options.language_dialect) {
-//        util::remove(extra, "--device-as-default-execution-space");
-//    }
+	spdlog::trace("After duplicate removal, extra args are: {}", extra);
 }
 
 compilation_result_t build_cuda_kernel(

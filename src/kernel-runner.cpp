@@ -326,6 +326,15 @@ void list_opencl_platforms()
     std::cout << std::endl;
 }
 
+void set_log_level(std::string log_level_name)
+{
+    auto log_level = spdlog::level::from_str(log_level_name);
+    if (spdlog::level_is_at_least(spdlog::level::debug)) {
+        spdlog::log(spdlog::level::debug, "Setting log level to {}", log_level_name);
+    }
+    spdlog::set_level(log_level);
+}
+
 parsed_cmdline_options_t parse_command_line(int argc, char** argv)
 {
     // TODO: Break off lots of smaller functions handling the just-parsed parameters
@@ -376,11 +385,7 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
     // go ahead and collect the parsed data
 
     auto log_level_name = parse_result["log-level"].as<string>();
-    auto log_level = spdlog::level::from_str(log_level_name);
-    if (spdlog::level_is_at_least(spdlog::level::debug)) {
-        spdlog::log(spdlog::level::debug, "Setting log level to {}", log_level_name);
-    }
-    spdlog::set_level(log_level);
+    set_log_level(log_level_name);
 
     auto log_flush_threshold_name = parse_result["log-flush-threshold"].as<string>();
     auto log_flush_threshold = spdlog::level::from_str(log_flush_threshold_name);

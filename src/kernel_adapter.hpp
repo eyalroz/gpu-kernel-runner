@@ -81,6 +81,7 @@ protected:
     static constexpr const auto buffer = kernel_parameters::kind_t::buffer;
     static constexpr const auto scalar = kernel_parameters::kind_t::scalar;
     static constexpr const auto inout  = parameter_direction_t::inout;
+    static constexpr const auto scratch  = parameter_direction_t::scratch;
     static constexpr const bool is_required = kernel_parameters::is_required;
     static constexpr const bool isnt_required = kernel_parameters::isnt_required;
     static constexpr const bool is_not_required = kernel_parameters::isnt_required;
@@ -266,18 +267,21 @@ protected:
         bool                   required = is_required,
         std::initializer_list<std::string> name_aliases = no_aliases())
     {
+        if ((direction == scratch) and (size_calculator == no_size_calc)) {
+            throw std::invalid_argument("Scratch buffer parameters must be defined with a size calculator");
+        }
         return single_parameter_details {
             name, name_aliases, buffer, no_parser, size_calculator,
             no_pusher, direction, required};
     }
 }; // kernel_adapter
 
-inline parameter_name_set buffer_names(const kernel_adapter& kernel_adapter, parameter_direction_t direction);
+inline name_set buffer_names(const kernel_adapter& kernel_adapter, parameter_direction_t direction);
 
 template <typename Predicate, typename = std::enable_if_t<not std::is_same<Predicate, parameter_direction_t>::value, void> >
-parameter_name_set buffer_names(const kernel_adapter& kernel_adapter, Predicate pred)
+name_set buffer_names(const kernel_adapter& kernel_adapter, Predicate pred)
 {
-    return util::transform_if<parameter_name_set>(kernel_adapter.parameter_details(),
+    return util::transform_if<name_set>(kernel_adapter.parameter_details(),
         [&pred](const auto& spd) {
             return spd.kind == kernel_parameters::kind_t::buffer and pred(spd);
         },
@@ -285,7 +289,7 @@ parameter_name_set buffer_names(const kernel_adapter& kernel_adapter, Predicate 
     );
 }
 
-inline parameter_name_set buffer_names(const kernel_adapter& kernel_adapter, parameter_direction_t direction)
+inline name_set buffer_names(const kernel_adapter& kernel_adapter, parameter_direction_t direction)
 {
     return buffer_names(kernel_adapter,
         [direction](const kernel_adapter::single_parameter_details& spd) {
@@ -314,10 +318,21 @@ inline void push_back_buffer(
     parameter_direction_t dir,
     const char* buffer_parameter_name)
 {
-    const auto& buffer_map = (dir == parameter_direction_t::in) ?
-        context.buffers.device_side.inputs:
-        context.buffers.device_side.outputs;
-        // Note: We use outputs here for inout buffers as well.
+    const auto& buffer_map =
+        [&]() {
+            switch (dir) {
+                case parameter_direction_t::in:
+                    return context.buffers.device_side.inputs;
+                case parameter_direction_t::inout:
+                case parameter_direction_t::out:
+                    return context.buffers.device_side.outputs;
+                case parameter_direction_t::scratch:
+                    return context.buffers.device_side.scratch;
+                default:
+                    throw std::logic_error("Unexpected direction encountered");
+            }
+        } ();
+
     if (context.ecosystem == execution_ecosystem_t::cuda) {
         argument_ptrs_and_maybe_sizes.pointers.push_back(& buffer_map.at(buffer_parameter_name).cuda.data());
     }
@@ -360,6 +375,7 @@ inline marshalled_arguments_type kernel_adapter::marshal_kernel_arguments(const 
             kernel_adapters::push_back_buffer(argument_ptrs_and_maybe_sizes, context, spd.direction, spd.name);
         }
         else {
+            // it's a scalar
             spd.pusher(argument_ptrs_and_maybe_sizes, context, spd.name);
         }
     }

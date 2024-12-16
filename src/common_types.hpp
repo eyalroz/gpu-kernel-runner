@@ -33,7 +33,8 @@ using durations_t = std::vector<duration_t>;
 using string_map = std::unordered_map<std::string, std::string>;
 using maybe_string_map = std::unordered_map<std::string, optional<std::string>>;
 using valued_preprocessor_definitions_t = std::unordered_map<std::string, std::string>;
-using preprocessor_definitions_t = std::unordered_set<std::string>;
+using string_set = std::unordered_set<std::string>;
+using preprocessor_definitions_t = string_set;
 using argument_values_t = std::unordered_map<std::string, std::string>;
 using include_paths_t = std::vector<std::string>;
 
@@ -72,6 +73,7 @@ enum class parameter_direction_t {
     out = output,
     inout = 2,
     io = inout,
+    scratch = 3
 };
 
 inline bool is_input(parameter_direction_t dir)
@@ -86,7 +88,7 @@ inline bool is_output(parameter_direction_t dir)
 
 inline constexpr const char* parameter_direction_name(parameter_direction_t dir)
 {
-    constexpr const char* names[] = { "input", "output", "inout" };
+    constexpr const char* names[] = { "input", "output", "inout", "scratch" };
     return names[(int) dir];
 }
 

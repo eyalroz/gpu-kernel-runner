@@ -31,7 +31,7 @@ DISABLE_WARNING_POP
 
 using string_map = std::unordered_map<std::string, std::string>;
 using include_paths_t = std::vector<std::string>;
-using buffer_sizes = std::unordered_map<std::string, size_t>;
+using buffer_size_map = std::unordered_map<std::string, size_t>;
 
 // TODO: Switch to a variant, perhaps?
 union device_buffer_type {
@@ -69,7 +69,7 @@ struct execution_context_t {
             host_buffers_t inputs, outputs; // , expected;
         } host_side;
         struct {
-            device_buffers_map inputs, outputs;
+            device_buffers_map inputs, outputs, scratch;
                 // Note: in-out buffers have one pristine copy in the inputs map,
                 // and a "working" copy the outputs map
 

@@ -41,6 +41,7 @@ kernel-runner \
     --block-dimensions 256,1,1 \
     --grid-dimensions 1,1,1 \
     --arg A=input_a --arg length=3 --arg B=input_b \
+    --arg-size C=3 \
     -DA_LITTLE_EXTRA=2
 ```
 then you'll get a file named `C.out`, containing `fgh`... which is indeed the correct output of the kernel: The sequence `abc`, plus 3 for each character due the values in `input_B`, plus 2 for each character from the preprocessor definition of `A_LITTLE_EXTRA`. 

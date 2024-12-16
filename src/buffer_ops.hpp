@@ -41,19 +41,6 @@ void copy_buffer_to_host(
 // the context.
 void copy_outputs_from_device(execution_context_t& context);
 
-device_buffer_type create_device_side_buffer(
-    const std::string&                      name,
-    std::size_t                             size,
-    execution_ecosystem_t                   ecosystem,
-    const optional<const cuda::context_t>&  cuda_context,
-    optional<const cl::Context>             opencl_context);
-
-device_buffers_map create_device_side_buffers(
-    execution_ecosystem_t                   ecosystem,
-    const optional<const cuda::context_t>&  cuda_context,
-    optional<cl::Context>                   opencl_context,
-    const host_buffers_t&                   host_side_buffers);
-
 void schedule_zero_buffer(
     execution_ecosystem_t                  ecosystem,
     const device_buffer_type               buffer,

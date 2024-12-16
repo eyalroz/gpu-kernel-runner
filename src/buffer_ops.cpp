@@ -177,13 +177,13 @@ device_buffers_map create_device_side_buffers(
     execution_ecosystem_t                   ecosystem,
     const optional<const cuda::context_t>&  cuda_context,
     optional<cl::Context>                   opencl_context,
-    const host_buffers_t&                   host_side_buffers)
+    const buffer_size_map                   buffer_sizes)
 {
     return util::transform<device_buffers_map>(
-        host_side_buffers,
+        buffer_sizes,
         [&](const auto& p) {
             const auto& name = p.first;
-            const auto& size = p.second.size();
+            const auto& size = p.second;
             spdlog::debug("Creating GPU-side buffer for '{}' of size {} bytes.", name, size);
             auto buffer = create_device_side_buffer(
                 name, size,
@@ -192,6 +192,33 @@ device_buffers_map create_device_side_buffers(
                 opencl_context);
             return device_buffers_map::value_type { name, std::move(buffer) };
         } );
+}
+
+device_buffers_map create_device_side_buffers(
+    execution_ecosystem_t                   ecosystem,
+    const optional<const cuda::context_t>&  cuda_context,
+    optional<cl::Context>                   opencl_context,
+    const host_buffers_t&                   host_side_buffers)
+{
+    auto buffer_sizes = util::transform<buffer_size_map>(
+        host_side_buffers,
+        [&](const auto& p) -> std::pair<string, size_t>
+        { return { p.first, p.second.size() }; });
+    return create_device_side_buffers(ecosystem, cuda_context, opencl_context, buffer_sizes);
+}
+
+device_buffers_map create_scratch_buffers(execution_context_t& context)
+{
+    auto scratch_buffer_details = util::filter(
+        context.get_kernel_adapter().buffer_details(),
+        [&](const auto& buffer_details) {
+            return buffer_details.direction == parameter_direction_t::scratch;
+        });
+    auto buffer_sizes = util::transform<buffer_size_map>(
+        scratch_buffer_details,
+        [&](const auto& buffer_details) -> std::pair<string, size_t>
+        { return { buffer_details.name, apply_size_calc(buffer_details.size_calculator, context) }; });
+    return create_device_side_buffers(context.ecosystem, context.cuda.context, context.opencl.context, buffer_sizes);
 }
 
 // Notes:
@@ -279,6 +306,9 @@ void create_device_side_buffers(execution_context_t& context)
         context.buffers.host_side.outputs);
             // ... and remember the behavior regarding in-out buffers: For each in-out buffers, a buffer
             // is created in _both_ previous function calls
+    spdlog::debug("Output buffers, and a work copy of the input buffers, have created in GPU memory");
+    context.buffers.device_side.scratch = create_scratch_buffers(context);
+    spdlog::debug("Scratch buffers created in GPU memory");
     if (context.options.clear_l2_cache) {
         auto size = get_l2_cache_size(context);
         context.buffers.device_side.l2_cache_clearing_gadget.emplace(create_device_side_buffer(
@@ -288,7 +318,6 @@ void create_device_side_buffers(execution_context_t& context)
             context.opencl.context));
     }
     gpu_sync(context);
-    spdlog::debug("Output buffers, and work copy of inout buffers, created in GPU memory.");
 }
 
 // Note: Will create buffers also for each inout buffers

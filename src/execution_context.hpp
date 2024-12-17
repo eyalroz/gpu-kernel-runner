@@ -92,7 +92,7 @@ struct execution_context_t {
     struct cuda_specific_t {
         optional<cuda::context_t>       context;
         optional<cuda::module_t>        module; // in the context
-        optional<std::string>           mangled_kernel_signature;
+        optional<cuda::kernel_t>        kernel; // in the module
         optional<cuda::stream_t>        stream;
         std::vector<cuda_event_pair_t>  timing_events;
     };

@@ -859,7 +859,7 @@ bool build_kernel(execution_context_t& context)
         if (result.succeeded) {
             context.cuda.module = std::move(result.module);
             context.compiled_ptx = std::move(result.ptx);
-            context.cuda.mangled_kernel_signature = std::move(result.mangled_signature);
+            context.cuda.kernel = std::move(result.kernel);
         }
     }
     else {

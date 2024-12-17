@@ -96,8 +96,8 @@ struct compilation_result_t {
     bool succeeded;
     optional<std::string> log;
     optional<cuda::module_t> module;
+    optional<cuda::kernel_t> kernel;
     optional<std::string> ptx;
-    optional<std::string> mangled_signature;
 };
 
 /**
@@ -215,13 +215,16 @@ compilation_result_t build_cuda_kernel(
     std::string ptx_as_string = std::string(ptx.data(), ptx.size());
     spdlog::debug("Compiled PTX length: {} characters.", ptx.size());
     auto module = cuda::module::create(context, compilation_output);
-    spdlog::debug("Compiled kernel loaded as a CUDA module.");
+    auto kernel = module.get_kernel(mangled_kernel_function_signature);
+    spdlog::debug("Kernel static memory usage: {} bytes.",
+        kernel.get_attribute(cuda::kernel::attribute_t::CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES));
+    spdlog::debug("Compiled kernel loaded into a CUDA module.");
     return {
         compilation_succeeded,
         std::move(log),
         std::move(module),
-        std::move(ptx_as_string),
-        std::move(mangled_kernel_function_signature)
+        std::move(kernel),
+        std::move(ptx_as_string)
     };
 }
 

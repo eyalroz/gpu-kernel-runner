@@ -29,14 +29,11 @@ void launch_and_time_cuda_kernel(execution_context_t& execution_context, run_ind
             });
         execution_context.cuda.stream->enqueue.event(events[events.size() - 1].before);
     }
-    auto mangled_kernel_signature = execution_context.cuda.mangled_kernel_signature->c_str();
-    auto kernel = execution_context.cuda.module->get_kernel(mangled_kernel_signature);
-
     spdlog::info("Scheduling kernel run {1:>{0}}",
         util::naive_num_digits(execution_context.options.num_runs), run_index + 1);
 
     cuda::launch_type_erased(
-        kernel,
+        execution_context.cuda.kernel.value(),
         execution_context.cuda.stream.value(),
         lc,
         execution_context.finalized_arguments.pointers);

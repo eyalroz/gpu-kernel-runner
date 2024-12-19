@@ -1010,6 +1010,21 @@ void finalize_kernel_arguments(execution_context_t& context)
     if (context.ecosystem == execution_ecosystem_t::opencl) {
         set_opencl_kernel_arguments(context.opencl.built_kernel, context.finalized_arguments);
     }
+    else {
+        auto num_args = context.finalized_arguments.pointers.size();
+        auto num_digits = util::naive_num_digits(num_args);
+        for(size_t i = 0; i < context.finalized_arguments.pointers.size() - 1; i++ ) {
+            auto arg = context.finalized_arguments.pointers[i];
+            auto spd = context.kernel_adapter_->parameter_details()[i];
+            if (spd.kind != kernel_parameters::kind_t::buffer) {
+                spdlog::trace("Kernel argument {0:1}: Scalar", i, num_digits);
+                continue;
+            }
+            auto as_double_ptr = static_cast<const void* const *>(arg);
+            void const* buffer_ptr = *as_double_ptr;
+            spdlog::trace("Kernel argument {}: Buffer at {}", i, buffer_ptr);
+        }
+    }
     spdlog::debug("Finalized {} arguments for kernel function \"{}\"",
         context.finalized_arguments.pointers.size() - 1,
         context.options.kernel.function_name);

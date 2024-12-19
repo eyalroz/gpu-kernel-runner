@@ -368,7 +368,10 @@ inline void kernel_adapter::pusher(
 
 inline marshalled_arguments_type kernel_adapter::marshal_kernel_arguments(const execution_context_t& context) const
 {
+    auto num_params = parameter_details().size();
     marshalled_arguments_type argument_ptrs_and_maybe_sizes;
+    argument_ptrs_and_maybe_sizes.pointers.reserve(num_params);
+    argument_ptrs_and_maybe_sizes.sizes.reserve(num_params);
 
     for(const auto& spd : parameter_details()) {
         if (spd.kind == buffer) {

@@ -10,12 +10,11 @@
 
 using valued_preprocessor_definitions_t = std::unordered_map<std::string, std::string>;
 using preprocessor_definitions_t = std::unordered_set<std::string>;
-using parameter_name_set = std::unordered_set<std::string>;
+using name_set = std::unordered_set<std::string>;
 
-inline parameter_name_set
-get_defined_terms(const preprocessor_definitions_t definitions)
+inline name_set get_defined_terms(const preprocessor_definitions_t definitions)
 {
-    return util::transform<parameter_name_set>(
+    return util::transform<name_set>(
         definitions,
         [](const std::string& definition) {
             auto pos = definition.find('=');

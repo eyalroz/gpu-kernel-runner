@@ -272,12 +272,12 @@ protected:
     }
 }; // kernel_adapter
 
-inline parameter_name_set buffer_names(const kernel_adapter& kernel_adapter, parameter_direction_t direction);
+inline name_set buffer_names(const kernel_adapter& kernel_adapter, parameter_direction_t direction);
 
 template <typename Predicate, typename = std::enable_if_t<not std::is_same<Predicate, parameter_direction_t>::value, void> >
-parameter_name_set buffer_names(const kernel_adapter& kernel_adapter, Predicate pred)
+name_set buffer_names(const kernel_adapter& kernel_adapter, Predicate pred)
 {
-    return util::transform_if<parameter_name_set>(kernel_adapter.parameter_details(),
+    return util::transform_if<name_set>(kernel_adapter.parameter_details(),
         [&pred](const auto& spd) {
             return spd.kind == kernel_parameters::kind_t::buffer and pred(spd);
         },
@@ -285,7 +285,7 @@ parameter_name_set buffer_names(const kernel_adapter& kernel_adapter, Predicate 
     );
 }
 
-inline parameter_name_set buffer_names(const kernel_adapter& kernel_adapter, parameter_direction_t direction)
+inline name_set buffer_names(const kernel_adapter& kernel_adapter, parameter_direction_t direction)
 {
     return buffer_names(kernel_adapter,
         [direction](const kernel_adapter::single_parameter_details& spd) {

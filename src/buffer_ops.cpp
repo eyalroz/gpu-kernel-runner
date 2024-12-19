@@ -9,7 +9,7 @@ using std::size_t;
 using std::string;
 
 host_buffers_t read_input_buffers_from_files(
-    const parameter_name_set& buffer_names,
+    const name_set&           buffer_names,
     const maybe_string_map&   filenames,
     const filesystem::path&   buffer_directory)
 {

@@ -18,10 +18,7 @@
 
 // A convenience overload for specific kernel adapters to be able
 // to complain about dimensions_t's they get.
-inline std::ostream& operator<<(std::ostream& os, cuda::grid::dimensions_t dims)
-{
-    return os << '(' << dims.x << " x " << dims.y << " x " << dims.z << " x " << ')';
-}
+std::ostream& operator<<(std::ostream& os, cuda::grid::dimensions_t dims);
 
 using size_calculator_type = std::size_t (*)(
     const host_buffers_t& input_buffers,
@@ -93,7 +90,6 @@ public: // constructors & destructor
     kernel_adapter& operator=(kernel_adapter&) = default;
     kernel_adapter& operator=(kernel_adapter&&) = default;
 
-
     struct single_parameter_details {
         const char* name;
         std::vector<std::string> aliases_;
@@ -105,29 +101,10 @@ public: // constructors & destructor
         bool required;
 
         const std::vector<std::string>& get_aliases() const noexcept { return aliases_; }
-        single_parameter_details aliases(std::initializer_list<const char*> extra_aliases) const
-        {
-            auto result = *this;
-            std::copy(std::cbegin(extra_aliases), std::cend(extra_aliases), std::back_inserter(result.aliases_));
-            return result;
-        }
-
-        single_parameter_details alias(const char* extra_alias) const
-        {
-            auto result = *this;
-            result.aliases_.emplace_back(extra_alias);
-            return result;
-        }
-
-        single_parameter_details alias(const std::string& extra_alias) const
-        {
-            return alias(extra_alias.c_str());
-        }
-
-        bool has_alias(const std::string& alias) const
-        {
-            return util::find(aliases_,alias) != aliases_.cend();
-        }
+        single_parameter_details aliases(std::initializer_list<const char*> extra_aliases) const;
+        single_parameter_details alias(const char* extra_alias) const;
+        single_parameter_details alias(const std::string& extra_alias) const;
+        bool has_alias(const std::string& alias) const;
     };
 
     struct single_preprocessor_definition_details {
@@ -159,16 +136,8 @@ public:
     // or else they cannot be registered in the factory.
 
     virtual const parameter_details_type & parameter_details() const = 0;
-    virtual parameter_details_type scalar_parameter_details() const
-    {
-        parameter_details_type all_params = parameter_details();
-        return util::filter(all_params, [](const single_parameter_details& param) { return param.kind == scalar; });
-    }
-    virtual parameter_details_type buffer_details() const
-    {
-        parameter_details_type all_params = parameter_details();
-        return util::filter(all_params, [](const single_parameter_details& param) { return param.kind == buffer; });
-    }
+    virtual parameter_details_type scalar_parameter_details() const;
+    virtual parameter_details_type buffer_details() const;
     // TODO: Could use an optional-ref return type here
     /**
      * @brief Obtains the set of preprocessor definitions which may affect the kernel's  compilation,
@@ -180,7 +149,7 @@ public:
 
 protected:
     template <typename Scalar>
-    static inline void pusher(
+    static void pusher(
         marshalled_arguments_type& argument_ptrs_and_maybe_sizes,
         const execution_context_t& context,
         const char* scalar_parameter_name);
@@ -194,7 +163,6 @@ public:
     }
 
     virtual void generate_additional_preprocessor_definitions(execution_context_t&) const { }
-
     virtual scalar_arguments_map generate_additional_scalar_arguments(execution_context_t&) const { return {}; }
     virtual bool extra_validity_checks(const execution_context_t&) const { return true; }
     virtual optional<std::string> default_language_standard(execution_ecosystem_t) const { return {}; }
@@ -221,30 +189,8 @@ public:
      *
      */
     marshalled_arguments_type marshal_kernel_arguments(const execution_context_t& context) const;
-
-    virtual optional_launch_config_components_t deduce_launch_config(const execution_context_t& context) const
-    {
-        auto components = context.options.forced_launch_config_components;
-        if (not components.dynamic_shared_memory_size) {
-            components.dynamic_shared_memory_size = 0;
-        }
-        if (components.is_sufficient()) {
-            return components;
-        }
-
-        throw std::runtime_error(
-            "Unable to deduce launch configuration - please specify all launch configuration components "
-            "explicitly using the command-line");
-    }
-
-    optional_launch_config_components_t make_launch_config(const execution_context_t& context) const {
-        auto& forced = context.options.forced_launch_config_components;
-        if (forced.is_sufficient()) {
-            return forced;
-        }
-        else return deduce_launch_config(context);
-    }
-
+    virtual optional_launch_config_components_t deduce_launch_config(const execution_context_t& context) const;
+    optional_launch_config_components_t make_launch_config(const execution_context_t& context) const;
     static std::initializer_list<std::string> no_aliases() { return {}; }
 
 protected:
@@ -265,18 +211,10 @@ protected:
         parameter_direction_t  direction,
         size_calculator_type   size_calculator = no_size_calc,
         bool                   required = is_required,
-        std::initializer_list<std::string> name_aliases = no_aliases())
-    {
-        if ((direction == scratch) and (size_calculator == no_size_calc)) {
-            throw std::invalid_argument("Scratch buffer parameters must be defined with a size calculator");
-        }
-        return single_parameter_details {
-            name, name_aliases, buffer, no_parser, size_calculator,
-            no_pusher, direction, required};
-    }
+        std::initializer_list<std::string> name_aliases = no_aliases());
 }; // kernel_adapter
 
-inline name_set buffer_names(const kernel_adapter& kernel_adapter, parameter_direction_t direction);
+name_set buffer_names(const kernel_adapter& kernel_adapter, parameter_direction_t direction);
 
 template <typename Predicate, typename = std::enable_if_t<not std::is_same<Predicate, parameter_direction_t>::value, void> >
 name_set buffer_names(const kernel_adapter& kernel_adapter, Predicate pred)
@@ -287,14 +225,6 @@ name_set buffer_names(const kernel_adapter& kernel_adapter, Predicate pred)
         },
         [](const auto& spd) { return spd.name; }
     );
-}
-
-inline name_set buffer_names(const kernel_adapter& kernel_adapter, parameter_direction_t direction)
-{
-    return buffer_names(kernel_adapter,
-        [direction](const kernel_adapter::single_parameter_details& spd) {
-            return spd.direction == direction;
-        } );
 }
 
 namespace kernel_adapters {
@@ -312,35 +242,11 @@ static void register_in_factory()
 //    append the final nullptr?
 // 2. Consider placing the argument_ptrs_and_maybe_sizes vector in the test context; not sure why
 //    it should be outside of it.
-inline void push_back_buffer(
+void push_back_buffer(
     marshalled_arguments_type& argument_ptrs_and_maybe_sizes,
     const execution_context_t& context,
     parameter_direction_t dir,
-    const char* buffer_parameter_name)
-{
-    const auto& buffer_map =
-        [&]() -> device_buffers_map const & {
-            switch (dir) {
-                case parameter_direction_t::in:
-                    return context.buffers.device_side.inputs;
-                case parameter_direction_t::inout:
-                case parameter_direction_t::out:
-                    return context.buffers.device_side.outputs;
-                case parameter_direction_t::scratch:
-                    return context.buffers.device_side.scratch;
-                default:
-                    throw std::logic_error("Unexpected direction encountered");
-            }
-        } ();
-    auto const & buffer = buffer_map.at(buffer_parameter_name);
-    if (context.ecosystem == execution_ecosystem_t::cuda) {
-        argument_ptrs_and_maybe_sizes.pointers.push_back(&(buffer.cuda.data()));
-    }
-    else {
-        argument_ptrs_and_maybe_sizes.pointers.push_back(&(buffer.opencl));
-        argument_ptrs_and_maybe_sizes.sizes.push_back(sizeof(cl::Buffer));
-    }
-}
+    const char* buffer_parameter_name);
 
 template <typename Scalar>
 inline void push_back_scalar(
@@ -365,44 +271,10 @@ inline void kernel_adapter::pusher(
     return kernel_adapters::push_back_scalar<Scalar>(argument_ptrs_and_maybe_sizes, context, scalar_parameter_name);
 }
 
+bool is_input (kernel_adapter::single_parameter_details spd);
+bool is_output(kernel_adapter::single_parameter_details spd);
 
-inline marshalled_arguments_type kernel_adapter::marshal_kernel_arguments(const execution_context_t& context) const
-{
-    auto num_params = parameter_details().size();
-    marshalled_arguments_type argument_ptrs_and_maybe_sizes;
-    argument_ptrs_and_maybe_sizes.pointers.reserve(num_params);
-    argument_ptrs_and_maybe_sizes.sizes.reserve(num_params);
-
-    for(const auto& spd : parameter_details()) {
-        if (spd.kind == buffer) {
-            kernel_adapters::push_back_buffer(argument_ptrs_and_maybe_sizes, context, spd.direction, spd.name);
-        }
-        else {
-            // it's a scalar
-            spd.pusher(argument_ptrs_and_maybe_sizes, context, spd.name);
-        }
-    }
-
-    if (context.ecosystem == execution_ecosystem_t::cuda) {
-        argument_ptrs_and_maybe_sizes.pointers.push_back(nullptr);
-        // cuLaunchKernels uses a termination by NULL rather than a length parameter.
-        // Note: Remember that sizes is unused in this case
-    }
-    return argument_ptrs_and_maybe_sizes;
-}
-
-inline bool is_input (kernel_adapter::single_parameter_details spd) { return is_input(spd.direction);  }
-inline bool is_output(kernel_adapter::single_parameter_details spd) { return is_output(spd.direction); }
-
-inline std::size_t apply_size_calc(const size_calculator_type& calc, const execution_context_t& context)
-{
-    return calc(
-        context.buffers.host_side.inputs,
-        context.scalar_input_arguments.typed,
-        context.preprocessor_definitions.finalized.valueless,
-        context.preprocessor_definitions.finalized.valued,
-        context.options.forced_launch_config_components);
-}
+std::size_t apply_size_calc(const size_calculator_type& calc, const execution_context_t& context);
 
 // Boilerplate macros for subclasses of kernel_adapter.
 // Each of these needs to be invoked once in any subclass

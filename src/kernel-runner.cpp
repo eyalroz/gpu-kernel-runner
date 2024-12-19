@@ -1222,3 +1222,16 @@ int main(int argc, char** argv)
 
     spdlog::info("All done.");
 }
+
+std::size_t apply_size_calc(const size_calculator_type& calc, const execution_context_t& context)
+{
+    return calc(
+        context.buffers.host_side.inputs,
+        context.scalar_input_arguments.typed,
+        context.preprocessor_definitions.finalized.valueless,
+        context.preprocessor_definitions.finalized.valued,
+        context.options.forced_launch_config_components);
+}
+
+bool is_input (kernel_adapter::single_parameter_details spd) { return is_input(spd.direction);  }
+bool is_output(kernel_adapter::single_parameter_details spd) { return is_output(spd.direction); }

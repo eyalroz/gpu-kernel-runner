@@ -27,7 +27,7 @@ __global__ void vectorAdd(
     }
 }
 ```
-and suppose that you've also created two files: 
+a suppose that you've also created two files: 
 
 * `input_a`, containing the three characters `abc`;
 * `input_b`, containing 3 octets, each with values `03`.
@@ -36,7 +36,7 @@ Now, if you run:
 ```
 kernel-runner \
     --execution-ecosystem cuda \
-    --kernel-key bundled_with_runner/vector_add \
+    --kernel-key buled_with_runner/vector_add \
     --kernel-source vector_add.cu \
     --block-dimensions 256,1,1 \
     --grid-dimensions 1,1,1 \
@@ -44,10 +44,9 @@ kernel-runner \
     --arg-size C=3 \
     -DA_LITTLE_EXTRA=2
 ```
-then you'll get a file named `C.out`, containing `fgh`... which is indeed the correct output of the kernel: The sequence `abc`, plus 3 for each character due the values in `input_B`, plus 2 for each character from the preprocessor definition of `A_LITTLE_EXTRA`. 
+then you'll get a file named `C.out`, containing `fgh`... which is ieed the correct output of the kernel: The sequence `abc`, plus 3 for each character due the values in `input_B`, plus 2 for each character from the preprocessor definition of `A_LITTLE_EXTRA`. 
 
-You can do the same with an equivalent OpenCL kernel, also bundled with this repository; just specify `opencl` instead of `cuda` as the execution ecosystem, 
-nd use the `vector_add.cl` kernel source file.
+You can do the same with an equivalent OpenCL kernel, also buled with this repository; just specify `opencl` instead of `cuda` as the execution ecosystem, and use the `vector_add.cl` kernel source file.
 
 There is a bit of "cheating" here: The kernel runner doesn't magically parse your kernel source to determine what arguments are required. You need to have added some boilerplate code for your kernel into the runner:  Listing the kernel name, parameter names, whether they're input or output etc.
 
@@ -56,19 +55,18 @@ There is a bit of "cheating" here: The kernel runner doesn't magically parse you
 When we develop GPU kernels, or try to optimize existing ones, they are often intended for the middle of a large application:
 
 * A lot of work (and time) is expended before our kernel of interest gets run
-* The kernel is fed inputs - scalar and buffers - which are created as intermediate data of the larger program, and is neither saved to disk nor printed to logs.
+* The kernel is fed inputs - scalars and buffers - which are created as intermediate data of the larger program, and are neither saved to disk nor printed to logs.
 * ... alternatively, the kernel may be invoked so many times, that it would not make sense to save or print all of that data.
-* The kernel may be compiled dynamically, and the compilation parameters may also not be saved for later scrutiny
+* The kernel may be compiled dynamically, and the compilation parameters may also not be saved for later scrutiny.
 
-This makes the kernel unwieldy in development and testing - if not outright impossible. So, either you live with it, which is difficult and frustrating, or what some of us do occasionally is write a separate program which only runs the kernel, which is a lot of hassle.
+This makes the isolation and consistently repeated invocation of our kernel quite unwieldy - if not outright impossible. If we want to avoid this repeated frustration, we sometimes find ourselves writing a small separate program which only runs our kernel; which is a decent enough idea, except - you have to rewrite this program again and again and again, for each and every kernel.
 
-This repository is intended to take away all of that hassle away: It has the machinery you need to run _any_ kernel - CUDA or OpenCL - independently. You just need to provide with the kernel's direct inputs and outputs (as buffers); launch grid parameters; and dynamic compilation options (since we have to JIT the kernel).
-
+This repository is intended to take all that hassle away: It contains has the machinery you need for a small program which will run _any_ kernel - CUDA or OpenCL - independently and with minimal overhead. You just need to provide with the kernel's direct inputs and outputs (scalars or buffers); launch grid parameters; and dynamic compilation options for JIT'ing.
 
 ## <a name="cmdline">Command-line interface</a>
 
+The kernel runner executable supports the following command-linr options:
 ```
-A runner for dynamically-compiled CUDA kernels
 Usage:
   kernel-runner [OPTION...]
 

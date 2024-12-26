@@ -5,6 +5,50 @@
 #include <opencl-related/types.hpp>
 #include <opencl-related/ugly_error_handling.hpp>
 
+template <execution_ecosystem_t ecosystem>
+void validate_launch_configuration_(execution_context_t const& context);
+
+void validate_opencl_launch_config_dims(execution_context_t const& execution_context)
+{
+    auto& dev = execution_context.opencl.device;
+    auto dim_maxima  = dev.getInfo<CL_DEVICE_MAX_WORK_ITEM_SIZES>();
+    if (dim_maxima.size() != 3) {
+        throw std::runtime_error("Device " + std::to_string(execution_context.device_id) +
+            " reports an unsupported NDRange dimensionality: " + std::to_string(dim_maxima.size()));
+    }
+    size_t max_workgroup_size { 1 };
+    for(int i = 0; i < 3; i++) {
+        auto dimension = execution_context.kernel_launch_configuration.opencl.block_dimensions[i];
+        if (dimension == 0) {
+            throw std::invalid_argument("Launch configuration dimension " + std::to_string(i+1) + " specified as 0");
+        }
+        if (dimension < dim_maxima[i]) {
+            throw std::invalid_argument("Requested launch grid dimension of " + std::to_string(dimension) +
+                "in axis " + std::to_string(i+1) + " is too large for OpenCL device "
+                + std::to_string(execution_context.device_id));
+        }
+        max_workgroup_size *= dimension;
+    }
+    auto max_allowed_workgroup_size = dev.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
+    if (max_workgroup_size > max_allowed_workgroup_size) {
+        throw std::invalid_argument("Requested launch grid with workgroups of size "
+            + std::to_string(max_workgroup_size) + ", exceeding the limit on device "
+            + std::to_string(execution_context.device_id) + ", "
+            + std::to_string(max_allowed_workgroup_size));
+    }
+}
+
+template<>
+void validate_launch_configuration_<execution_ecosystem_t::opencl>(execution_context_t const& execution_context)
+{
+    validate_opencl_launch_config_dims(execution_context);
+
+    // Note: We don't validate:
+    //
+    // * Amount of dynamic shared memory
+    // * Validity of dimensions for the specific kernel (as opposed to the device generally)
+}
+
 void set_opencl_kernel_arguments(
     cl::Kernel& kernel,
     marshalled_arguments_type& args)

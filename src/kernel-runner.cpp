@@ -1187,6 +1187,18 @@ void complete_execution(const execution_context_t& context)
     }
 }
 
+void verify_launch_configuration(execution_context_t const& context)
+{
+    switch(context.ecosystem) {
+    case execution_ecosystem_t::opencl:
+        validate_launch_configuration_<execution_ecosystem_t::opencl>(context);
+        break;
+    case execution_ecosystem_t::cuda:
+    default:
+        validate_launch_configuration_<execution_ecosystem_t::cuda>(context);
+    }
+}
+
 int main(int argc, char** argv)
 {
     spdlog::set_level(spdlog::level::info);
@@ -1224,6 +1236,7 @@ int main(int argc, char** argv)
 
     finalize_kernel_arguments(context);
     prepare_kernel_launch_config(context);
+    verify_launch_configuration(context);
 
     for(run_index_t ri = 0; ri < context.options.num_runs; ri++) {
         schedule_single_run(context, ri);

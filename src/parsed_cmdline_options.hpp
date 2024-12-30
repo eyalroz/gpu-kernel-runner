@@ -2,7 +2,7 @@
 #define PARSED_COMMAND_LINE_OPTIONS_HPP_
 
 #include "common_types.hpp" // for execution_ecosystem_t
-
+#include "preprocessor_definitions.hpp"
 #include "launch_configuration.hpp"
 
 #include "util/filesystem.hpp"
@@ -13,17 +13,6 @@
 
 #include <string>
 #include <cstdlib>
-
-/**
- * We handle preprocessor definitions with and without values
- * (i.e. `-DFOO` vs `-DBAR=123`) differently, and thus want to
- * store them separately - even though `preprocessor_definitions_t`
- * can in principle also hold valued definitions
- */
-struct split_preprocessor_definitions_t {
-    preprocessor_definitions_t valueless;
-    valued_preprocessor_definitions_t valued;
-};
 
 // These options are common, and relevant, to any and all kernel adapters
 struct parsed_cmdline_options_t {

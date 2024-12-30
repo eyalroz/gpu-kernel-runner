@@ -2,6 +2,8 @@
 #define PREPROCESSOR_DEFINITIONS_HPP_
 
 #include "util/from_string.hpp"
+#include "util/functional.hpp"
+#include "util/optional_and_any.hpp"
 
 #include <algorithm>
 #include <unordered_map>
@@ -11,6 +13,18 @@
 using valued_preprocessor_definitions_t = std::unordered_map<std::string, std::string>;
 using preprocessor_definitions_t = std::unordered_set<std::string>;
 using name_set = std::unordered_set<std::string>;
+
+/**
+ * We handle preprocessor definitions with and without values
+ * (i.e. `-DFOO` vs `-DBAR=123`) differently, and thus want to
+ * store them separately - even though `preprocessor_definitions_t`
+ * can in principle also hold valued definitions
+ */
+struct split_preprocessor_definitions_t {
+    preprocessor_definitions_t valueless;
+    valued_preprocessor_definitions_t valued;
+};
+
 
 inline name_set get_defined_terms(const preprocessor_definitions_t definitions)
 {

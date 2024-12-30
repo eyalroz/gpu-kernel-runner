@@ -48,7 +48,10 @@ add_executable(kernel-runner
 	src/kernel-runner.cpp
 	src/kernel_adapter.cpp
 	src/buffer_ops.cpp
-	src/util/buffer_io.cpp)
+	src/util/buffer_io.cpp
+	src/opencl-related/build.cpp
+	src/opencl-related/execution.cpp
+	src/opencl-related/ugly_error_handling.cpp)
 
 add_library(kernel-adapters OBJECT)
 target_link_libraries(kernel-runner PRIVATE kernel-adapters)

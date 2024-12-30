@@ -1,6 +1,8 @@
 #ifndef KERNEL_RUNNER_OPENCL_TYPES_HPP_
 #define KERNEL_RUNNER_OPENCL_TYPES_HPP_
 
+#include "../util/warning_suppression.hpp"
+
 #define CL_TARGET_OPENCL_VERSION 300
 #define __CL_ENABLE_EXCEPTIONS
 DISABLE_WARNING_PUSH

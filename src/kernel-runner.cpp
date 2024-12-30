@@ -297,7 +297,7 @@ void ensure_gpu_device_validity(
         if(device_count == 0) die("No CUDA devices detected on this system");
         break;
     }
-    if(device_id < 0 or device_id >= cuda::device::count())
+    if(device_id < 0 or device_id >= (int) device_count)
         die ("Please specify a valid device index (in the range 0.. {})", cuda::device::count()-1);
 }
 

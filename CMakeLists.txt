@@ -48,26 +48,7 @@ add_executable(kernel-runner
 	src/kernel-runner.cpp
 	src/kernel_adapter.cpp
 	src/buffer_ops.cpp
-	src/util/buffer_io.cpp
-	src/util/cxxopts-extra.hpp
-	src/util/optional_and_any.hpp
-	src/nvrtc-related/execution.hpp
-	src/nvrtc-related/build.hpp
-	src/nvrtc-related/standard_header_substitutes.hpp
-	src/opencl-related/build.hpp
-	src/opencl-related/execution.hpp
-	src/opencl-related/miscellany.hpp
-	src/opencl-related/types.hpp
-	src/opencl-related/ugly_error_handling.hpp
-	src/util/cxxopts-extra.hpp
-	src/util/factory_producible.hpp
-	src/util/filesystem.hpp
-	src/util/functional.hpp
-	src/util/miscellany.hpp
-	src/util/optional_and_any.hpp
-	src/util/spdlog-extra.hpp
-	src/util/static_block.hpp
-	src/parsers.hpp)
+	src/util/buffer_io.cpp)
 
 add_library(kernel-adapters OBJECT)
 target_link_libraries(kernel-runner PRIVATE kernel-adapters)

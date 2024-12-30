@@ -31,10 +31,10 @@
 
 #include "standard_header_substitutes.hpp"
 
-#include <cuda/rtc.hpp>
+#include "../util/miscellany.hpp"
+#include "../util/spdlog-extra.hpp"
 
-#include <util/miscellany.hpp>
-#include <util/spdlog-extra.hpp>
+#include <cuda/rtc.hpp>
 #include <spdlog/spdlog.h>
 #include <spdlog/cfg/helpers.h>
 #include <spdlog/sinks/basic_file_sink.h>

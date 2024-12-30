@@ -4,11 +4,11 @@
 #include "execution_context.hpp"
 #include "parsers.hpp"
 
-#include <util/miscellany.hpp>
-#include <util/functional.hpp>
-#include <util/factory_producible.hpp>
-#include <util/optional_and_any.hpp>
-#include <util/static_block.hpp>
+#include "util/miscellany.hpp"
+#include "util/functional.hpp"
+#include "util/factory_producible.hpp"
+#include "util/optional_and_any.hpp"
+#include "util/static_block.hpp"
     // This file itself does not use static blocks, but individual kernel adapters may
     // want to use them for registering themselves in the factory.
 

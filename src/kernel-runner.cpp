@@ -4,15 +4,15 @@
 #include "kernel_adapter.hpp"
 #include "buffer_ops.hpp"
 
-#include <nvrtc-related/build.hpp>
-#include <nvrtc-related/execution.hpp>
-#include <opencl-related/build.hpp>
-#include <opencl-related/execution.hpp>
-#include <opencl-related/miscellany.hpp>
+#include "nvrtc-related/build.hpp"
+#include "nvrtc-related/execution.hpp"
+#include "opencl-related/build.hpp"
+#include "opencl-related/execution.hpp"
+#include "opencl-related/miscellany.hpp"
 
-#include <util/miscellany.hpp>
-#include <util/cxxopts-extra.hpp>
-#include <util/spdlog-extra.hpp>
+#include "util/miscellany.hpp"
+#include "util/cxxopts-extra.hpp"
+#include "util/spdlog-extra.hpp"
 
 #include <cxxopts/cxxopts.hpp>
 

@@ -1,9 +1,9 @@
 #ifndef KERNEL_RUNNER_OPENCL_EXECUTION_HPP_
 #define KERNEL_RUNNER_OPENCL_EXECUTION_HPP_
 
-#include <common_types.hpp>
-#include <opencl-related/types.hpp>
-#include <opencl-related/ugly_error_handling.hpp>
+#include "../common_types.hpp"
+#include "types.hpp"
+#include "ugly_error_handling.hpp"
 
 template <execution_ecosystem_t ecosystem>
 void validate_launch_configuration_(execution_context_t const& context);

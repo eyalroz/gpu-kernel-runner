@@ -1,7 +1,7 @@
 #ifndef KERNEL_RUNNER_OPENCL_UGLY_ERROR_HANDLING_HPP_
 #define KERNEL_RUNNER_OPENCL_UGLY_ERROR_HANDLING_HPP_
 
-#include <common_types.hpp>
+#include "../common_types.hpp"
 
 #define CL_ERR_TO_STR(err) case err: return #err
 

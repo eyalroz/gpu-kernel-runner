@@ -2,7 +2,7 @@
 #define KERNEL_RUNNER_CUDA_EXECUTION_HPP_
 
 #include "types.hpp"
-#include <common_types.hpp>
+#include "../common_types.hpp"
 
 template <execution_ecosystem_t ecosystem>
 void validate_launch_configuration_(execution_context_t const& context);

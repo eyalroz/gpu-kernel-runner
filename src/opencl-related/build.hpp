@@ -1,11 +1,13 @@
 #ifndef KERNEL_RUNNER_OPENCL_BUILD_HPP_
 #define KERNEL_RUNNER_OPENCL_BUILD_HPP_
 
-#include <opencl-related/types.hpp>
-#include <opencl-related/ugly_error_handling.hpp>
-#include <spdlog/spdlog.h>
-#include <util/spdlog-extra.hpp>
+#include "types.hpp"
+#include "ugly_error_handling.hpp"
+
+#include "../util/spdlog-extra.hpp"
 #include "util/buffer_io.hpp"
+
+#include <spdlog/spdlog.h>
 
 #include <string>
 

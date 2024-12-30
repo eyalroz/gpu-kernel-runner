@@ -1,14 +1,14 @@
 #ifndef LAUNCH_CONFIGURATION_HPP_
 #define LAUNCH_CONFIGURATION_HPP_
 
-#include <util/filesystem.hpp>
-#include <util/optional_and_any.hpp>
-#include <util/miscellany.hpp>
-#include <util/warning_suppression.hpp>
+#include "util/filesystem.hpp"
+#include "util/optional_and_any.hpp"
+#include "util/miscellany.hpp"
+#include "util/warning_suppression.hpp"
 
 #include <cuda/api.hpp>
 
-#include <opencl-related/types.hpp>
+#include "opencl-related/types.hpp"
 
 #include <string>
 #include <cstdint>

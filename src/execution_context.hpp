@@ -8,8 +8,8 @@
 #include "launch_configuration.hpp"
 #include "preprocessor_definitions.hpp"
 
-#include <util/miscellany.hpp>
-#include <util/warning_suppression.hpp>
+#include "util/miscellany.hpp"
+#include "util/warning_suppression.hpp"
 
 #include <cuda/api.hpp>
 

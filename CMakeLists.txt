@@ -51,7 +51,11 @@ add_executable(kernel-runner
 	src/util/buffer_io.cpp
 	src/opencl-related/build.cpp
 	src/opencl-related/execution.cpp
-	src/opencl-related/ugly_error_handling.cpp)
+	src/opencl-related/ugly_error_handling.cpp
+	src/nvrtc-related/build.cpp
+	src/nvrtc-related/execution.cpp
+	src/nvrtc-related/standard_header_substitutes.cpp
+	)
 
 add_library(kernel-adapters OBJECT)
 target_link_libraries(kernel-runner PRIVATE kernel-adapters)

@@ -24,15 +24,6 @@
 #include <iostream>
 #include <vector>
 
-template <typename... Ts>
-[[noreturn]] inline bool die(std::string message_format_string = "", Ts&&... args)
-{
-    if(not message_format_string.empty()) {
-        spdlog::critical(message_format_string, std::forward<Ts>(args)...);
-    }
-    exit(EXIT_FAILURE);
-}
-
 using std::size_t;
 using std::string;
 

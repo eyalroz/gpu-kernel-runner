@@ -1,11 +1,10 @@
 #ifndef UTIL_SPDLOG_EXTRA_HPP_
 #define UTIL_SPDLOG_EXTRA_HPP_
 
-// #include <common.hpp>
-
 #include <spdlog/spdlog.h>
 #include <spdlog/fmt/fmt.h>
 #include <unordered_set>
+#include <cstdlib>
 
 namespace spdlog {
 
@@ -44,6 +43,15 @@ public:
         return format_to(ctx.out(), ")");
     }
 };
+
+template <typename... Ts>
+[[noreturn]] inline bool die(std::string message_format_string = "", Ts&&... args)
+{
+    if(not message_format_string.empty()) {
+        spdlog::critical(message_format_string, std::forward<Ts>(args)...);
+    }
+    exit(EXIT_FAILURE);
+}
 
 #endif // UTIL_SPDLOG_EXTRA_HPP_
 

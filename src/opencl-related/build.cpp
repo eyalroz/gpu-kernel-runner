@@ -103,8 +103,7 @@ load_preinclude_files(const include_paths_t& preincludes, const include_paths_t&
                     return util::read_file_as_null_terminated_string(preinclude_path);
                 }
             }
-            spdlog::error("Could not locate preinclude \"{}\"", preinclude_file_path_suffix);
-			throw std::invalid_argument("Preinclude loading failed due to missing preinclude"); 
+            die("Preinclude loading failed: Could not locate preinclude file \"{}\"", preinclude_file_path_suffix);
         });
 }
 
@@ -148,12 +147,9 @@ opencl_compilation_result_t build_opencl_kernel(
         program.build(wrapped_device, build_options.c_str());
     } catch(cl::Error& e) {
         cl_build_status status = program.getBuildInfo<CL_PROGRAM_BUILD_STATUS>(device);
-        if (status == CL_BUILD_NONE or status == CL_BUILD_IN_PROGRESS) {
-            throw std::logic_error("Unexpected OpenCL build status encountered: Expected either success or failure");
-        }
-        if (status == CL_BUILD_SUCCESS) {
-            throw std::logic_error("OpenCL build threw an error, but the build status indicated success");
-        }
+        (status == CL_BUILD_NONE or status == CL_BUILD_IN_PROGRESS) and die(
+            "Unexpected OpenCL build status encountered: Expected either success or failure");
+        (status == CL_BUILD_SUCCESS) and die("OpenCL build threw an error, but the build status indicated success");
         std::string log = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
         auto compilation_failed { false };
         return { compilation_failed, log, {}, {}, nullopt };
@@ -173,8 +169,7 @@ opencl_compilation_result_t build_opencl_kernel(
         auto compilation_succeeded { true };
         return { compilation_succeeded, compilation_log, std::move(program), std::move(kernel), std::move(ptx) };
     } catch(cl::Error& ex) {
-        spdlog::error("Failed creating kernel; OpenCL error: {}",  clGetErrorString(ex.err()));
-        throw ex;
+        die("Failed creating OpenCL kernel, with error: {}",  clGetErrorString(ex.err()));
     }
 }
 

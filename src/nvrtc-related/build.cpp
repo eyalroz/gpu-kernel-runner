@@ -173,9 +173,7 @@ compilation_result_t build_cuda_kernel(
     std::string mangled_kernel_function_signature = compilation_output.get_mangling_of(kernel_function_name);
     spdlog::trace("Mangled kernel function signature is: {}", mangled_kernel_function_signature);
 
-    if (not compilation_output.has_ptx()) {
-        throw std::runtime_error("No PTX in compiled kernel CUDA program");
-    }
+    compilation_output.has_ptx() or die("No PTX in compiled kernel CUDA program");
     auto ptx = compilation_output.ptx();
     // Yes, it's a copy, the API kind of sucks here
     std::string ptx_as_string = std::string(ptx.data(), ptx.size());

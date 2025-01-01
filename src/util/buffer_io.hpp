@@ -7,8 +7,6 @@
 
 namespace util {
 
-void verify_path(const filesystem::path &path, path_check_kind check_kind, bool allow_overwrite);
-
 // TODO: The following should really return a dynarray (or take a memory region destination)
 std::vector<byte_type> read_input_file(const filesystem::path &src, size_t extra_buffer_size = 0);
 

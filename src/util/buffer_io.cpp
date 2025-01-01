@@ -2,41 +2,6 @@
 
 namespace util {
 
-void verify_path(const filesystem::path& path, path_check_kind check_kind, bool allow_overwrite)
-{
-    // TODO: Consider checking path execution permissions down to the parent directory
-    if (filesystem::exists(path)) {
-        if (is_directory(path)) {
-            throw std::invalid_argument("Path is a directory, not a (readable) path: " + path.native());
-        }
-        if (check_kind == for_writing and not allow_overwrite) {
-            throw std::invalid_argument("File already exists, and overwrite is not allowed: " + path.native());
-        }
-        if (not has_permission(path, check_kind))
-        {
-            throw std::invalid_argument("No read permissions for path: " + path.native());
-        }
-    }
-    else {
-        if (check_kind != for_writing)
-        {
-            throw std::invalid_argument("File does not exist: " + path.native());
-        }
-        auto parent = path.parent_path();
-        if (not parent.empty() and not is_directory(parent)) {
-            throw std::invalid_argument("Parent path of intended file is not a directory: " + path.native());
-        }
-        if (parent.empty()) {
-            parent = filesystem::current_path();
-        }
-        if (not has_permission(parent, for_writing))
-        {
-            throw std::invalid_argument("No write permissions for directory " + parent.native()
-                                        + " , where it is necessary to write the new file " + path.filename().native());
-        }
-    }
-}
-
 inline void verify_input_path(const filesystem::path& path)
 {
     return verify_path(path, for_reading, false);

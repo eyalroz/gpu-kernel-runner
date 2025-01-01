@@ -18,5 +18,12 @@ size_t determine_required_shared_memory_size(execution_context_t const& context)
 void enable_sufficient_shared_memory(execution_context_t const& context);
 void enable_sufficient_shared_memory(execution_context_t const& context, size_t required_shmem_size);
 
+
+template <execution_ecosystem_t Ecosystem>
+void ensure_gpu_device_validity_(
+    optional<unsigned>     platform_id,
+    int                    device_id,
+    bool                   need_ptx);
+
 #endif // KERNEL_RUNNER_CUDA_MISCELLANY_HPP_
 

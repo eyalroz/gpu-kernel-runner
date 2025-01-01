@@ -1,8 +1,7 @@
 #include "miscellany.hpp"
-
 #include <cuda/api.hpp>
-
 #include <spdlog/spdlog.h>
+#include "../util/spdlog-extra.hpp"
 
 template <>
 std::vector<filesystem::path> get_ecosystem_include_paths_<execution_ecosystem_t::cuda>()
@@ -81,4 +80,15 @@ void enable_sufficient_shared_memory(execution_context_t const& context)
     enable_sufficient_shared_memory(context, required_shmem_size);
 }
 
+template <>
+void ensure_gpu_device_validity_<execution_ecosystem_t::cuda>(
+    optional<unsigned>, int device_id, bool)
+{
+    auto device_count = (std::size_t) cuda::device::count();
+    if (device_count == 0) die("No CUDA devices detected on this system");
+
+    // TODO: Move this logic upwards... by using a function which gets the device count
+    if (device_id < 0 or device_id >= (int) device_count)
+        die ("Please specify a valid device index (in the range 0.. {})", cuda::device::count()-1);
+}
 

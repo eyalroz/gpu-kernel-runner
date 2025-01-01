@@ -6,6 +6,7 @@
 
 #include "nvrtc-related/build.hpp"
 #include "nvrtc-related/execution.hpp"
+#include "nvrtc-related/miscellany.hpp"
 #include "opencl-related/build.hpp"
 #include "opencl-related/execution.hpp"
 #include "opencl-related/miscellany.hpp"
@@ -94,6 +95,13 @@ void ensure_necessary_terms_were_defined(const execution_context_t& context)
     }
 }
 
+std::vector<filesystem::path> get_ecosystem_include_paths(execution_context_t& context)
+{
+    return (context.ecosystem == execution_ecosystem_t::cuda) ?
+        get_ecosystem_include_paths_<execution_ecosystem_t::cuda>() :
+        get_ecosystem_include_paths_<execution_ecosystem_t::opencl>();
+}
+
 void collect_include_paths(execution_context_t& context)
 {
     // Note the relative order in which we place the includes; it is non-trivial.
@@ -110,17 +118,8 @@ void collect_include_paths(execution_context_t& context)
     }
     context.finalized_include_dir_paths.insert(context.finalized_include_dir_paths.begin(), source_file_include_dir.native());
 
-    if (context.ecosystem == execution_ecosystem_t::cuda) {
-        auto cuda_include_dir = locate_cuda_include_directory();
-        if (cuda_include_dir) {
-            spdlog::debug("Using CUDA include directory {}", cuda_include_dir.value());
-            context.finalized_include_dir_paths.emplace_back(cuda_include_dir.value());
-        }
-        else {
-            spdlog::warn("Cannot locate CUDA include directory - trying to build the kernel with it missing.");
-        }
-    }
-    // What about OpenCL? Should it get some defaulted include directory?
+    auto ecosystem_include_paths = get_ecosystem_include_paths(context);
+    util::append(ecosystem_include_paths, context.finalized_include_dir_paths);
 }
 
 [[noreturn]] void print_help_and_exit(

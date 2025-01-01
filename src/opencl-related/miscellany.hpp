@@ -8,6 +8,16 @@
 #include <cstring>
 #include <iomanip>
 
+template <execution_ecosystem_t Ecosystem>
+std::vector<filesystem::path> get_ecosystem_include_paths_();
+
+template <>
+inline std::vector<filesystem::path> get_ecosystem_include_paths_<execution_ecosystem_t::opencl>()
+{
+    return {};
+}
+
+
 inline std::ostream& operator<<(std::ostream& os, const cl::NDRange& rng)
 {
     auto sizes = static_cast<const size_t*>(rng);

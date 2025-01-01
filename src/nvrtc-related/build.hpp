@@ -84,4 +84,5 @@ compilation_result_t build_cuda_kernel(
     const split_preprocessor_definitions_t& preprocessor_definitions,
     const std::vector<std::string>& extra_compilation_options);
 
+
 #endif  // KERNEL_RUNNER_NVRTC_WRAPPER_HPP_

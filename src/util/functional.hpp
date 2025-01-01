@@ -15,6 +15,13 @@ DestinationContainer copy(SourceContainer& src, DestinationContainer& dest)
     return dest;
 }
 
+template<typename SourceContainer, typename DestinationContainer>
+DestinationContainer append(SourceContainer&& src, DestinationContainer& dest)
+{
+    std::copy(src.cbegin(), src.cend(), std::back_inserter(dest));
+    return dest;
+}
+
 template<typename SourceContainer, typename DestinationContainer, typename Predicate>
 DestinationContainer copy_if(SourceContainer& src, DestinationContainer& dest, Predicate pred)
 {

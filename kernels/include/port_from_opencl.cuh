@@ -15,12 +15,12 @@
  *
  * @note Conventions you will need to follow:
  *
- *  | Instead of                | Use                                                | Explanation/Note                             |
- *  |:--------------------------|:---------------------------------------------------|:---------------------------------------------|
- *  | `__local` / `__shared`    | `__local_array` , `__local_var` or `__local_ptr` ) | Let a macro sort out thememory space marking |
- *  | `max(x,y)`                | `fmax(x,y)`                                        | it's too risky to define a `max(x,y)` macro  |
- *  | struct foo = { 12, 3.4 }; | struct foo = make_compound(foo){ 12, 3.4; }        | Allow for different construction syntax      |
- *  | constexpr                 | either CONSTEXPR_OR_CONSTANT_MEM, or an enum       |                                              |
+ *  | Instead of                | Use                                                   | Explanation/Note                             |
+ *  |:--------------------------|:------------------------------------------------------|:---------------------------------------------|
+ *  | `__local` / `__shared`    | `__local_array` , `__local_variable` or `__local_ptr` | Let a macro sort out thememory space marking |
+ *  | `max(x,y)`                | `fmax(x,y)`                                           | it's too risky to define a `max(x,y)` macro  |
+ *  | struct foo = { 12, 3.4 }; | struct foo = make_compound(foo){ 12, 3.4; }           | Allow for different construction syntax      |
+ *  | constexpr                 | either CONSTEXPR_OR_CONSTANT_MEM, or an enum          |                                              |
  *
  * @note Use of dynamic shared memory is very different between OpenCL and CUDA, you'll
  * have to either avoid it or work the differences out yourself.
@@ -952,6 +952,52 @@ __forceinline__ __device__ void syncWarp()
     __syncwarp();
 #endif
 }
+
+
+// Atomic operations
+// Add
+__device__ inline int atomic_add(int *address, int val) { return atomicAdd(address, val); };
+__device__ inline uint atomic_add(uint *address, uint val) { return atomicAdd(address, val); };
+
+// Sub
+__device__ inline int atomic_sub(int *address, int val) { return atomicSub(address, val); };
+__device__ inline uint atomic_sub(uint *address, uint val) { return atomicSub(address, val); };
+
+// Xchg
+__device__ inline int atomic_xchg(int *address, int val) { return atomicExch(address, val); };
+__device__ inline uint atomic_xchg(uint *address, uint val) { return atomicExch(address, val); };
+
+// Inc
+__device__ inline int atomic_inc(int *address) { return atomicAdd(address, 1); };
+__device__ inline uint atomic_inc(uint *address) { return atomicAdd(address, 1); };
+
+// Dec
+__device__ inline int atomic_dec(int *address) { return atomicSub(address, 1); };
+__device__ inline uint atomic_dec(uint *address) { return atomicSub(address, 1); };
+
+// Cmpxchg
+__device__ inline int atomic_cmpxchg(int *address, int cmp, int val) { return atomicCAS(address, cmp, val); };
+__device__ inline uint atomic_cmpxchg(uint *address, uint cmp, uint val) { return atomicCAS(address, cmp, val); };
+
+// Min
+__device__ inline int atomic_min(int *address, int val) { return atomicMin(address, val); };
+__device__ inline uint atomic_min(uint *address, uint val) { return atomicMin(address, val); };
+
+// Max
+__device__ inline int atomic_max(int *address, int val) { return atomicMax(address, val); };
+__device__ inline uint atomic_max(uint *address, uint val) { return atomicMax(address, val); };
+
+// And
+__device__ inline int atomic_and(int *address, int val) { return atomicAnd(address, val); };
+__device__ inline uint atomic_and(uint *address, uint val) { return atomicAnd(address, val); };
+
+// Or
+__device__ inline int atomic_or(int *address, int val) { return atomicOr(address, val); };
+__device__ inline uint atomic_or(uint *address, uint val) { return atomicOr(address, val); };
+
+// Xor
+__device__ inline int atomic_xor(int *address, int val) { return atomicXor(address, val); };
+__device__ inline uint atomic_xor(uint *address, uint val) { return atomicXor(address, val); };
 
 #endif // __OPENCL_VERSION__
 #endif // PORT_FROM_OPENCL_CUH_

@@ -94,7 +94,6 @@ namespace detail {
   template <typename T>
   T remove_ref_helper(T&&);
 
-
 __CUDA_MMA_DEVICE_DECL__ unsigned lane_id() {
   // We can use the special register...
   //

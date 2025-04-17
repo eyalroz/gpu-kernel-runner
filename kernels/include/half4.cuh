@@ -270,7 +270,6 @@ inline half4 operator/(half4 lhs, half rhs) noexcept
 inline half4& operator+=(half4& lhs, half rhs) noexcept { lhs = lhs + rhs; return lhs; }
 inline half4& operator-=(half4& lhs, half rhs) noexcept { lhs = lhs + rhs; return lhs; }
 
-
 #undef __CUDA_ALIGN__
 #undef __HALF4_TO_ULI
 #undef __HALF4_TO_CULI

@@ -20,6 +20,7 @@
 // to complain about dimensions_t's they get.
 std::ostream& operator<<(std::ostream& os, cuda::grid::dimensions_t dims);
 
+// Note: The returned size is in bytes, not elements
 using size_calculator_type = std::size_t (*)(
     const host_buffers_t& input_buffers,
     const scalar_arguments_map& scalar_arguments,

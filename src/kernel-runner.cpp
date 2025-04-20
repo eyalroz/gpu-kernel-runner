@@ -919,25 +919,26 @@ void validate_input_buffer_sizes(execution_context_t& context)
         });
     for (auto const& buffer_details : input_buffer_details) {
         auto const &buffer = context.buffers.host_side.inputs[buffer_details.name];
-        if (buffer_details.size_calculator) {
-            auto calculated = apply_size_calc(buffer_details.size_calculator, context);
-            if ((context.options.accept_oversized_inputs and calculated > buffer.size()) or
-                (not context.options.accept_oversized_inputs and calculated != buffer.size())) {
-                die("Input buffer {} expected has size {} bytes, but its size calculator requires a size of {}",
-                    buffer_details.name, buffer.size(), calculated);
-            }
-            if (context.options.accept_oversized_inputs and calculated < buffer.size())
-            {
-                spdlog::info("Input buffer {} has size {} bytes, exceeding calculator-expected size of {}",
-                    buffer_details.name, buffer.size(), calculated);
-            }
-            else {
-                spdlog::trace("Input buffer {} has size {} bytes, as expected by size calculator",
-                buffer_details.name, buffer.size());
-            }
-        } else {
-            spdlog::debug("No size calculator for buffer {}; assuming size is valid", buffer_details.name);
+        if (not buffer_details.size_calculator) {
+            spdlog::debug("No size calculator for input buffer '{}'; assuming size is valid", buffer_details.name);
+            continue;
         }
+        auto calculated = apply_size_calc(buffer_details.size_calculator, context);
+        if (calculated == buffer.size()) {
+            spdlog::trace("Input buffer '{}' is of size {} bytes, as expected",
+                buffer_details.name, buffer.size());
+            continue;
+        }
+        if (context.options.accept_oversized_inputs and calculated < buffer.size()) {
+            spdlog::info("Input buffer '{}' is of size {} bytes, exceeding the expected size of {} bytes",
+                buffer_details.name, buffer.size(), calculated);
+            continue;
+        }
+        die("Input buffer '{}' is of size {} bytes, {} its required {}size of {} bytes",
+            buffer_details.name, buffer.size(),
+            (buffer.size() > calculated ? "exceeding" : "lower than"),
+            (context.options.accept_oversized_inputs ? "minimum " : ""),
+            calculated);
     }
 }
 

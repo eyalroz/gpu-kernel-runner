@@ -37,6 +37,56 @@ DestinationContainer transform(const SourceContainer& container, F func)
     return transformed;
 }
 
+
+namespace projected {
+
+template <typename Container, typename Projector>
+auto min_element(Container&& container, Projector projector) -> decltype(container.cbegin())
+{
+    using value_type = typename Container::value_type;
+    auto comparator = [&projector](value_type const& lhs, value_type const& rhs) {
+        return projector(lhs) < projector(rhs);
+    };
+    return std::min_element(std::cbegin(container), std::cend(container), comparator);
+}
+
+
+template <typename Container, typename Projector>
+auto max_element(Container&& container, Projector projector) -> decltype(container.cbegin())
+{
+    using value_type = typename Container::value_type;
+    auto comparator = [&projector](value_type const& lhs, value_type const& rhs) {
+        return projector(lhs) < projector(rhs);
+    };
+    return std::max_element(std::cbegin(container), std::cend(container), comparator);
+}
+
+} // namespace projected
+
+template <typename Container>
+constexpr auto min_element(Container&& container) -> decltype(std::begin(container))
+{
+    return std::min_element(std::begin(container), std::end(container));
+}
+
+template <typename Container, typename Comparator>
+constexpr auto min_element(Container&& container, Comparator comp) -> decltype(std::begin(container))
+{
+    return std::min_element(std::begin(container), std::end(container), comp);
+}
+
+template <typename Container>
+constexpr auto max_element(Container&& container) -> decltype(std::begin(container))
+{
+    return std::max_element(std::begin(container), std::end(container));
+}
+
+template <typename Container, typename Comparator>
+constexpr auto max_element(Container&& container, Comparator comp) -> decltype(std::begin(container))
+{
+    return std::max_element(std::begin(container), std::end(container), comp);
+}
+
 // This applies the functional operator "map" to the C++ data structure Map (e.g. std::map or std::unordered_map)
 template<template<class, class> class Map, typename Key, typename Value , typename F>
 auto map_values(const Map<Key,Value>& map, const F& value_mapper)

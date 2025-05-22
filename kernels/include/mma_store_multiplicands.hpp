@@ -70,389 +70,360 @@ namespace wmma {
 
 namespace detail {
 
-  template <typename T>
-  T remove_ref_helper(T&);
+template <typename T>
+T remove_ref_helper(T&);
 
-  template <typename T>
-  T remove_ref_helper(T&&);
-
-/* // an inclusive integer range
-struct range { int first, last; }
-
-bool is_in(int i, range r) { return i >= r.first and i <= r.last; }
-bool is_in_one_of(int i, range r1, range r2) { return is_in(i, r1) or is_in(i, r2); }
-*/
+template <typename T>
+T remove_ref_helper(T&&);
 
 } // namespace detail
 
-  //
-  // Load functions for fragments of shape m16n8k16
-  //
-  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_a, 16, 8, 16, __half, row_major> const & a, unsigned ldm)
-  {
-    // TODO: Account for ldm
-    using fragment_type = decltype(detail::remove_ref_helper(a));
-    static constexpr const bool is_row_major = true;
-    enum { M = 16, N = 8, K = 16 };
-    enum { num_rows = M, num_cols = K };
-    auto lane_id = detail::lane_id();
+//
+// Store functions for fragments of shape m16n8k16
+//
+__CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_a, 16, 8, 16, __half, row_major> const & a, unsigned ldm)
+{
+  // TODO: Is it legitimate for us not to take the row-vs-column-major argument (which in mma.hpp is taken explicitly?)
 
-    auto groupID = lane_id >> 2;
-    auto threadID_in_group = lane_id % 4;
+  // TODO: Account for ldm
+  using fragment_type = decltype(detail::remove_ref_helper(a));
+  static constexpr const bool is_row_major = true;
+  enum { M = 16, N = 8, K = 16 };
+  enum { num_rows = M, num_cols = K };
+  auto lane_id = detail::lane_id();
 
-    auto base_row = groupID;
-    auto base_col = (threadID_in_group * 2);
+  auto groupID = lane_id >> 2;
+  auto laneID_in_group = lane_id % 4;
 
-    #pragma unroll
-    for(int i = 0; i < fragment_type::num_elements; i++) {
-      auto row = base_row + (((i & ~0x4) < 2) ? 0 : 8);
-      auto col = base_col + (i & 0x1) + ((i < 4) ? 0 : 8);
-      auto pos = is_row_major ?
-        (row * num_cols + col) :
-        (col * num_rows + row);
+  auto base_row = groupID;
+  auto base_col = (laneID_in_group * 2);
+
+  #pragma unroll
+  for(int i = 0; i < fragment_type::num_elements; i++) {
+    auto row = base_row + (((i & ~0x4) < 2) ? 0 : 8);
+    auto col = base_col + (i & 0x1) + ((i < 4) ? 0 : 8);
+    auto pos = is_row_major ?
+      (row * num_cols + col) :
+      (col * num_rows + row);
 //      if (threadIdx.x == 8) printf("(%3d,%3d,%3d): a.x[%3d] = %.1f, (row,col) = (%3d,%3d) pos is %3d;\n",
 //             threadIdx.x, threadIdx.y, threadIdx.z, i, (float) p[pos], row, col, (int) pos);
 
-      //      printf("(%3d,%3d,%3d): Lane %2d group %1d in_group %d base_row %d; for a.x[%3d], (row,col) = (%2d,%2d) and my pos is %3d; i & 0x1 = %d\n",
+    //      printf("(%3d,%3d,%3d): Lane %2d group %1d in_group %d base_row %d; for a.x[%3d], (row,col) = (%2d,%2d) and my pos is %3d; i & 0x1 = %d\n",
 //             threadIdx.x, threadIdx.y, threadIdx.z,
-//             lane_id, groupID, threadID_in_group, base_row, i, row, col, (int) pos, (int)(i & 0x1));
-      p[pos] = a.x[i];
-    }
+//             lane_id, groupID, laneID_in_group, base_row, i, row, col, (int) pos, (int)(i & 0x1));
+    p[pos] = a.x[i];
   }
+}
 
-  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_a, 16, 8, 16, __half, col_major> const & a, unsigned ldm)
-  {
-    // TODO: Account for ldm
-    using fragment_type = decltype(detail::remove_ref_helper(a));
-    static constexpr const bool is_row_major = false;
-    enum { M = 16, N = 8, K = 16 };
-    enum { num_rows = M, num_cols = K };
-    auto lane_id = detail::lane_id();
+__CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_a, 16, 8, 16, __half, col_major> const & a, unsigned ldm)
+{
+  // TODO: Account for ldm
+  using fragment_type = decltype(detail::remove_ref_helper(a));
+  static constexpr const bool is_row_major = false;
+  enum { M = 16, N = 8, K = 16 };
+  enum { num_rows = M, num_cols = K };
+  auto lane_id = detail::lane_id();
 
-    auto groupID = lane_id >> 2;
-    auto threadID_in_group = lane_id % 4;
+  auto groupID = lane_id >> 2;
+  auto laneID_in_group = lane_id % 4;
 
-    auto base_row = groupID;
-    auto base_col = (threadID_in_group * 2);
+  auto base_row = groupID;
+  auto base_col = (laneID_in_group * 2);
 
-    #pragma unroll
-    for(int i = 0; i < fragment_type::num_elements; i++) {
-      auto row = base_row + (((i & ~0x4) < 2) ? 0 : 8);
-      auto col = base_col + (i & 0x1) + ((i < 4) ? 0 : 8);
-      auto pos = is_row_major ?
-        (row * num_cols + col) :
-        (col * num_rows + row);
-      p[pos] = a.x[i];
-    }
-  } 
+  #pragma unroll
+  for(int i = 0; i < fragment_type::num_elements; i++) {
+    auto row = base_row + (((i & ~0x4) < 2) ? 0 : 8);
+    auto col = base_col + (i & 0x1) + ((i < 4) ? 0 : 8);
+    auto pos = is_row_major ?
+      (row * num_cols + col) :
+      (col * num_rows + row);
+    p[pos] = a.x[i];
+  }
+}
 
-  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_b,16, 8, 16, __half, row_major> const & a, unsigned ldm)
-  {
-    // TODO: Account for ldm
-    using fragment_type = decltype(detail::remove_ref_helper(a));
-    static constexpr const bool is_row_major = true;
-    enum { M = 16, N = 8, K = 16 };
-    enum { num_rows = K, num_cols = N };
-    auto lane_id = detail::lane_id();
+__CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_b,16, 8, 16, __half, row_major> const & a, unsigned ldm)
+{
+  // TODO: Account for ldm
+  using fragment_type = decltype(detail::remove_ref_helper(a));
+  static constexpr const bool is_row_major = true;
+  enum { M = 16, N = 8, K = 16 };
+  enum { num_rows = K, num_cols = N };
+  auto lane_id = detail::lane_id();
 
-    auto groupID = lane_id >> 2;
-    auto threadID_in_group = lane_id % 4;
+  auto groupID = lane_id >> 2;
+  auto laneID_in_group = lane_id % 4;
 
-    auto base_row = (threadID_in_group * 2);
-    auto base_col = groupID;
+  auto base_row = (laneID_in_group * 2);
+  auto base_col = groupID;
 
-    #pragma unroll
-    for(int i = 0; i < fragment_type::num_elements; i++) {
-      auto row = base_row + (i & 0x1) + ((i < 2) ? 0 : 8);
-      auto col = base_col;
-      auto pos = is_row_major ?
-        row * num_cols + col :
-        col * num_rows + row;
-      p[pos] = a.x[i];
+  #pragma unroll
+  for(int i = 0; i < fragment_type::num_elements; i++) {
+    auto row = base_row + (i & 0x1) + ((i < 2) ? 0 : 8);
+    auto col = base_col;
+    auto pos = is_row_major ?
+      row * num_cols + col :
+      col * num_rows + row;
+    p[pos] = a.x[i];
 //      printf("(%2d,%2d,%2d): a.x[%2d] = %.1f, (row,col) = (%3d,%3d) pos is %3d;\n",
 //             threadIdx.x, threadIdx.y, threadIdx.z, i, (float) p[pos], row, col, (int) pos);
-    }
   }
+}
 
-  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_b,16, 8, 16, __half, col_major> const & a, unsigned ldm)
-  {
-    // TODO: Account for ldm
-    using fragment_type = decltype(detail::remove_ref_helper(a));
-    static constexpr const bool is_row_major = false;
-    enum { M = 16, N = 8, K = 16 };
-    enum { num_rows = K, num_cols = N };
-    auto lane_id = detail::lane_id();
+__CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_b,16, 8, 16, __half, col_major> const & a, unsigned ldm)
+{
+  // TODO: Account for ldm
+  using fragment_type = decltype(detail::remove_ref_helper(a));
+  static constexpr const bool is_row_major = false;
+  enum { M = 16, N = 8, K = 16 };
+  enum { num_rows = K, num_cols = N };
+  auto lane_id = detail::lane_id();
 
-    auto groupID = lane_id >> 2;
-    auto threadID_in_group = lane_id % 4;
+  auto groupID = lane_id >> 2;
+  auto laneID_in_group = lane_id % 4;
 
-    auto base_row = (threadID_in_group * 2);
-    auto base_col = groupID;
+  auto base_row = (laneID_in_group * 2);
+  auto base_col = groupID;
 
-    #pragma unroll
-    for(int i = 0; i < fragment_type::num_elements; i++) {
-      auto row = base_row + (i & 0x1) + ((i < 2) ? 0 : 8);
-      auto col = base_col;
-      auto pos = is_row_major ?
-        row * num_cols + col :
-        col * num_rows + row;
-      p[pos] = a.x[i];
+  #pragma unroll
+  for(int i = 0; i < fragment_type::num_elements; i++) {
+    auto row = base_row + (i & 0x1) + ((i < 2) ? 0 : 8);
+    auto col = base_col;
+    auto pos = is_row_major ?
+      row * num_cols + col :
+      col * num_rows + row;
+    p[pos] = a.x[i];
 //      printf("(%2d,%2d,%2d): a.x[%2d] = %5.0f, (row,col) = (%3d,%3d) pos is %3d;\n",
 //             threadIdx.x, threadIdx.y, threadIdx.z, i, (float) p[pos], row, col, (int) pos);
-    }
   }
+}
 
+// Can probably safely delete this
 /*
-  // Can probably safely delete this
 
-  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<accumulator,16, 8, 16, __half> const & a, unsigned ldm, layout_t layout)
-  {
-    // TODO: Account for ldm
-    using fragment_type = decltype(detail::remove_ref_helper(a));
-    enum { M = 16, N = 8, K = 16 };
-    enum { num_rows = M, num_cols = N };
-    auto lane_id = detail::lane_id();
+//
+// Store functions for fragments of shape m8n8k4
+//
+__CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_a, 8, 8, 4, __half, row_major> const & a, unsigned ldm) {
+  asm("trap;"); // not yet tested
+  // Note: NOT like the column-major function
+  // TODO: Account for ldm
+  using fragment_type = decltype(detail::remove_ref_helper(a));
+  static constexpr const bool is_row_major = true;
+  (void) is_row_major;
+  enum { M = 8, N = 8, K = 4 };
+  enum { num_rows = M, num_cols = K };
+  auto lane_id = detail::lane_id();
 
-    auto groupID = lane_id >> 2;
-    auto threadID_in_group = lane_id % 4;
+  auto matrix_index = (lane_id % 16) >> 2;
+      // This MMA variant acts on 4 independent pairs of matrice, which we assume are consecutive in device memory
+  auto base_row = lane_id % 4 + ((lane_id < 16) ? 0 : 4);
+  auto base_col = 0;
 
-    auto base_row = groupID;
-    auto base_col = (threadID_in_group * 2);
+  #pragma unroll
+  for(int i = 0; i < fragment_type::num_elements; i++) {
+    auto row = base_row;
+    auto col = base_col + i;
+    auto pos = matrix_index * num_rows * num_cols + row * num_cols + col;
+//      if (threadIdx.x == 8) printf("(%3d,%3d,%3d): a.x[%3d] = %.1f, (row,col) = (%3d,%3d) pos is %3d;\n",
+//             threadIdx.x, threadIdx.y, threadIdx.z, i, (float) p[pos], row, col, (int) pos);
 
-    #pragma unroll
-    for(int i = 0; i < fragment_type::num_elements; i++) {
-      auto row = base_row + ((i < 2) ? 0 : 8);
-      auto col = base_col + (i & 0x1);
-      auto pos = (layout == mem_row_major) ?
-        row * num_cols + col :
-        col * num_rows + row;
-      p[pos] = a.x[i];
-    }
+    //      printf("(%3d,%3d,%3d): Lane %2d group %1d in_group %d base_row %d; for a.x[%3d], (row,col) = (%2d,%2d) and my pos is %3d; i & 0x1 = %d\n",
+//             threadIdx.x, threadIdx.y, threadIdx.z,
+//             lane_id, groupID, laneID_in_group, base_row, i, row, col, (int) pos, (int)(i & 0x1));
+    p[pos] = a.x[i];
   }
+}
+
+__CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_a, 8, 8, 4, __half, col_major> const & a, unsigned ldm) {
+  asm("trap;"); // not yet tested
+  // Same as row_major except for is_row_major
+  // TODO: Account for ldm
+  using fragment_type = decltype(detail::remove_ref_helper(a));
+  enum { M = 8, N = 8, K = 4 };
+  enum { num_rows = M, num_cols = K };
+  auto lane_id = detail::lane_id();
+
+  auto matrix_index = (lane_id % 16) >> 2;
+      // This MMA variant acts on 4 independent pairs of matrice, which we assume are consecutive in device memory
+  auto base_row = ((lane_id < 16) ? 0 : 4);
+  auto base_col = lane_id % 4;
+
+  #pragma unroll
+  for(int i = 0; i < fragment_type::num_elements; i++) {
+    auto row = base_row + i % 4;
+    auto col = base_col;
+    auto pos = matrix_index * num_rows * num_cols + row * num_cols + col;
+//      if (threadIdx.x == 8) printf("(%3d,%3d,%3d): a.x[%3d] = %.1f, (row,col) = (%3d,%3d) pos is %3d;\n",
+//             threadIdx.x, threadIdx.y, threadIdx.z, i, (float) p[pos], row, col, (int) pos);
+
+    //      printf("(%3d,%3d,%3d): Lane %2d group %1d in_group %d base_row %d; for a.x[%3d], (row,col) = (%2d,%2d) and my pos is %3d; i & 0x1 = %d\n",
+//             threadIdx.x, threadIdx.y, threadIdx.z,
+//             lane_id, groupID, laneID_in_group, base_row, i, row, col, (int) pos, (int)(i & 0x1));
+    p[pos] = a.x[i];
+  }
+}
+
+__CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_b, 8, 8, 4, __half, row_major> const & a, unsigned ldm) {
+  asm("trap;");
+  // NOTE: NOT LIKE THE COL-MAJOR CASE
+  // TODO: Account for ldm; update this code if we change the corresponding, untested, store_matrix_sync
+  using fragment_type = decltype(detail::remove_ref_helper(a));
+  enum { M = 8, N = 8, K = 4 };
+  enum { num_rows = K, num_cols = N };
+  auto lane_id = detail::lane_id();
+
+  auto matrix_id = lane_id % 16 >> 2;
+  auto base_row = lane_id % 4;
+  auto base_col = ((lane_id < 16) ? 0 : 4);
+
+  static_assert(fragment_type::num_elements == K, "Unexpected fragment_type::num_elements - expected K");
+  #pragma unroll
+  for(int i = 0; i < fragment_type::num_elements; i++) {
+    auto row = base_row;
+    auto col = base_col + i;
+    auto pos = matrix_id * num_rows * num_cols + row * num_cols + col;
+    p[pos] = a.x[i];
+  }
+}
+
+__CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_b, 8, 8, 4, __half, col_major> const & a, unsigned ldm) {
+  asm("trap;");
+  // NOTE: NOT LIKE THE COL-MAJOR CASE
+  // TODO: Account for ldm; update this code if we change the corresponding, untested, load_matrix_sync
+  using fragment_type = decltype(detail::remove_ref_helper(a));
+  enum { M = 8, N = 8, K = 4 };
+  enum { num_rows = K, num_cols = N };
+  auto lane_id = detail::lane_id();
+
+  auto matrix_id = lane_id % 16 >> 2;
+  auto base_row = 0;
+  auto base_col = lane_id % 4 + ((lane_id < 16) ? 0 : 4);
+
+  static_assert(fragment_type::num_elements == K, "Unexpected fragment_type::num_elements - expected K");
+  #pragma unroll
+  for(int i = 0; i < fragment_type::num_elements; i++) {
+    auto row = base_row + i;
+    auto col = base_col;
+    auto pos = matrix_id * num_rows * num_cols + row * num_cols + col;
+    p[pos] = a.x[i];
+  }
+}
+
 */
 
-  // 
-  // Store functions for fragments of shape m8n8k4
-  // 
-  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_a, 8, 8, 4, __half, row_major> const & a, unsigned ldm) {
-    asm("trap;"); // not yet tested
-    // Note: NOT like the column-major function
-    // TODO: Account for ldm
-    using fragment_type = decltype(detail::remove_ref_helper(a));
-    static constexpr const bool is_row_major = true;
-    (void) is_row_major;
-    enum { M = 8, N = 8, K = 4 };
-    enum { num_rows = M, num_cols = K };
-    auto lane_id = detail::lane_id();
-
-    auto matrix_index = (lane_id % 16) >> 2;
-        // This MMA variant acts on 4 independent pairs of matrice, which we assume are consecutive in device memory
-    auto base_row = lane_id % 4 + ((lane_id < 16) ? 0 : 4);
-    auto base_col = 0;
-
-    #pragma unroll
-    for(int i = 0; i < fragment_type::num_elements; i++) {
-      auto row = base_row;
-      auto col = base_col + i;
-      auto pos = matrix_index * num_rows * num_cols + row * num_cols + col;
-//      if (threadIdx.x == 8) printf("(%3d,%3d,%3d): a.x[%3d] = %.1f, (row,col) = (%3d,%3d) pos is %3d;\n",
-//             threadIdx.x, threadIdx.y, threadIdx.z, i, (float) p[pos], row, col, (int) pos);
-
-      //      printf("(%3d,%3d,%3d): Lane %2d group %1d in_group %d base_row %d; for a.x[%3d], (row,col) = (%2d,%2d) and my pos is %3d; i & 0x1 = %d\n",
-//             threadIdx.x, threadIdx.y, threadIdx.z,
-//             lane_id, groupID, threadID_in_group, base_row, i, row, col, (int) pos, (int)(i & 0x1));
-      p[pos] = a.x[i];
-    }
-  }
-
-  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_a, 8, 8, 4, __half, col_major> const & a, unsigned ldm) {
-    asm("trap;"); // not yet tested
-    // Same as row_major except for is_row_major
-    // TODO: Account for ldm
-    using fragment_type = decltype(detail::remove_ref_helper(a));
-    enum { M = 8, N = 8, K = 4 };
-    enum { num_rows = M, num_cols = K };
-    auto lane_id = detail::lane_id();
-
-    auto matrix_index = (lane_id % 16) >> 2;
-        // This MMA variant acts on 4 independent pairs of matrice, which we assume are consecutive in device memory
-    auto base_row = ((lane_id < 16) ? 0 : 4);
-    auto base_col = lane_id % 4;
-
-    #pragma unroll
-    for(int i = 0; i < fragment_type::num_elements; i++) {
-      auto row = base_row + i % 4;
-      auto col = base_col;
-      auto pos = matrix_index * num_rows * num_cols + row * num_cols + col;
-//      if (threadIdx.x == 8) printf("(%3d,%3d,%3d): a.x[%3d] = %.1f, (row,col) = (%3d,%3d) pos is %3d;\n",
-//             threadIdx.x, threadIdx.y, threadIdx.z, i, (float) p[pos], row, col, (int) pos);
-
-      //      printf("(%3d,%3d,%3d): Lane %2d group %1d in_group %d base_row %d; for a.x[%3d], (row,col) = (%2d,%2d) and my pos is %3d; i & 0x1 = %d\n",
-//             threadIdx.x, threadIdx.y, threadIdx.z,
-//             lane_id, groupID, threadID_in_group, base_row, i, row, col, (int) pos, (int)(i & 0x1));
-      p[pos] = a.x[i];
-    }
-  }
-
-  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_b, 8, 8, 4, __half, row_major> const & a, unsigned ldm) {
-    asm("trap;");
-    // NOTE: NOT LIKE THE COL-MAJOR CASE
-    // TODO: Account for ldm; update this code if we change the corresponding, untested, store_matrix_sync
-    using fragment_type = decltype(detail::remove_ref_helper(a));
-    enum { M = 8, N = 8, K = 4 };
-    enum { num_rows = K, num_cols = N };
-    auto lane_id = detail::lane_id();
-
-    auto matrix_id = lane_id % 16 >> 2;
-    auto base_row = lane_id % 4;
-    auto base_col = ((lane_id < 16) ? 0 : 4);
-
-    static_assert(fragment_type::num_elements == K, "Unexpected fragment_type::num_elements - expected K");
-    #pragma unroll
-    for(int i = 0; i < fragment_type::num_elements; i++) {
-      auto row = base_row;
-      auto col = base_col + i;
-      auto pos = matrix_id * num_rows * num_cols + row * num_cols + col;
-      p[pos] = a.x[i];
-    }
-  }
-
-  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_b, 8, 8, 4, __half, col_major> const & a, unsigned ldm) {
-    asm("trap;");
-    // NOTE: NOT LIKE THE COL-MAJOR CASE
-    // TODO: Account for ldm; update this code if we change the corresponding, untested, load_matrix_sync
-    using fragment_type = decltype(detail::remove_ref_helper(a));
-    enum { M = 8, N = 8, K = 4 };
-    enum { num_rows = K, num_cols = N };
-    auto lane_id = detail::lane_id();
-
-    auto matrix_id = lane_id % 16 >> 2;
-    auto base_row = 0;
-    auto base_col = lane_id % 4 + ((lane_id < 16) ? 0 : 4);
-
-    static_assert(fragment_type::num_elements == K, "Unexpected fragment_type::num_elements - expected K");
-    #pragma unroll
-    for(int i = 0; i < fragment_type::num_elements; i++) {
-      auto row = base_row + i;
-      auto col = base_col;
-      auto pos = matrix_id * num_rows * num_cols + row * num_cols + col;
-      p[pos] = a.x[i];
-    }
-  }
-
-  //
-  // Load functions for fragments of shape m16n8k8
-  // 
-  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_a, 16, 8, 8, __half, row_major> const & a, unsigned ldm) {
-    // TODO: Account for ldm; update this code if we change the corresponding, untested, load_matrix_sync
-    using fragment_type = decltype(detail::remove_ref_helper(a));
-    static constexpr const bool is_row_major = true;
-    enum { M = 16, N = 8, K = 8 };
-    enum { num_rows = M, num_cols = K };
-    auto lane_id = detail::lane_id();
+//
+// Load functions for fragments of shape m16n8k8
+//
+__CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_a, 16, 8, 8, __half, row_major> const & a, unsigned ldm) {
+  // TODO: Account for ldm; update this code if we change the corresponding, untested, load_matrix_sync
+  using fragment_type = decltype(detail::remove_ref_helper(a));
+  static constexpr const bool is_row_major = true;
+  enum { M = 16, N = 8, K = 8 };
+  enum { num_rows = M, num_cols = K };
+  auto lane_id = detail::lane_id();
 //    if (lane_id == 0) printf("loading acc %dx%d\n", num_rows, num_cols);
 
-    auto groupID = lane_id >> 2;
-    auto threadID_in_group = lane_id % 4;
+  auto groupID = lane_id >> 2;
+  auto laneID_in_group = lane_id % 4;
 
-    auto base_row = groupID;
-    auto base_col = (threadID_in_group * 2);
+  auto base_row = groupID;
+  auto base_col = (laneID_in_group * 2);
 
-    #pragma unroll
-    for(int i = 0; i < fragment_type::num_elements; i++) {
-      auto row = base_row + (i < 2 ? 0 : 8);
-      auto col = base_col + (i & 0x1);
-      auto pos = is_row_major ?
-        (row * num_cols + col) :
-        (col * num_rows + row);
-      p[pos] = a.x[i];
+  #pragma unroll
+  for(int i = 0; i < fragment_type::num_elements; i++) {
+    auto row = base_row + (i < 2 ? 0 : 8);
+    auto col = base_col + (i & 0x1);
+    auto pos = is_row_major ?
+      (row * num_cols + col) :
+      (col * num_rows + row);
+    p[pos] = a.x[i];
 //      if ((double) a.x[i] != 0) printf("(%2d,%2d,%2d): After load acc; a.x[%3d] = %5.0f, (row,col) = (%3d,%3d) pos is %3d;\n",
 //             threadIdx.x, threadIdx.y, threadIdx.z, i, (float) p[pos], row, col, (int) pos);
-    }
   }
+}
 
-  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_a, 16, 8, 8, __half, col_major> const & a, unsigned ldm) {
-    // TODO: Account for ldm; update this code if we change the corresponding, untested, load_matrix_sync
-    using fragment_type = decltype(detail::remove_ref_helper(a));
-    static constexpr const bool is_row_major = false;
-    enum { M = 16, N = 8, K = 8 };
-    enum { num_rows = M, num_cols = K };
-    auto lane_id = detail::lane_id();
+__CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_a, 16, 8, 8, __half, col_major> const & a, unsigned ldm) {
+  // TODO: Account for ldm; update this code if we change the corresponding, untested, load_matrix_sync
+  using fragment_type = decltype(detail::remove_ref_helper(a));
+  static constexpr const bool is_row_major = false;
+  enum { M = 16, N = 8, K = 8 };
+  enum { num_rows = M, num_cols = K };
+  auto lane_id = detail::lane_id();
 
-    auto groupID = lane_id >> 2;
-    auto threadID_in_group = lane_id % 4;
+  auto groupID = lane_id >> 2;
+  auto laneID_in_group = lane_id % 4;
 
-    auto base_row = groupID;
-    auto base_col = (threadID_in_group * 2);
+  auto base_row = groupID;
+  auto base_col = (laneID_in_group * 2);
 
-    #pragma unroll
-    for(int i = 0; i < fragment_type::num_elements; i++) {
-      auto row = base_row + (i < 2 ? 0 : 8);
-      auto col = base_col + (i & 0x1);
-      auto pos = is_row_major ?
-        (row * num_cols + col) :
-        (col * num_rows + row);
-      p[pos] = a.x[i];
-    }
+  #pragma unroll
+  for(int i = 0; i < fragment_type::num_elements; i++) {
+    auto row = base_row + (i < 2 ? 0 : 8);
+    auto col = base_col + (i & 0x1);
+    auto pos = is_row_major ?
+      (row * num_cols + col) :
+      (col * num_rows + row);
+    p[pos] = a.x[i];
   }
+}
 
-  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_b, 16, 8, 8, __half, row_major> const & a, unsigned ldm) {
-    // TODO: Account for ldm; update this code if we change the corresponding, untested, load_matrix_sync
-    using fragment_type = decltype(detail::remove_ref_helper(a));
-    static constexpr const bool is_row_major = true;
-    enum { M = 16, N = 8, K = 8 };
-    enum { num_rows = K, num_cols = N };
-    auto lane_id = detail::lane_id();
+__CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_b, 16, 8, 8, __half, row_major> const & a, unsigned ldm) {
+  // TODO: Account for ldm; update this code if we change the corresponding, untested, load_matrix_sync
+  using fragment_type = decltype(detail::remove_ref_helper(a));
+  static constexpr const bool is_row_major = true;
+  enum { M = 16, N = 8, K = 8 };
+  enum { num_rows = K, num_cols = N };
+  auto lane_id = detail::lane_id();
 
-    auto groupID = lane_id >> 2;
-    auto threadID_in_group = lane_id % 4;
+  auto groupID = lane_id >> 2;
+  auto laneID_in_group = lane_id % 4;
 
-    auto base_row = (threadID_in_group * 2);
-    auto base_col =  groupID;
+  auto base_row = (laneID_in_group * 2);
+  auto base_col =  groupID;
 
-    #pragma unroll
-    for(int i = 0; i < fragment_type::num_elements; i++) {
-      auto row = base_row + i;
-      auto col = base_col;
-      auto pos = is_row_major ?
-        (row * num_cols + col) :
-        (col * num_rows + row);
-      p[pos] = a.x[i];
+  #pragma unroll
+  for(int i = 0; i < fragment_type::num_elements; i++) {
+    auto row = base_row + i;
+    auto col = base_col;
+    auto pos = is_row_major ?
+      (row * num_cols + col) :
+      (col * num_rows + row);
+    p[pos] = a.x[i];
 //      printf("(%2d,%2d,%2d) Load B row-major: a.x[%2d] = %5.0f, (row,col) = (%3d,%3d) pos is %3d;\n",
 //             threadIdx.x, threadIdx.y, threadIdx.z, i, (float) p[pos], row, col, (int) pos);
-    }
   }
+}
 
-  __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_b, 16, 8, 8, __half, col_major> const & a, unsigned ldm) {
-    // TODO: Account for ldm; update this code if we change the corresponding, untested, load_matrix_sync
-    using fragment_type = decltype(detail::remove_ref_helper(a));
-    static constexpr const bool is_row_major = false;
-    enum { M = 16, N = 8, K = 8 };
-    enum { num_rows = K, num_cols = N };
-    auto lane_id = detail::lane_id();
+__CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_b, 16, 8, 8, __half, col_major> const & a, unsigned ldm) {
+  // TODO: Account for ldm; update this code if we change the corresponding, untested, load_matrix_sync
+  using fragment_type = decltype(detail::remove_ref_helper(a));
+  static constexpr const bool is_row_major = false;
+  enum { M = 16, N = 8, K = 8 };
+  enum { num_rows = K, num_cols = N };
+  auto lane_id = detail::lane_id();
 //    if (lane_id == 0) printf("loading B %dx%d\n", num_rows, num_cols);
 
-    auto groupID = lane_id >> 2;
-    auto threadID_in_group = lane_id % 4;
+  auto groupID = lane_id >> 2;
+  auto laneID_in_group = lane_id % 4;
 
-    auto base_row = (threadID_in_group * 2);
-    auto base_col =  groupID;
+  auto base_row = (laneID_in_group * 2);
+  auto base_col =  groupID;
 
-    #pragma unroll
-    for(int i = 0; i < fragment_type::num_elements; i++) {
-      auto row = base_row + i;
-      auto col = base_col;
-      auto pos = is_row_major ?
-        (row * num_cols + col) :
-        (col * num_rows + row);
-      p[pos] = a.x[i];
+  #pragma unroll
+  for(int i = 0; i < fragment_type::num_elements; i++) {
+    auto row = base_row + i;
+    auto col = base_col;
+    auto pos = is_row_major ?
+      (row * num_cols + col) :
+      (col * num_rows + row);
+    p[pos] = a.x[i];
 //      printf("(%2d,%2d,%2d) Load B col-major: a.x[%2d] = %5.0f, (row,col) = (%3d,%3d) pos is %3d;\n",
 //             threadIdx.x, threadIdx.y, threadIdx.z, i, (float) p[pos], row, col, (int) pos);
-    }
   }
+}
 
-};
-};
+} // namespace wmma
+} // namespace nvcuda
 
 #undef __CUDA_IMMA__
 #undef __CUDA_SUBBYTE_IMMA__

@@ -887,6 +887,14 @@ bool build_kernel(execution_context_t& context)
     else {
         spdlog::error("Kernel {} build failed.", context.options.kernel.key);
     }
+    // In some cases (perhaps even due to my own fault, the compilation log string
+    // contains the trailing C-language string terminating null character '\0'. Let's clean
+    // that up
+    if (context.compilation_log and context.compilation_log->length() > 0 ) {
+        if (context.compilation_log->back() == '\0') {
+            context.compilation_log->pop_back();
+        }
+    }
     return build_succeeded;
 }
 
@@ -1210,7 +1218,6 @@ int main(int argc, char** argv)
     finalize_preprocessor_definitions(context);
     ensure_necessary_terms_were_defined(context);
     auto build_succeeded = build_kernel(context);
-    auto log = context.compilation_log.value();
     handle_compilation_log(build_succeeded, context);
     build_succeeded or die();
 

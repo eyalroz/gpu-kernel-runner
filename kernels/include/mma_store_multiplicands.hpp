@@ -93,10 +93,10 @@ __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_a, 16
   auto lane_id = detail::lane_id();
 
   auto groupID = lane_id >> 2;
-  auto laneID_in_group = lane_id % 4;
+  auto threadID_in_group = lane_id % 4;
 
   auto base_row = groupID;
-  auto base_col = (laneID_in_group * 2);
+  auto base_col = (threadID_in_group * 2);
 
   #pragma unroll
   for(int i = 0; i < fragment_type::num_elements; i++) {
@@ -110,7 +110,7 @@ __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_a, 16
 
     //      printf("(%3d,%3d,%3d): Lane %2d group %1d in_group %d base_row %d; for a.x[%3d], (row,col) = (%2d,%2d) and my pos is %3d; i & 0x1 = %d\n",
 //             threadIdx.x, threadIdx.y, threadIdx.z,
-//             lane_id, groupID, laneID_in_group, base_row, i, row, col, (int) pos, (int)(i & 0x1));
+//             lane_id, groupID, threadID_in_group, base_row, i, row, col, (int) pos, (int)(i & 0x1));
     p[pos] = a.x[i];
   }
 }
@@ -125,10 +125,10 @@ __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_a, 16
   auto lane_id = detail::lane_id();
 
   auto groupID = lane_id >> 2;
-  auto laneID_in_group = lane_id % 4;
+  auto threadID_in_group = lane_id % 4;
 
   auto base_row = groupID;
-  auto base_col = (laneID_in_group * 2);
+  auto base_col = (threadID_in_group * 2);
 
   #pragma unroll
   for(int i = 0; i < fragment_type::num_elements; i++) {
@@ -151,9 +151,9 @@ __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_b,16,
   auto lane_id = detail::lane_id();
 
   auto groupID = lane_id >> 2;
-  auto laneID_in_group = lane_id % 4;
+  auto threadID_in_group = lane_id % 4;
 
-  auto base_row = (laneID_in_group * 2);
+  auto base_row = (threadID_in_group * 2);
   auto base_col = groupID;
 
   #pragma unroll
@@ -179,9 +179,9 @@ __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_b,16,
   auto lane_id = detail::lane_id();
 
   auto groupID = lane_id >> 2;
-  auto laneID_in_group = lane_id % 4;
+  auto threadID_in_group = lane_id % 4;
 
-  auto base_row = (laneID_in_group * 2);
+  auto base_row = (threadID_in_group * 2);
   auto base_col = groupID;
 
   #pragma unroll
@@ -229,7 +229,7 @@ __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_a, 8,
 
     //      printf("(%3d,%3d,%3d): Lane %2d group %1d in_group %d base_row %d; for a.x[%3d], (row,col) = (%2d,%2d) and my pos is %3d; i & 0x1 = %d\n",
 //             threadIdx.x, threadIdx.y, threadIdx.z,
-//             lane_id, groupID, laneID_in_group, base_row, i, row, col, (int) pos, (int)(i & 0x1));
+//             lane_id, groupID, threadID_in_group, base_row, i, row, col, (int) pos, (int)(i & 0x1));
     p[pos] = a.x[i];
   }
 }
@@ -258,7 +258,7 @@ __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_a, 8,
 
     //      printf("(%3d,%3d,%3d): Lane %2d group %1d in_group %d base_row %d; for a.x[%3d], (row,col) = (%2d,%2d) and my pos is %3d; i & 0x1 = %d\n",
 //             threadIdx.x, threadIdx.y, threadIdx.z,
-//             lane_id, groupID, laneID_in_group, base_row, i, row, col, (int) pos, (int)(i & 0x1));
+//             lane_id, groupID, threadID_in_group, base_row, i, row, col, (int) pos, (int)(i & 0x1));
     p[pos] = a.x[i];
   }
 }
@@ -324,10 +324,10 @@ __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_a, 16
 //    if (lane_id == 0) printf("loading acc %dx%d\n", num_rows, num_cols);
 
   auto groupID = lane_id >> 2;
-  auto laneID_in_group = lane_id % 4;
+  auto threadID_in_group = lane_id % 4;
 
   auto base_row = groupID;
-  auto base_col = (laneID_in_group * 2);
+  auto base_col = (threadID_in_group * 2);
 
   #pragma unroll
   for(int i = 0; i < fragment_type::num_elements; i++) {
@@ -351,10 +351,10 @@ __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_a, 16
   auto lane_id = detail::lane_id();
 
   auto groupID = lane_id >> 2;
-  auto laneID_in_group = lane_id % 4;
+  auto threadID_in_group = lane_id % 4;
 
   auto base_row = groupID;
-  auto base_col = (laneID_in_group * 2);
+  auto base_col = (threadID_in_group * 2);
 
   #pragma unroll
   for(int i = 0; i < fragment_type::num_elements; i++) {
@@ -376,9 +376,9 @@ __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_b, 16
   auto lane_id = detail::lane_id();
 
   auto groupID = lane_id >> 2;
-  auto laneID_in_group = lane_id % 4;
+  auto threadID_in_group = lane_id % 4;
 
-  auto base_row = (laneID_in_group * 2);
+  auto base_row = (threadID_in_group * 2);
   auto base_col =  groupID;
 
   #pragma unroll
@@ -404,9 +404,9 @@ __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_b, 16
 //    if (lane_id == 0) printf("loading B %dx%d\n", num_rows, num_cols);
 
   auto groupID = lane_id >> 2;
-  auto laneID_in_group = lane_id % 4;
+  auto threadID_in_group = lane_id % 4;
 
-  auto base_row = (laneID_in_group * 2);
+  auto base_row = (threadID_in_group * 2);
   auto base_col =  groupID;
 
   #pragma unroll
@@ -421,6 +421,36 @@ __CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<matrix_b, 16
 //             threadIdx.x, threadIdx.y, threadIdx.z, i, (float) p[pos], row, col, (int) pos);
   }
 }
+
+/*
+// UNTESTED!
+__CUDA_MMA_DEVICE_DECL__ void store_matrix_sync(__half* p, fragment<accumulator,16, 8, 8, __half> const & a, unsigned ldm, layout_t layout)
+{
+  // TODO: Account for ldm
+  using fragment_type = decltype(detail::remove_ref_helper(a));
+  bool is_row_major = (layout == wmma::mem_row_major);
+  enum { M = 16, N = 8, K = 8 };
+  enum { num_rows = M, num_cols = N };
+  auto lane_id = detail::lane_id();
+
+  auto groupID = lane_id >> 2;
+  auto threadID_in_group = lane_id % 4;
+
+  auto base_row = groupID;
+  auto base_col = threadID_in_group * 2;
+
+  #pragma unroll
+  for(int i = 0; i < fragment_type::num_elements; i++) {
+    auto row = base_row + ((i < 2) ? 0 : 8);
+    auto col = base_col + (i & 0x1);
+    auto pos = is_row_major ?
+      row * num_cols + col :
+      col * num_rows + row;
+    p[pos] = a.x[i];
+  }
+}
+*/
+
 
 } // namespace wmma
 } // namespace nvcuda

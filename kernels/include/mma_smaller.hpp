@@ -631,7 +631,7 @@ bool is_in_one_of(int i, range r1, range r2) { return is_in(i, r1) or is_in(i, r
     #pragma unroll
     for(int i = 0; i < fragment_type::num_elements; i++) {
       auto row = base_row + (i < 2 ? 0 : 8);
-      auto col = base_col + i;
+      auto col = base_col + i % 2;
       auto pos = (layout == mem_row_major) ?
         row * ldm + col :
         col * ldm + row;

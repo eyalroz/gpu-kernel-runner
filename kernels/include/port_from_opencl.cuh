@@ -294,44 +294,44 @@ __device__ inline double native_rsqrt(double x) { return rsqrt(x);  }
 //T select(T on_false, T on_true, Selector selector);
 
 template <typename T>
-struct opencl_vector_width { static constexpr const int value = 1; };
+struct opencl_vector_width { enum { value = 1 }; };
 
-template <> struct opencl_vector_width<short2>  { static constexpr const int value = 2; };
-template <> struct opencl_vector_width<ushort2> { static constexpr const int value = 2; };
-template <> struct opencl_vector_width<int2>    { static constexpr const int value = 2; };
-template <> struct opencl_vector_width<uint2>   { static constexpr const int value = 2; };
-template <> struct opencl_vector_width<long2>   { static constexpr const int value = 2; };
-template <> struct opencl_vector_width<ulong2>  { static constexpr const int value = 2; };
+template <> struct opencl_vector_width<short2>  { enum { value = 2 }; };
+template <> struct opencl_vector_width<ushort2> { enum { value = 2 }; };
+template <> struct opencl_vector_width<int2>    { enum { value = 2 }; };
+template <> struct opencl_vector_width<uint2>   { enum { value = 2 }; };
+template <> struct opencl_vector_width<long2>   { enum { value = 2 }; };
+template <> struct opencl_vector_width<ulong2>  { enum { value = 2 }; };
 #ifdef PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
-template <> struct opencl_vector_width<half2>   { static constexpr const int value = 2; };
+template <> struct opencl_vector_width<half2>   { enum { value = 2 }; };
 #endif
-template <> struct opencl_vector_width<float2>  { static constexpr const int value = 2; };
-template <> struct opencl_vector_width<double2> { static constexpr const int value = 2; };
+template <> struct opencl_vector_width<float2>  { enum { value = 2 }; };
+template <> struct opencl_vector_width<double2> { enum { value = 2 }; };
 
-template <> struct opencl_vector_width<short3>  { static constexpr const int value = 3; };
-template <> struct opencl_vector_width<ushort3> { static constexpr const int value = 3; };
-template <> struct opencl_vector_width<int3>    { static constexpr const int value = 3; };
-template <> struct opencl_vector_width<uint3>   { static constexpr const int value = 3; };
-template <> struct opencl_vector_width<long3>   { static constexpr const int value = 3; };
-template <> struct opencl_vector_width<ulong3>  { static constexpr const int value = 3; };
+template <> struct opencl_vector_width<short3>  { enum { value = 3 }; };
+template <> struct opencl_vector_width<ushort3> { enum { value = 3 }; };
+template <> struct opencl_vector_width<int3>    { enum { value = 3 }; };
+template <> struct opencl_vector_width<uint3>   { enum { value = 3 }; };
+template <> struct opencl_vector_width<long3>   { enum { value = 3 }; };
+template <> struct opencl_vector_width<ulong3>  { enum { value = 3 }; };
 // No half3, it seems
 //#ifdef PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
-//template <> struct opencl_vector_width<half3>   { static constexpr const int value = 3; };
+//template <> struct opencl_vector_width<half3>   { enum { value = 3 }; };
 //#endif
-template <> struct opencl_vector_width<float3>  { static constexpr const int value = 3; };
-template <> struct opencl_vector_width<double3> { static constexpr const int value = 3; };
+template <> struct opencl_vector_width<float3>  { enum { value = 3 }; };
+template <> struct opencl_vector_width<double3> { enum { value = 3 }; };
 
-template <> struct opencl_vector_width<short4>  { static constexpr const int value = 4; };
-template <> struct opencl_vector_width<ushort4> { static constexpr const int value = 4; };
-template <> struct opencl_vector_width<int4>    { static constexpr const int value = 4; };
-template <> struct opencl_vector_width<uint4>   { static constexpr const int value = 4; };
-template <> struct opencl_vector_width<long4>   { static constexpr const int value = 4; };
-template <> struct opencl_vector_width<ulong4>  { static constexpr const int value = 4; };
+template <> struct opencl_vector_width<short4>  { enum { value = 4 }; };
+template <> struct opencl_vector_width<ushort4> { enum { value = 4 }; };
+template <> struct opencl_vector_width<int4>    { enum { value = 4 }; };
+template <> struct opencl_vector_width<uint4>   { enum { value = 4 }; };
+template <> struct opencl_vector_width<long4>   { enum { value = 4 }; };
+template <> struct opencl_vector_width<ulong4>  { enum { value = 4 }; };
 #ifdef PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
-template <> struct opencl_vector_width<half4>   { static constexpr const int value = 4; };
+template <> struct opencl_vector_width<half4>   { enum { value = 4 }; };
 #endif
-template <> struct opencl_vector_width<float4>  { static constexpr const int value = 4; };
-template <> struct opencl_vector_width<double4> { static constexpr const int value = 4; };
+template <> struct opencl_vector_width<float4>  { enum { value = 4 }; };
+template <> struct opencl_vector_width<double4> { enum { value = 4 }; };
 
 template <size_t VectorWidth>
 struct opencl_vectorized;

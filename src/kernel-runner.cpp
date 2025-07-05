@@ -882,10 +882,10 @@ bool build_kernel(execution_context_t& context)
         }
     }
     if (build_succeeded) {
-        spdlog::info("Kernel {} built successfully.", context.options.kernel.key);
+        spdlog::debug("Kernel {} build step completed successfully.", context.options.kernel.key);
     }
     else {
-        spdlog::error("Kernel {} build failed.", context.options.kernel.key);
+        spdlog::debug("Kernel {} build step failed.", context.options.kernel.key);
     }
     // In some cases (perhaps even due to my own fault, the compilation log string
     // contains the trailing C-language string terminating null character '\0'. Let's clean

@@ -1070,9 +1070,14 @@ void handle_compilation_log(bool compilation_succeeded, execution_context_t& con
         }
     }
     if (context.options.always_print_compilation_log) {
-        if (not context.compilation_log or empty_log) {
+        if (not context.compilation_log) {
             if (compilation_succeeded) {
-                spdlog::error("No compilation log produced.");
+                spdlog::error("Compilation succeeded, but the log could not be obtained");
+            }
+        }
+        else if (empty_log) {
+            if (compilation_succeeded) {
+                spdlog::info("Kernel compilation log is empty.");
             }
         }
         else {

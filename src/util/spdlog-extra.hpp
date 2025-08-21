@@ -3,7 +3,9 @@
 
 #include <spdlog/spdlog.h>
 #include <spdlog/fmt/fmt.h>
+
 #include <unordered_set>
+#include <string>
 #include <cstdlib>
 
 namespace spdlog {
@@ -51,6 +53,15 @@ template <typename... Ts>
         spdlog::critical(message_format_string, std::forward<Ts>(args)...);
     }
     exit(EXIT_FAILURE);
+}
+
+inline void set_log_level(std::string log_level_name)
+{
+    auto log_level = spdlog::level::from_str(log_level_name);
+    if (spdlog::level_is_at_least(spdlog::level::debug)) {
+        spdlog::log(spdlog::level::debug, "Setting log level to {}", log_level_name);
+    }
+    spdlog::set_level(log_level);
 }
 
 #endif // UTIL_SPDLOG_EXTRA_HPP_

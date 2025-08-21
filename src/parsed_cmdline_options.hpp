@@ -8,14 +8,22 @@
 #include "util/filesystem.hpp"
 #include "util/optional_and_any.hpp"
 #include "util/miscellany.hpp"
-#include "util/miscellany.hpp"
 #include "util/warning_suppression.hpp"
 
 #include <string>
 #include <cstdlib>
 
+enum class early_exit_action_t : int {
+    print_help,
+    list_kernels,
+    list_opencl_platforms
+};
+
 // These options are common, and relevant, to any and all kernel adapters
 struct parsed_cmdline_options_t {
+    bool valid;
+    optional<early_exit_action_t> early_exit_action; // as requested by user or resolved based on various arguments
+    optional<std::string> help_text;
     struct {
         std::string key;
         std::string function_name;
@@ -51,7 +59,6 @@ struct parsed_cmdline_options_t {
     bool generate_source_line_info;
     bool set_default_compilation_options; // target GPU, language standard etc.
     bool compile_only;
-//    bool compare_outputs_against_expected;
     bool generate_debug_info;
     bool accept_oversized_inputs;
     filesystem::path ptx_output_file;

@@ -48,6 +48,7 @@ add_executable(kernel-runner
 	src/kernel-runner.cpp
 	src/kernel_adapter.cpp
 	src/buffer_ops.cpp
+	src/cmdline_arguments.cpp
 	src/util/filesystem.cpp
 	src/util/buffer_io.cpp
 	src/opencl-related/build.cpp

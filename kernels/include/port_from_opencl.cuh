@@ -62,6 +62,72 @@ typedef unsigned long  ulong;
 #include "half4.cuh"
 #endif
 
+#ifdef PORT_FROM_OPENCL_ENABLE_MATH_DEFINES
+#define FLT_DIG          6
+#define FLT_MANT_DIG     24
+#define FLT_MAX_10_EXP   +38
+#define FLT_MAX_EXP      +128
+#define FLT_MIN_10_EXP   -37
+#define FLT_MIN_EXP      -125
+#define FLT_RADIX        2
+#define FLT_MAX          0x1.fffffep127f
+#define FLT_MIN          0x1.0p-126f
+#define FLT_EPSILON      0x1.0p-23f
+
+#define DBL_DIG          15
+#define DBL_MANT_DIG     53
+#define DBL_MAX_10_EXP   +308
+#define DBL_MAX_EXP      +1024
+#define DBL_MIN_10_EXP   -307
+#define DBL_MIN_EXP      -1021
+#define DBL_RADIX        2
+#define DBL_MAX          0x1.fffffffffffffp1023
+#define DBL_MIN          0x1.0p-1022
+#define DBL_EPSILON      0x1.0p-52
+
+#define M_E             2.718281828459045090796
+#define M_LOG2E         1.442695040888963387005
+#define M_LOG10E        0.434294481903251816668
+#define M_LN2           0.693147180559945286227
+#define M_LN10          2.302585092994045901094
+#define M_PI            3.141592653589793115998
+#define M_PI_2          1.570796326794896557999
+#define M_PI_4          0.785398163397448278999
+#define M_1_PI          0.318309886183790691216
+#define M_2_PI          0.636619772367581382433
+#define M_2_SQRTPI      1.128379167095512558561
+#define M_SQRT2         1.414213562373095145475
+#define M_SQRT1_2       0.707106781186547572737
+
+#define M_E_F           2.71828174591064f
+#define M_LOG2E_F       1.44269502162933f
+#define M_LOG10E_F      0.43429449200630f
+#define M_LN2_F         0.69314718246460f
+#define M_LN10_F        2.30258512496948f
+#define M_PI_F          3.14159274101257f
+#define M_PI_2_F        1.57079637050629f
+#define M_PI_4_F        0.78539818525314f
+#define M_1_PI_F        0.31830987334251f
+#define M_2_PI_F        0.63661974668503f
+#define M_2_SQRTPI_F    1.12837922573090f
+#define M_SQRT2_F       1.41421353816986f
+#define M_SQRT1_2_F     0.70710676908493f
+
+#if defined( __GNUC__ )
+#define HUGE_VALF     __builtin_huge_valf()
+   #define HUGE_VAL      __builtin_huge_val()
+   #define NAN           __builtin_nanf( "" )
+#else
+#define HUGE_VALF     ((cl_float) 1e50)
+#define HUGE_VAL      ((cl_double) 1e500)
+float nanf( const char * );
+#define NAN           nanf( "" )
+#endif
+#define MAXFLOAT         CL_FLT_MAX
+#define INFINITY         CL_HUGE_VALF
+
+#endif // PORT_FROM_OPENCL_ENABLE_MATH_DEFINES
+
 #if !defined(__CDT_PARSER__) && !defined (__JETBRAINS_IDE__)
 // Parsers may fail to recognize a reasonable default-C++-headers path for kernel files
 #include <cstdint>

@@ -180,7 +180,7 @@ compilation_result_t build_cuda_kernel(
     spdlog::debug("Compiled PTX length: {} characters.", ptx.size());
     auto module = cuda::module::create(context, compilation_output);
     auto kernel = module.get_kernel(mangled_kernel_function_signature);
-    spdlog::debug("Kernel static memory usage: {} bytes.",
+    spdlog::info("Kernel static memory usage: {} bytes.",
         kernel.get_attribute(cuda::kernel::attribute_t::CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES));
     spdlog::debug("Compiled kernel loaded into a CUDA module.");
     return {

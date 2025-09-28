@@ -2,24 +2,21 @@
 #define KERNEL_RUNNER_CUDA_MISCELLANY_HPP_
 
 #include "../common_types.hpp"
+#include "../execution_context.hpp"
 
 template <execution_ecosystem_t Ecosystem>
 std::vector<filesystem::path> get_ecosystem_include_paths_();
 
 template <>
-inline std::vector<filesystem::path> get_ecosystem_include_paths_<execution_ecosystem_t::cuda>()
-{
-    std::vector<filesystem::path> result;
-    auto cuda_include_dir = locate_cuda_include_directory();
-    if (cuda_include_dir) {
-        spdlog::debug("Using CUDA include directory {}", cuda_include_dir.value());
-        result.emplace_back(cuda_include_dir.value());
-    }
-    else {
-        spdlog::warn("Cannot locate CUDA include directory - trying to build the kernel with it missing.");
-    }
-    return result;
-}
+std::vector<filesystem::path> get_ecosystem_include_paths_<execution_ecosystem_t::cuda>();
+
+// This is a stub. It's not terribly hard to do, but it's more than a few lines
+// of code - certainly if you want it to work on MacOs Windows as well as Linux.
+optional<std::string> locate_cuda_include_directory();
+
+size_t determine_required_shared_memory_size(execution_context_t const& context);
+void enable_sufficient_shared_memory(execution_context_t const& context);
+void enable_sufficient_shared_memory(execution_context_t const& context, size_t required_shmem_size);
 
 #endif // KERNEL_RUNNER_CUDA_MISCELLANY_HPP_
 

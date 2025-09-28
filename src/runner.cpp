@@ -602,29 +602,23 @@ void handle_compilation_log(bool compilation_succeeded, execution_context_t& con
         std::all_of(context.compilation_log.value().cbegin(),context.compilation_log.value().cend(),isspace);
 
     if (not compilation_succeeded) {
-        if (not context.compilation_log) {
-            spdlog::error("Compilation failed, but no compilation log was available.");
-        }
-        else if (not context.compilation_log or empty_log) {
-            spdlog::error("Compilation failed, but the compilation log was empty.");
+        if (not context.compilation_log or empty_log) {
+            spdlog::error("No compilation log produced.");
         }
         else {
             spdlog::error("Kernel compilation log:\n{}\n", context.compilation_log.value());
         }
     }
     if (context.options.always_print_compilation_log) {
-        if (context.compilation_log and not empty_log) {
+        if (not context.compilation_log or empty_log) {
+            if (compilation_succeeded) {
+                spdlog::error("No compilation log produced.");
+            }
+        }
+        else {
             spdlog::debug("Printing kernel compilation log:");
             std::cout << context.compilation_log.value()
-                      << util::newline_if_missing(context.compilation_log.value());
-        }
-        else if (compilation_succeeded) {
-            if (not context.compilation_log) {
-                spdlog::info("A compilation log was not produced.");
-            }
-            else {
-                spdlog::info("The compilation log is empty.");
-            }
+                << util::newline_if_missing(context.compilation_log.value());
         }
     }
 
@@ -744,6 +738,21 @@ void verify_launch_configuration(execution_context_t const& context)
     }
 }
 
+void configure_device_and_built_kernel(execution_context_t const& context)
+{
+    if (not context.options.expand_shmem_carveout_if_necessary) {
+        spdlog::trace("Not checking whether we need to expand the shared memory per block.");
+        return;
+    }
+    // There may be different "knobs" we can "turn" and "switches" we could "flip";
+    // for now, we only use very few of them.
+
+    if (context.ecosystem == execution_ecosystem_t::cuda) {
+        auto required_shared_memory = determine_required_shared_memory_size(context);
+        enable_sufficient_shared_memory(context, required_shared_memory);
+    }
+}
+
 int main(int argc, char** argv)
 {
     spdlog::set_level(spdlog::level::info);
@@ -786,6 +795,7 @@ int main(int argc, char** argv)
     finalize_kernel_arguments(context);
     prepare_kernel_launch_config(context);
     verify_launch_configuration(context);
+    configure_device_and_built_kernel(context);
 
     for(run_index_t ri = 0; ri < context.options.num_runs; ri++) {
         schedule_single_run(context, ri);

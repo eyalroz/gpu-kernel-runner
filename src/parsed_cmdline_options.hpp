@@ -67,6 +67,7 @@ struct parsed_cmdline_options_t {
     optional<std::string> language_standard; // At the moment, possible (engaged) values are: "c++11","c++14", "c++17"
     bool time_with_events;
     optional_launch_config_components_t forced_launch_config_components;
+    bool expand_shmem_carveout_if_necessary;
 };
 
 #endif /* PARSED_COMMAND_LINE_OPTIONS_HPP_ */

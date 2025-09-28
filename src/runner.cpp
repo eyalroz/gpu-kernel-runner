@@ -28,6 +28,8 @@
 #include <iostream>
 #include <vector>
 
+void configure_device_and_built_kernel(execution_context_t const& context);
+
 using std::size_t;
 using std::string;
 
@@ -738,6 +740,22 @@ void verify_launch_configuration(execution_context_t const& context)
     }
 }
 
+void configure_device_and_built_kernel(execution_context_t const& context)
+{
+    if (not context.options.expand_shmem_carveout_if_necessary) {
+        spdlog::trace("Not checking whether we need to expand the shared memory per block.");
+        return;
+    }
+    // There may be different "knobs" we can "turn" and "switches" we could "flip";
+    // for now, we only use very few of them.
+
+    if (context.ecosystem == execution_ecosystem_t::cuda) {
+        auto required_shared_memory = determine_required_shared_memory_size(context);
+        enable_sufficient_shared_memory(context, required_shared_memory);
+    }
+}
+
+
 int main(int argc, char** argv)
 {
     spdlog::set_level(spdlog::level::info);
@@ -780,6 +798,7 @@ int main(int argc, char** argv)
     finalize_kernel_arguments(context);
     prepare_kernel_launch_config(context);
     verify_launch_configuration(context);
+    configure_device_and_built_kernel(context);
 
     for(run_index_t ri = 0; ri < context.options.num_runs; ri++) {
         schedule_single_run(context, ri);

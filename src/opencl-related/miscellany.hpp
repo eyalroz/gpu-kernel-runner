@@ -12,7 +12,7 @@ template <execution_ecosystem_t Ecosystem>
 std::vector<filesystem::path> get_ecosystem_include_paths_();
 
 template <>
-inline std::vector<filesystem::path> get_ecosystem_include_paths_<execution_ecosystem_t::opencl>()
+std::vector<filesystem::path> get_ecosystem_include_paths_<execution_ecosystem_t::opencl>()
 {
     return {};
 }

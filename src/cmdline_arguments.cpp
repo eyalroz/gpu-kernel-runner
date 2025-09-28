@@ -68,6 +68,8 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
         ("input-buffer-directory,in-dir,input-buffer-dir,input-buffers-directory,input-buffers-dir,inbuf-dir,inbufs,inbufs-dir,inbuf-directory,inbufs-directory,in-directory", "Base location for locating input buffers", cxxopts::value<string>()->default_value( filesystem::current_path().native() ))
         ("output-buffer-directory,output-buffer-dir,output-buffers-directory,output-buffers-dir,outbuf-dir,outbufs,outbufs-dir,outbuf-directory,outbufs-directory,out-directory", "Base location for writing output buffers", cxxopts::value<string>()->default_value( filesystem::current_path().native() ))
         ("accept-oversized-inputs,accept-oversized,allow-oversized-inputs,allow-oversized,lax-size-validation", "Accept input buffers exceeding the expected size calculated for them", cxxopts::value<bool>()->default_value("false"))
+        ("set-shared-mem-carveout-hint,set-shmem-carveout-hint", "If the kernel (with its dynamic shared memory launch-config setting) requires more shared memory per block than the selected GPU device is configured to provide, set a hint on the kernel to "
+         "increase its shared memory carveout, so that it is more likely for the kernel to be scheduled", cxxopts::value<bool>()->default_value("true"))
         ("kernel-sources-dir,kernel-source-dir,kernel-source-directory,kernel-sources-directory,kernel-sources,source-dir,sources", "Base location for locating kernel source files", cxxopts::value<string>()->default_value( filesystem::current_path().native() ))
         ("h,help", "Print usage information")
         ;
@@ -370,6 +372,7 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
     parsed_options.sync_after_kernel_execution = parse_result["sync-after-execution"].as<bool>();
     parsed_options.sync_after_buffer_op = parse_result["sync-after-buffer-op"].as<bool>();
     parsed_options.accept_oversized_inputs = parse_result["accept-oversized-inputs"].as<bool>();
+    parsed_options.expand_shmem_carveout_if_necessary = parse_result["set-shared-mem-carveout-hint"].as<bool>();
 
     if (parse_result.count("block-dimensions") > 0) {
         auto dims = parse_result["block-dimensions"].as<std::vector<unsigned>>();

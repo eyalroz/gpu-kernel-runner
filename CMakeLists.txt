@@ -57,6 +57,7 @@ add_executable(kernel-runner
 	src/nvrtc-related/build.cpp
 	src/nvrtc-related/execution.cpp
 	src/nvrtc-related/standard_header_substitutes.cpp
+	src/nvrtc-related/miscellany.cpp
 	)
 
 add_library(kernel-adapters OBJECT)

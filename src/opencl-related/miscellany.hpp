@@ -51,4 +51,30 @@ inline bool uses_ptx(cl::Platform& platform)
         // string returned by get_name may contain a trailing '\0'.
 }
 
+
+template <>
+inline void ensure_gpu_device_validity_<execution_ecosystem_t::opencl>(
+    optional<unsigned> platform_id, int device_id, bool)
+{
+    constexpr const unsigned OpenCLDefaultPlatformID { 0 };
+    auto actual_platform_id = platform_id.value_or(OpenCLDefaultPlatformID);
+    spdlog::trace("Validating actual platform ID  {}", actual_platform_id);
+    std::vector<cl::Platform> platforms;
+    cl::Platform::get(&platforms);
+    if (actual_platform_id >= platforms.size()) {
+        die ("Invalid platform index specified (outside the valid range 0.. {})", cuda::device::count()-1);
+    }
+    const auto& platform = platforms[actual_platform_id];
+    cl_context_properties properties[] = {
+            CL_CONTEXT_PLATFORM,
+            (cl_context_properties) (platform)(),
+            0 };
+    auto context = cl::Context{CL_DEVICE_TYPE_GPU, properties};
+    auto devices = context.getInfo<CL_CONTEXT_DEVICES>();
+    if (device_id < 0 or device_id >= (int) devices.size())
+        die ("Invalid device index specified (outside the valid range 0.. {})", cuda::device::count()-1);
+    return;
+}
+
+
 #endif // KERNEL_RUNNER_OPENCL_MISC_HPP_

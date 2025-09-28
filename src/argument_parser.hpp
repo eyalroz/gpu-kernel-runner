@@ -1,3 +1,10 @@
+/**
+ * @file
+ *
+ * @brief Declaration and fallback implementation of opaque-type parsers,
+ * for supporting the parsing of kernel-adapter-specific scalar kernel
+ * arguments, passed as command-line arguments to the kernel runner.
+ */
 #ifndef GPU_KERNEL_RUNNER_PARSERS_HPP_
 #define GPU_KERNEL_RUNNER_PARSERS_HPP_
 

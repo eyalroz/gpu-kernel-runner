@@ -1,3 +1,9 @@
+/**
+ * @file
+ *
+ * @brief the main() function of the GPU kernel runner and functions not
+ * otherwise factored away.
+ */
 #include "common_types.hpp"
 #include "cmdline_arguments.hpp"
 #include "execution_context.hpp"

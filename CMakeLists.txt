@@ -45,7 +45,7 @@ set(EXTRA_ADAPTER_SOURCE_DIRS CACHE STRING "A semicolon-separated list of direct
 ###############
 
 add_executable(kernel-runner
-	src/kernel-runner.cpp
+	src/runner.cpp
 	src/kernel_adapter.cpp
 	src/buffer_ops.cpp
 	src/cmdline_arguments.cpp

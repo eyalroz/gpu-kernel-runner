@@ -428,6 +428,7 @@ void validate_scalars(execution_context_t& context)
 
 void validate_input_buffer_sizes(execution_context_t& context)
 {
+    // TODO: Try to reduce code duplication
     spdlog::debug("Validating input buffer sizes");
     auto& all_params = context.kernel_adapter_->parameter_details();
     auto input_buffer_details = util::filter(all_params,
@@ -436,26 +437,58 @@ void validate_input_buffer_sizes(execution_context_t& context)
         });
     for (auto const& buffer_details : input_buffer_details) {
         auto const &buffer = context.buffers.host_side.inputs[buffer_details.name];
-        if (not buffer_details.size_calculator) {
-            spdlog::debug("No size calculator for input buffer '{}'; assuming size is valid", buffer_details.name);
-            continue;
+        auto maybe_explicitly_specified_size = util::find_opt(context.options.explicitly_set_buffer_sizes, buffer_details.name);
+        if (maybe_explicitly_specified_size) {
+            auto specified_size = *maybe_explicitly_specified_size;
+            if (buffer.size() == specified_size ) {
+                // TODO: Should we check whether the input file was originally of this size?
+                spdlog::trace("Input buffer '{}' is of size {} bytes, as explicitly specified",
+                    buffer_details.name, buffer.size());
+                continue;
+            }
+            if (context.options.accept_oversized_input_buffers and specified_size < buffer.size()) {
+                spdlog::info("Input buffer '{}' is of size {} bytes, exceeding the explicitly-specified size of {} bytes",
+                    buffer_details.name, buffer.size(), specified_size);
+                continue;
+            }
+            if (context.options.accept_undersized_input_buffers and specified_size > buffer.size()) {
+                spdlog::info("Input buffer '{}' is of size {} bytes, less than the explicitly-specified size of {} bytes",
+                    buffer_details.name, buffer.size(), specified_size);
+                continue;
+            }
+            die("Input buffer '{}' is of size {} bytes, {} its required {}size of {} bytes",
+                buffer_details.name, buffer.size(),
+                (buffer.size() > specified_size ? "exceeding" : "less than"),
+                (context.options.accept_oversized_input_buffers ? "minimum " : ""),
+                specified_size);
         }
-        auto calculated = apply_size_calc(buffer_details.size_calculator, context);
-        if (calculated == buffer.size()) {
-            spdlog::trace("Input buffer '{}' is of size {} bytes, as expected",
-                buffer_details.name, buffer.size());
-            continue;
+        else {
+            if (not buffer_details.size_calculator) {
+                spdlog::debug("No size calculator for input buffer '{}'; assuming size is valid", buffer_details.name);
+                continue;
+            }
+            auto calculated = apply_size_calc(buffer_details.size_calculator, context);
+            if (calculated == buffer.size()) {
+                spdlog::trace("Input buffer '{}' is of size {} bytes, as expected",
+                    buffer_details.name, buffer.size());
+                continue;
+            }
+            if (context.options.accept_oversized_input_buffers and calculated < buffer.size()) {
+                spdlog::info("Input buffer '{}' is of size {} bytes, exceeding the expected size of {} bytes",
+                    buffer_details.name, buffer.size(), calculated);
+                continue;
+            }
+            if (context.options.accept_undersized_input_buffers and calculated > buffer.size()) {
+                spdlog::info("Input buffer '{}' is of size {} bytes, less than the expected size of {} bytes",
+                    buffer_details.name, buffer.size(), calculated);
+                continue;
+            }
+            die("Input buffer '{}' is of size {} bytes, {} its required {}size of {} bytes",
+                buffer_details.name, buffer.size(),
+                (buffer.size() > calculated ? "exceeding" : "less than"),
+                (context.options.accept_oversized_input_buffers ? "minimum " : ""),
+                calculated);
         }
-        if (context.options.accept_oversized_inputs and calculated < buffer.size()) {
-            spdlog::info("Input buffer '{}' is of size {} bytes, exceeding the expected size of {} bytes",
-                buffer_details.name, buffer.size(), calculated);
-            continue;
-        }
-        die("Input buffer '{}' is of size {} bytes, {} its required {}size of {} bytes",
-            buffer_details.name, buffer.size(),
-            (buffer.size() > calculated ? "exceeding" : "lower than"),
-            (context.options.accept_oversized_inputs ? "minimum " : ""),
-            calculated);
     }
 }
 

@@ -32,6 +32,7 @@ using durations_t = std::vector<duration_t>;
 
 using string_map = std::unordered_map<std::string, std::string>;
 using maybe_string_map = std::unordered_map<std::string, optional<std::string>>;
+using buffer_size_map = std::unordered_map<std::string, size_t>;
 using valued_preprocessor_definitions_t = std::unordered_map<std::string, std::string>;
 using string_set = std::unordered_set<std::string>;
 using preprocessor_definitions_t = string_set;

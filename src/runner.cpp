@@ -261,7 +261,7 @@ void list_opencl_platforms()
 
 void perform_early_exit_action(parsed_cmdline_options_t const& parsed)
 {
-    if (not early_exit_needed(parsed)) {
+    if (parsed.early_exit_action) {
         throw std::invalid_argument("Parsed command-line options do not necessitate an early-exit action");
     }
     switch(parsed.early_exit_action.value()) {

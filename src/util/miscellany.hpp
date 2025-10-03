@@ -2,7 +2,6 @@
 #define UTIL_MISCELLANY_HPP_
 
 #include <unordered_set>
-#include <unordered_map>
 #include <map>
 #include <set>
 #include <algorithm>
@@ -52,6 +51,15 @@ auto find(Container& container, const Key& x)
 {
     using container_has_find = std::integral_constant<bool, detail::has_find_method<Container, Key>::value>;
     return detail::find(container_has_find{}, container, x);
+}
+
+template <typename Container, typename Key>
+optional<typename Container::mapped_type> find_opt(Container& container, const Key& x)
+{
+    // TODO: Wouldn't hurt to have an is_container type trait check here...
+    auto find_result = find(container, x);
+    if (find_result == container.end()) return nullopt;
+    return find_result->second;
 }
 
 template <typename Container, typename Predicate>

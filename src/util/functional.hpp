@@ -131,25 +131,34 @@ T fold(const Container& container, const T& initial_value, BinaryOp folder)
 
 template <typename InputIterator, typename OutputIterator, typename Predicate, typename UnaryOperator>
 OutputIterator transform_if(
-    InputIterator first1, InputIterator last1, OutputIterator d_first, Predicate pred, UnaryOperator op)
+    InputIterator first, InputIterator last, OutputIterator out_it, Predicate pred, UnaryOperator op)
 {
-    for(; first1 != last1; ++first1) {
-        const auto& e = *first1;
+    for(; first != last; ++first, ++out_it ) {
+        const auto& e = *first;
         if (not pred(e)) {
             continue;
         }
-        *d_first = op(e);
-        d_first++;
+        *out_it = op(e);
     }
-    return d_first;
+    return out_it;
 }
 
 template <typename OutContainer, typename InContainer, typename Predicate, typename UnaryOperator>
 OutContainer transform_if(InContainer in_container, Predicate pred, UnaryOperator op)
 {
+    using input_value_type = typename InContainer::value_type;
+    static_assert(std::__is_invocable<UnaryOperator, input_value_type>::value,
+        "The unary operator cannot be invoked on elements of the input value type");
+    using transformed_value_type = decltype(std::declval<UnaryOperator>()(std::declval<input_value_type>()));
+    static_assert(std::is_constructible<typename OutContainer::value_type, transformed_value_type>::value,
+        "The requested output container element type is incompatible with the transforming operator result type");
     OutContainer result;
-    transform_if(std::cbegin(in_container), std::cend(in_container),
-        std::inserter(result, std::end(result)), std::forward<Predicate>(pred), std::forward<UnaryOperator>(op));
+    transform_if(
+        std::cbegin(in_container),
+        std::cend(in_container),
+        std::inserter(result, std::end(result)),
+        std::forward<Predicate>(pred),
+        std::forward<UnaryOperator>(op));
     return result;
 }
 

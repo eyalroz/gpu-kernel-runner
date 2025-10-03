@@ -29,9 +29,9 @@ DISABLE_WARNING_POP
 #include <utility>
 #include <tuple>
 
-using string_map = std::unordered_map<std::string, std::string>;
+using string_map = map_t<std::string, std::string>;
 using include_paths_t = std::vector<std::string>;
-using buffer_size_map = std::unordered_map<std::string, size_t>;
+using buffer_size_map = map_t<std::string, size_t>;
 
 // TODO: Switch to a variant, perhaps?
 union device_buffer_type {

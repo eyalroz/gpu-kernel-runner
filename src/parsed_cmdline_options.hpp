@@ -60,7 +60,9 @@ struct parsed_cmdline_options_t {
     bool set_default_compilation_options; // target GPU, language standard etc.
     bool compile_only;
     bool generate_debug_info;
-    bool accept_oversized_inputs;
+    bool accept_oversized_input_buffers;
+    bool accept_undersized_input_buffers;
+    bool expand_undersized_by_zeroing;
     filesystem::path ptx_output_file;
     filesystem::path compilation_log_file;
     filesystem::path execution_durations_file;

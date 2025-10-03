@@ -2,10 +2,14 @@
 #include "util/filesystem.hpp"
 #include "execution_context.hpp"
 
+// This will ensure the files read are of sufficient size, i.e. at least the nominal one;
+// (and this we will no longer have to worryשbout buffering )
 host_buffers_t read_input_buffers_from_files(
     const name_set&           buffer_names,
-    const string_map&         filenames,
-    const filesystem::path&   buffer_directory);
+    const maybe_string_map&   filenames,
+    const filesystem::path&   buffer_directory,
+    const buffer_size_map&    nominal_sizes,
+    bool zero_padding = false);
 
 void read_input_buffers_from_files(execution_context_t& context);
 
@@ -20,7 +24,7 @@ void copy_buffer_to_device(
     const execution_context_t& context,
     const std::string&         buffer_name,
     const device_buffer_type&  device_side_buffer,
-    const host_buffer_t&    host_side_buffer);
+    const host_buffer_t&       host_side_buffer);
 
 void copy_buffer_on_device(
     execution_ecosystem_t      ecosystem,
@@ -34,7 +38,7 @@ void copy_buffer_to_host(
     execution_ecosystem_t      ecosystem,
     cl::CommandQueue*          opencl_queue,
     const device_buffer_type&  device_side_buffer,
-    host_buffer_t&          host_side_buffer);
+    host_buffer_t&             host_side_buffer);
 
 // Note: must take the context as non-const, since it has vector members, and vectors
 // are value-types, not reference-types, i.e. copying into those vectors changes

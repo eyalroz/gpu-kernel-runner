@@ -8,22 +8,47 @@
 using std::size_t;
 using std::string;
 
+buffer_size_map get_nominal_buffer_sizes(execution_context_t& context)
+{
+    auto& all_param_details = context.kernel_adapter_->parameter_details();
+    auto buffer_and_can_get_size =  [&](const auto& pd) {
+        return
+            pd.kind == kernel_parameters::kind_t::buffer and
+            (pd.size_calculator != no_size_calc or
+             util::contains(context.options.explicitly_set_buffer_sizes, pd.name));
+    };
+    auto get_size = [&](auto const& pd) -> std::pair<std::string, size_t>{
+        auto maybe_explicitly_set_size = util::find_opt(context.options.explicitly_set_buffer_sizes, pd.name);
+        auto size = maybe_explicitly_set_size ? *maybe_explicitly_set_size :
+            apply_size_calc(pd.size_calculator, context);
+        return { pd.name, size };
+    };
+    return util::transform_if<buffer_size_map>(all_param_details, buffer_and_can_get_size, get_size);
+}
+
+// This will create buffers in main memory - of the appropriate size,
+// i.e. either the actual size or the nominal size if that's actual
 host_buffers_t read_input_buffers_from_files(
     const name_set&           buffer_names,
     const maybe_string_map&   filenames,
-    const filesystem::path&   buffer_directory)
+    const filesystem::path&   buffer_directory,
+    const buffer_size_map&    nominal_sizes,
+    bool                      zero_padding)
 {
     spdlog::debug("Reading input buffers from files.");
 
     host_buffers_t result;
     std::unordered_map<string, filesystem::path> buffer_paths;
     for(const auto& name : buffer_names) {
+        auto maybe_nominal_size = util::find_opt(nominal_sizes, name);
         // Note: Even though the map is of optional<string>, we expect all relevant buffers
         // to have already had names determined
         auto path = maybe_prepend_base_dir(buffer_directory, filenames.at(name).value());
         try {
             spdlog::debug("Reading buffer '{}' from {}", name, path.native());
-            host_buffer_t buffer = util::read_input_file(path);
+            host_buffer_t buffer = maybe_nominal_size ?
+                util::read_input_file(path, *maybe_nominal_size, zero_padding) :
+                util::read_input_file(path);
             spdlog::debug("Have read buffer '{}': {} bytes from {}", name, buffer.size(), path.native());
             result.emplace(name, std::move(buffer));
         }
@@ -42,13 +67,16 @@ void read_input_buffers_from_files(execution_context_t& context)
             return is_input(spd.direction) and spd.kind == kernel_parameters::kind_t::buffer;
         }
     );
+    auto nominal_sizes = get_nominal_buffer_sizes(context);
     context.buffers.host_side.inputs = read_input_buffers_from_files(
         input_buffer_names,
         context.buffers.filenames.inputs,
-        context.options.buffer_base_paths.input);
+        context.options.buffer_base_paths.input,
+        nominal_sizes,
+        context.options.complete_undersized_input_buffers_with_zeros);
 }
 
-// This function is synchronous and not effect by the sync_after_buffer_op option
+// This function is synchronous and uneffected by the sync_after_buffer_op option
 void copy_buffer_to_device(
     const execution_context_t& context,
     const std::string&         buffer_name,
@@ -173,18 +201,29 @@ device_buffer_type create_device_side_buffer(
     return result;
 }
 
+// Note: nominal_buffer_sizes is for logging purposes only. The
+// created buffer size can only ever _exceed_ the nominal size,
+// since in the case of smaller inputs, we pad the buffer upon
+// creation already on the host side, to fit the nominal size.
 device_buffers_map create_device_side_buffers(
     execution_ecosystem_t                   ecosystem,
     const optional<const cuda::context_t>&  cuda_context,
     optional<cl::Context>                   opencl_context,
-    const buffer_size_map                   buffer_sizes)
+    const buffer_size_map&                  buffer_sizes_to_use,
+    const buffer_size_map&                  nominal_buffer_sizes = {})
 {
     return util::transform<device_buffers_map>(
-        buffer_sizes,
+        buffer_sizes_to_use,
         [&](const auto& p) {
             const auto& name = p.first;
             const auto& size = p.second;
-            spdlog::debug("Creating GPU-side buffer for '{}' of size {} bytes.", name, size);
+            auto maybe_nominal_size = util::find_opt(nominal_buffer_sizes, name);
+            if (maybe_nominal_size and  *maybe_nominal_size != size) {
+                spdlog::debug("Creating GPU-side buffer for '{}' of size {} (nominal {}) bytes.", name, size, *maybe_nominal_size);
+            }
+            else {
+                spdlog::debug("Creating GPU-side buffer for '{}' of size {} bytes.", name, size);
+            }
             auto buffer = create_device_side_buffer(
                 name, size,
                 ecosystem,
@@ -194,6 +233,8 @@ device_buffers_map create_device_side_buffers(
         } );
 }
 
+// Note: The host-side buffer sizes already reflect any paddings
+// necessary for accounting for undersized input buffer files
 device_buffers_map create_device_side_buffers(
     execution_ecosystem_t                   ecosystem,
     const optional<const cuda::context_t>&  cuda_context,
@@ -342,8 +383,8 @@ void create_host_side_output_buffers(execution_context_t& context)
                 buffer_size = context.buffers.host_side.inputs.at(buffer_name).size();
                 // TODO: What if an output size has been specified on the command line
             }
-            else if (util::contains(context.options.output_buffer_sizes, std::string{buffer_name})) {
-                buffer_size = context.options.output_buffer_sizes.at(buffer_name);
+            else if (util::contains(context.options.explicitly_set_buffer_sizes, std::string{buffer_name})) {
+                buffer_size = context.options.explicitly_set_buffer_sizes.at(buffer_name);
             }
             else {
                 if (buffer_details.size_calculator == nullptr) {

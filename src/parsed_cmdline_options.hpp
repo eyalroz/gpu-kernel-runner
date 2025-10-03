@@ -40,8 +40,7 @@ struct parsed_cmdline_options_t {
     split_preprocessor_definitions_t preprocessor_definitions;
     std::vector<std::string> extra_compilation_options;
 
-    // std::unordered_map<std::string, std::string> raw_output_size_settings;
-    std::unordered_map<std::string, std::size_t> output_buffer_sizes;
+    buffer_size_map explicitly_set_buffer_sizes;
 
     argument_values_t aliased_kernel_arguments;
     include_paths_t include_dir_paths;
@@ -60,7 +59,9 @@ struct parsed_cmdline_options_t {
     bool set_default_compilation_options; // target GPU, language standard etc.
     bool compile_only;
     bool generate_debug_info;
-    bool accept_oversized_inputs;
+    bool accept_oversized_input_buffers;
+    bool accept_undersized_input_buffers;
+    bool complete_undersized_input_buffers_with_zeros;
     filesystem::path ptx_output_file;
     filesystem::path compilation_log_file;
     filesystem::path execution_durations_file;

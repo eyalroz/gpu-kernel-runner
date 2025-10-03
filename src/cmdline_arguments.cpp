@@ -36,7 +36,7 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
         ("list-opencl-platforms,list-platforms,platforms", "List available OpenCL platforms")
         ("a,arg,argument", "Set one of the kernel's argument, keyed by name, with a serialized value for a scalar (e.g. foo=123) or a path to the contents of a buffer (e.g. bar=/path/to/data.bin)", cxxopts::value<std::vector<string>>())
         ("A,no-implicit-compilation-options,no-implicit-compile-options,suppress-default-compile-options,suppress-default-compilation-options,no-default-compile-options,no-default-compilation-options", "Avoid setting any compilation options not explicitly requested by the user", cxxopts::value<bool>()->default_value("false"))
-        ("output-buffer-size,output-size,buffer-size,arg-size", "Set one of the output buffers' sizes, keyed by name, in bytes (e.g. myresult=1048576)", cxxopts::value<std::vector<string>>())
+        ("buffer-size,output-buffer-size,output-size,arg-size", "Set one of the buffers' sizes, keyed by name, in bytes (e.g. myresult=1024)", cxxopts::value<std::vector<string>>())
         ("d,dev,device", "Device index", cxxopts::value<int>()->default_value("0"))
         ("D,preprocessor-definition,define", "Set a preprocessor definition for NVRTC (can be used repeatedly; specify either DEFINITION or DEFINITION=VALUE)", cxxopts::value<std::vector<string>>())
         ("c,compile,compilation,compile-only", "Compile the kernel, but don't actually run it", cxxopts::value<bool>()->default_value("false"))
@@ -67,7 +67,9 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
         ("language-standard,std", "Set the language standard to use for CUDA compilation (options: c++11, c++14, c++17)", cxxopts::value<string>())
         ("input-buffer-directory,in-dir,input-buffer-dir,input-buffers-directory,input-buffers-dir,inbuf-dir,inbufs,inbufs-dir,inbuf-directory,inbufs-directory,in-directory", "Base location for locating input buffers", cxxopts::value<string>()->default_value( filesystem::current_path().native() ))
         ("output-buffer-directory,output-buffer-dir,output-buffers-directory,output-buffers-dir,outbuf-dir,outbufs,outbufs-dir,outbuf-directory,outbufs-directory,out-directory", "Base location for writing output buffers", cxxopts::value<string>()->default_value( filesystem::current_path().native() ))
-        ("accept-oversized-inputs,accept-oversized,allow-oversized-inputs,allow-oversized,lax-size-validation", "Accept input buffers exceeding the expected size calculated for them", cxxopts::value<bool>()->default_value("false"))
+        ("accept-oversized,accept-oversized-input-buffers,accept-oversized-inputs,allow-oversized-inputs,allow-oversized", "Accept input buffers exceeding the expected size calculated for them", cxxopts::value<bool>()->default_value("false"))
+        ("accept-undersized,accept-undersized-input-buffers,accept-undersized-inputs,allow-undersized-inputs,allow-undersized", "Accept input buffers smaller than the expected size calculated for them", cxxopts::value<bool>()->default_value("false"))
+        ("complete-undersized-with-zeros,complete-undersized-buffers-with-zeros,zero-undersized-buffer-padding,zero-undersized-padding", "When the input file for a buffer is undersized, fill the remaining 'padding' bytes with 0's, rather than keeping them uninitialized", cxxopts::value<bool>()->default_value("false"))
         ("set-shared-mem-carveout-hint,set-shmem-carveout-hint", "If the kernel (with its dynamic shared memory launch-config setting) requires more shared memory per block than the selected GPU device is configured to provide, set a hint on the kernel to "
          "increase its shared memory carveout, so that it is more likely for the kernel to be scheduled", cxxopts::value<bool>()->default_value("true"))
         ("kernel-sources-dir,kernel-source-dir,kernel-source-directory,kernel-sources-directory,kernel-sources,source-dir,sources", "Base location for locating kernel source files", cxxopts::value<string>()->default_value( filesystem::current_path().native() ))
@@ -368,10 +370,12 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
 
     parsed_options.generate_debug_info = parse_result["generate-debug-info"].as<bool>();
     parsed_options.zero_output_buffers = parse_result["zero-output-buffers"].as<bool>();
+    parsed_options.complete_undersized_input_buffers_with_zeros = parse_result["complete-undersized-with-zeros"].as<bool>();
     parsed_options.clear_l2_cache = parse_result["clear-l2-cache"].as<bool>();
     parsed_options.sync_after_kernel_execution = parse_result["sync-after-execution"].as<bool>();
     parsed_options.sync_after_buffer_op = parse_result["sync-after-buffer-op"].as<bool>();
-    parsed_options.accept_oversized_inputs = parse_result["accept-oversized-inputs"].as<bool>();
+    parsed_options.accept_oversized_input_buffers = parse_result["accept-oversized"].as<bool>();
+    parsed_options.accept_undersized_input_buffers = parse_result["accept-undersized"].as<bool>();
     parsed_options.expand_shmem_carveout_if_necessary = parse_result["set-shared-mem-carveout-hint"].as<bool>();
 
     if (parse_result.count("block-dimensions") > 0) {
@@ -430,8 +434,8 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
         }
     }
 
-    if (parse_result.count("output-buffer-size") > 0) {
-        const auto& buffer_size_settings = parse_result["output-buffer-size"].as<std::vector<string>>();
+    if (parse_result.count("buffer-size") > 0) {
+        const auto& buffer_size_settings = parse_result["buffer-size"].as<std::vector<string>>();
         for(const auto& setting : buffer_size_settings) {
             auto equals_pos = setting.find('=');
             switch (equals_pos) {
@@ -441,8 +445,8 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
                 default:
                     auto buffer_name = setting.substr(0, equals_pos);
                     auto buffer_size = std::stoul(setting.substr(equals_pos + 1));
-                    spdlog::trace("Size of output buffer '{}' set to {} bytes", buffer_name, buffer_size);
-                    parsed_options.output_buffer_sizes.emplace(buffer_name, buffer_size);
+                    spdlog::trace("Size of buffer '{}' set to {} bytes", buffer_name, buffer_size);
+                    parsed_options.explicitly_set_buffer_sizes.emplace(buffer_name, buffer_size);
             }
         }
     }

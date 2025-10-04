@@ -101,12 +101,15 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
         // out what kernel was asked for, we will want to provide help regarding
         // the kernel-specific command-line arguments
         parsed_options.help_text = options.help();
+        return parsed_options;
     }
     else if (contains(parse_result, "list-kernels")) {
         parsed_options.early_exit_action = early_exit_action_t::list_kernels;
+        return parsed_options;
     }
     else if (contains(parse_result, "list-opencl-platforms")) {
         parsed_options.early_exit_action = early_exit_action_t::list_opencl_platforms;
+        return parsed_options;
     }
 
     struct { bool key, function_name, source_file_path; } got {

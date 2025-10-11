@@ -12,7 +12,7 @@ A harness for stand-alone execution of single GPU kernels, for timing, debugging
 
 ## <a name="example">Example: Executing a simple kernel to get its output</a>
 
-Consider the following kernel (bundled with this repository):
+Let's run the following simple kernel (also bundled with this repository):
 
 ```
 __global__ void vectorAdd(
@@ -27,12 +27,12 @@ __global__ void vectorAdd(
     }
 }
 ```
-a suppose that you've also created two files: 
+and suppose that we've also created two files: 
 
 * `input_a`, containing the three characters `abc`;
-* `input_b`, containing 3 octets, each with values `03`.
+* `input_b`, containing three octets, each with value `0x04`.
 
-Now, if you run:
+Now, if we run:
 ```
 kernel-runner \
     --execution-ecosystem cuda \
@@ -44,9 +44,9 @@ kernel-runner \
     --arg-size C=3 \
     -DA_LITTLE_EXTRA=2
 ```
-then you'll get a file named `C.out`, containing `fgh`... which is indeed the correct output of the kernel: The sequence `abc`, plus 3 for each character due the values in `input_B`, plus 2 for each character from the preprocessor definition of `A_LITTLE_EXTRA`. 
+we get a file named `C.out`, containing `ghi`... which is indeed the correct output of the kernel: The sequence `abc`, plus 4 for each character due the values in `input_B`, plus 2 for each character from the preprocessor definition of `A_LITTLE_EXTRA`. 
 
-You can do the same with an equivalent OpenCL kernel, also bundled with this repository; just specify `opencl` instead of `cuda` as the execution ecosystem, and use the `vector_add.cl` kernel source file.
+We can do the same with an equivalent OpenCL kernel, also bundled with this repository; just specify `opencl` instead of `cuda` as the execution ecosystem, and use the `vector_add.cl` kernel source file.
 
 There is a bit of "cheating" here: The kernel runner doesn't magically parse your kernel source to determine what arguments are required. You need to have added some boilerplate code for your kernel into the runner:  Listing the kernel name, parameter names, whether they're input or output etc.
 

@@ -187,43 +187,10 @@ void ensure_gpu_device_validity(
     int                    device_id,
     bool                   need_ptx)
 {
-    std::size_t device_count;
-
-    spdlog::debug("Ensuring the requested GPU device exists{}",  (platform_id ? " on the specified platform" : ""));
-    constexpr const unsigned OpenCLDefaultPlatformID { 0 };
-    switch(ecosystem) {
-    case execution_ecosystem_t::opencl : {
-        auto actual_platform_id = platform_id.value_or(OpenCLDefaultPlatformID);
-        std::vector<cl::Platform> platforms;
-        cl::Platform::get(&platforms);
-        not platforms.empty() or die("No OpenCL platforms found.");
-        platforms.size() > actual_platform_id
-            or die ("No OpenCL platform exists with ID {}", actual_platform_id);
-        auto& platform = platforms[actual_platform_id];
-        if (spdlog::level_is_at_least(spdlog::level::debug)) {
-            spdlog::debug("Using OpenCL platform {}: {}", actual_platform_id, get_name(platform));
-        }
-        if (need_ptx and not uses_ptx(platform)) {
-            die("PTX file requested, but chosen OpenCL platform '{}' does not generate PTX files during build", get_name(platform));
-        }
-        cl_context_properties properties[] = {
-            CL_CONTEXT_PLATFORM,
-            (cl_context_properties) (platform)(), 0
-        };
-        cl::Context context(CL_DEVICE_TYPE_GPU, properties);
-        std::vector<cl::Device> devices = context.getInfo<CL_CONTEXT_DEVICES>();
-        if (devices.empty()) { die("No OpenCL devices found on the platform {}", actual_platform_id); }
-        device_count = (std::size_t) devices.size();
-        break;
-    }
-    case execution_ecosystem_t::cuda:
-    default:
-        device_count = (std::size_t) cuda::device::count();
-        if(device_count == 0) die("No CUDA devices detected on this system");
-        break;
-    }
-    if(device_id < 0 or device_id >= (int) device_count)
-        die ("Please specify a valid device index (in the range 0.. {})", cuda::device::count()-1);
+    spdlog::debug("Ensuring a GPU device with index {} exists{}",  device_id, (platform_id ? " on the specified platform" : ""));
+    return (ecosystem == execution_ecosystem_t::opencl) ?
+        ensure_gpu_device_validity_<execution_ecosystem_t::opencl>(platform_id, device_id, need_ptx) :
+        ensure_gpu_device_validity_<execution_ecosystem_t::cuda>(platform_id, device_id, need_ptx);
 }
 
 void print_registered_kernel_keys() {
@@ -290,6 +257,7 @@ execution_context_t initialize_execution_context(const parsed_cmdline_options_t&
     execution_context_t execution_context {};
     execution_context.options = parsed_options;
     execution_context.ecosystem = parsed_options.gpu_ecosystem;
+    execution_context.device_id = parsed_options.gpu_device_id;
 
     if (parsed_options.gpu_ecosystem == execution_ecosystem_t::cuda) {
         initialize_execution_context<execution_ecosystem_t::cuda>(execution_context);
@@ -416,7 +384,7 @@ bool build_kernel(execution_context_t& context)
         }
     }
     if (build_succeeded) {
-        spdlog::info("Kernel {} built successfully.", context.options.kernel.key);
+        spdlog::info("Kernel {} built successfully for GPU device {}.", context.options.kernel.key, context.device_id);
     }
     else {
         spdlog::error("Kernel {} build failed.", context.options.kernel.key);
@@ -531,9 +499,9 @@ void schedule_single_run(execution_context_t& context, run_index_t run_index)
     else {
         launch_and_time_opencl_kernel(context, run_index);
     }
-    spdlog::debug("{0} {2:>{1}} done",
+    spdlog::debug("{0} {2:>{1}} on GPU {3} done",
         context.options.sync_after_kernel_execution ? "Scheduling of kernel run" : "Kernel run",
-        util::naive_num_digits(context.options.num_runs), run_index+1);
+        util::naive_num_digits(context.options.num_runs), run_index+1, context.device_id);
 }
 
 void finalize_kernel_arguments(execution_context_t& context)

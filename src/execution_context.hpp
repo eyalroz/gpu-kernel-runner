@@ -95,9 +95,8 @@ struct execution_context_t {
         optional<cuda::kernel_t>        kernel; // in the module
         optional<cuda::stream_t>        stream;
         std::vector<cuda_event_pair_t>  timing_events;
-    };
+    } cuda;
     optional<std::string> language_standard;
-    cuda_specific_t cuda;
     struct {
         cl::Context       context;
         cl::Device        device;

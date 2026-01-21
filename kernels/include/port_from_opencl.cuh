@@ -237,7 +237,7 @@ constexpr __device__ inline void vstore4(const float4& value, size_t offset, flo
 //    reinterpret_cast<float4*>(p)[offset] = value;
 }
 
-namespace detail {
+namespace detail_ {
 
 constexpr __device__ inline unsigned int
 get_dim3_element(const dim3& d3, int index)
@@ -250,16 +250,16 @@ get_dim3_element(const dim3& d3, int index)
     }
 }
 
-} // namespace detail
+} // namespace detail_
 
 constexpr __device__ inline unsigned int get_local_id(int dimension_index)
 {
-    return detail::get_dim3_element(threadIdx, dimension_index);
+    return detail_::get_dim3_element(threadIdx, dimension_index);
 }
 
 constexpr __device__ inline unsigned int get_group_id(int dimension_index)
 {
-    return detail::get_dim3_element(blockIdx, dimension_index);
+    return detail_::get_dim3_element(blockIdx, dimension_index);
 }
 
 // TODO: Support for larger-than-2^31 grids
@@ -268,9 +268,9 @@ constexpr __device__ inline size_t get_global_id(int dimension_index)
 {
     // Note: We could have used:
     //
-    //  return detail::get_dim3_element(threadIdx, dimension_index) +
-    //  detail::get_dim3_element(blockIdx, dimension_index) *
-    //  detail::get_dim3_element(blockDim, dimension_index);
+    //  return detail_::get_dim3_element(threadIdx, dimension_index) +
+    //  detail_::get_dim3_element(blockIdx, dimension_index) *
+    //  detail_::get_dim3_element(blockDim, dimension_index);
     //
     // But I'm not sure we can trust the compiler to optimize
     // all of that away
@@ -285,12 +285,12 @@ constexpr __device__ inline size_t get_global_id(int dimension_index)
 
 constexpr __device__ inline unsigned int get_local_size(unsigned dimension_index)
 {
-    return detail::get_dim3_element(blockDim, dimension_index);
+    return detail_::get_dim3_element(blockDim, dimension_index);
 }
 
 constexpr __device__ inline unsigned int get_num_groups(unsigned dimension_index)
 {
-    return detail::get_dim3_element(gridDim, dimension_index);
+    return detail_::get_dim3_element(gridDim, dimension_index);
 }
 
 constexpr __device__ inline size_t get_global_size(unsigned dimension_index)

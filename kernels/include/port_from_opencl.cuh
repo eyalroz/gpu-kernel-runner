@@ -29,6 +29,7 @@
 #define PORT_FROM_OPENCL_CUH_
 
 #ifdef __cplusplus
+using size_t = unsigned long;
 #ifndef UNSIGNED_INTEGRAL_SHORTHANDS_DEFINED
 typedef unsigned char  uchar;
 typedef unsigned short ushort;
@@ -237,6 +238,35 @@ constexpr __device__ inline void vstore4(const float4& value, size_t offset, flo
 //    reinterpret_cast<float4*>(p)[offset] = value;
 }
 
+template <typename I, I Value>
+struct integral_constant {
+    static constexpr I value = Value;
+    using value_type = I;
+    using type = integral_constant;
+
+    constexpr operator value_type() const noexcept { return value; }
+    constexpr value_type operator()() const noexcept { return value; }
+};
+
+namespace detail_ {
+template <int Value>
+using int_constant = integral_constant<int, Value>;
+} // namespace detail_
+
+using true_type = integral_constant<bool, true>;
+using false_type = integral_constant<bool, false>;
+
+template <typename T> struct vectorizable;
+template <> struct vectorizable<char>   : true_type {};
+template <> struct vectorizable<uchar>  : true_type {};
+template <> struct vectorizable<short>  : true_type {};
+template <> struct vectorizable<ushort> : true_type {};
+template <> struct vectorizable<int>    : true_type {};
+template <> struct vectorizable<uint>   : true_type {};
+template <> struct vectorizable<long>   : true_type {};
+template <> struct vectorizable<ulong>  : true_type {};
+template <typename T> struct vectorizable : false_type {};
+
 namespace detail_ {
 
 constexpr __device__ inline unsigned int
@@ -359,9 +389,22 @@ __device__ inline double native_rsqrt(double x) { return rsqrt(x);  }
 //template <typename T, typename Selector>
 //T select(T on_false, T on_true, Selector selector);
 
-template <typename T>
-struct opencl_vector_width { enum { value = 1 }; };
 
+// TODO: Consider limiting the default implementation of vector_width to
+// only support those types which can be vectorized/
+template <typename T> struct opencl_vector_width;
+
+template <> struct opencl_vector_width<char>   { enum { value = 1 }; };
+template <> struct opencl_vector_width<uchar>  { enum { value = 1 }; };
+template <> struct opencl_vector_width<short>  { enum { value = 1 }; };
+template <> struct opencl_vector_width<ushort> { enum { value = 1 }; };
+template <> struct opencl_vector_width<int>    { enum { value = 1 }; };
+template <> struct opencl_vector_width<uint>   { enum { value = 1 }; };
+template <> struct opencl_vector_width<long>   { enum { value = 1 }; };
+template <> struct opencl_vector_width<ulong>  { enum { value = 1 }; };
+
+template <> struct opencl_vector_width<char2>   { enum { value = 2 }; };
+template <> struct opencl_vector_width<uchar2>  { enum { value = 2 }; };
 template <> struct opencl_vector_width<short2>  { enum { value = 2 }; };
 template <> struct opencl_vector_width<ushort2> { enum { value = 2 }; };
 template <> struct opencl_vector_width<int2>    { enum { value = 2 }; };
@@ -374,6 +417,8 @@ template <> struct opencl_vector_width<half2>   { enum { value = 2 }; };
 template <> struct opencl_vector_width<float2>  { enum { value = 2 }; };
 template <> struct opencl_vector_width<double2> { enum { value = 2 }; };
 
+template <> struct opencl_vector_width<char3>   { enum { value = 3 }; };
+template <> struct opencl_vector_width<uchar3>  { enum { value = 3 }; };
 template <> struct opencl_vector_width<short3>  { enum { value = 3 }; };
 template <> struct opencl_vector_width<ushort3> { enum { value = 3 }; };
 template <> struct opencl_vector_width<int3>    { enum { value = 3 }; };
@@ -387,6 +432,8 @@ template <> struct opencl_vector_width<ulong3>  { enum { value = 3 }; };
 template <> struct opencl_vector_width<float3>  { enum { value = 3 }; };
 template <> struct opencl_vector_width<double3> { enum { value = 3 }; };
 
+template <> struct opencl_vector_width<char4>   { enum { value = 4 }; };
+template <> struct opencl_vector_width<uchar4>  { enum { value = 4 }; };
 template <> struct opencl_vector_width<short4>  { enum { value = 4 }; };
 template <> struct opencl_vector_width<ushort4> { enum { value = 4 }; };
 template <> struct opencl_vector_width<int4>    { enum { value = 4 }; };
@@ -398,6 +445,9 @@ template <> struct opencl_vector_width<half4>   { enum { value = 4 }; };
 #endif
 template <> struct opencl_vector_width<float4>  { enum { value = 4 }; };
 template <> struct opencl_vector_width<double4> { enum { value = 4 }; };
+
+template <typename T> struct opencl_vector_width { };
+
 
 template <size_t VectorWidth>
 struct opencl_vectorized;
@@ -478,20 +528,6 @@ constexpr __device__ inline Scalar select(
 }
 
 namespace detail_ {
-
-template <typename I, I Value>
-struct integral_constant {
-    static constexpr I value = Value;
-    using value_type = I;
-    using type = integral_constant;
-
-    constexpr operator value_type() const noexcept { return value; }
-    constexpr value_type operator()() const noexcept { return value; }
-};
-
-template <int Value>
-using int_constant = integral_constant<int, Value>;
-
 
 template <typename OpenCLVector, size_t VectorWidth>
 constexpr inline typename opencl_vectorized<VectorWidth>::int_ isequal(OpenCLVector lhs, OpenCLVector rhs);
@@ -1159,6 +1195,22 @@ __device__ inline float fdividef (float x, float y ) { return __fdividef(x, y); 
     // (and __fdivide isn't).
 #endif // __CLANG_CUDA_MATH_H__
 
+// TODO:
+//  1. Control the instantiation here with a trait
+//  2. Implement the OpenCL builtins min() and max() - including for vectorized types
+//  3. Use the generic min and max to implement clamp generically to all vectorized/vectorizable types
+// template <typename T> T clamp(T x, T minval, T maxval);
+// template <typename F, ::std::is_floating_point> T clamp(T x, T minval, T maxval) { return fmin(fmax(x, minval), maxval); }
+__device__ char   clamp(char   x, char    minval, char    maxval) { return min   (max   (x, minval), maxval); }
+__device__ uchar  clamp(uchar  x, uchar   minval, uchar   maxval) { return umin  (max   (x, minval), maxval); }
+__device__ short  clamp(short  x, short   minval, short   maxval) { return min   (max   (x, minval), maxval); }
+__device__ ushort clamp(ushort x, ushort  minval, ushort  maxval) { return umin  (max   (x, minval), maxval); }
+__device__ int    clamp(int    x, int     minval, int     maxval) { return min   (max   (x, minval), maxval); }
+__device__ uint   clamp(uint   x, uint    minval, uint    maxval) { return umin  (umax  (x, minval), maxval); }
+__device__ long   clamp(long   x, long    minval, long    maxval) { return llmin (llmax (x, minval), maxval); }
+__device__ ulong  clamp(ulong  x, ulong   minval, ulong   maxval) { return ullmin(ullmax(x, minval), maxval); }
+__device__ float  clamp(float  x, float   minval, float   maxval) { return fminf (fmaxf (x, minval), maxval); }
+__device__ double clamp(double x, double  minval, double  maxval) { return fmin  (fmax  (x, minval), maxval); }
 
 /*
  * The ternary selection operator (?:) operates on three expressions (exp1 ? exp2 : exp3).

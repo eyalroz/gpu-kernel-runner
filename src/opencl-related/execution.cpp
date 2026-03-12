@@ -12,19 +12,19 @@ static void validate_opencl_launch_config_dims(execution_context_t const& execut
     (dim_maxima.size() == 3) or die(
         "Device {} reports an unsupported NDRange dimensionality: {}",
         execution_context.device_id, dim_maxima.size());
-    size_t max_workgroup_size { 1 };
+    size_t max_workgroup_size_in_grid { 1 };
     for(int i = 0; i < 3; i++) {
         auto dimension = execution_context.kernel_launch_configuration.opencl.block_dimensions[i];
-        (dimension == 0) or die("Launch configuration dimension {} specified as 0", i+1);
-        (dimension >= dim_maxima[i]) or die(
+        (dimension > 0) or die("Launch configuration dimension {} specified as 0", i+1);
+        (dimension <= dim_maxima[i]) or die(
             "Requested launch grid dimension of {} in axis {} is too large for OpenCL device {}",
             dimension, i+1, execution_context.device_id);
-        max_workgroup_size *= dimension;
+        max_workgroup_size_in_grid *= dimension;
     }
     auto max_allowed_workgroup_size = dev.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
-    (max_workgroup_size <= max_allowed_workgroup_size) or die(
+    (max_workgroup_size_in_grid <= max_allowed_workgroup_size) or die(
         "Requested launch grid with workgroups of size {}, exceeding the limit on device , ",
-        max_workgroup_size, execution_context.device_id, max_allowed_workgroup_size);
+        max_workgroup_size_in_grid, execution_context.device_id, max_allowed_workgroup_size);
 }
 
 template<>

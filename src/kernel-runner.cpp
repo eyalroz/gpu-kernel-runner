@@ -558,32 +558,39 @@ void prepare_kernel_launch_config(execution_context_t& context)
     spdlog::debug("Overall dimensions cover full blocks? {}", lc_components.full_blocks());
 }
 
-void handle_compilation_log(bool compilation_succeeded, execution_context_t& context)
+void maybe_print_compilation_log(bool compilation_succeeded, execution_context_t& context)
 {
     bool empty_log = context.compilation_log and
-        std::all_of(context.compilation_log.value().cbegin(),context.compilation_log.value().cend(),isspace);
+                     std::all_of(context.compilation_log.value().cbegin(),context.compilation_log.value().cend(),isspace);
 
     if (not compilation_succeeded) {
-        if (not context.compilation_log or empty_log) {
+        if (not context.compilation_log ) {
             spdlog::error("No compilation log produced.");
+        }
+        else if (empty_log) {
+            spdlog::error("Compilation log is empty.");
         }
         else {
             spdlog::error("Kernel compilation log:\n{}\n", context.compilation_log.value());
         }
+        return;
     }
-    if (context.options.always_print_compilation_log) {
-        if (not context.compilation_log or empty_log) {
-            if (compilation_succeeded) {
-                spdlog::error("No compilation log produced.");
-            }
-        }
-        else {
-            spdlog::debug("Printing kernel compilation log:");
-            std::cout << context.compilation_log.value()
-                << util::newline_if_missing(context.compilation_log.value());
-        }
+    if (not context.options.always_print_compilation_log) { return; }
+    if (not context.compilation_log) {
+        spdlog::error("No compilation log produced.");
+        return;
     }
+    if (empty_log) {
+        spdlog::debug("Compilation log is empty.");
+    }
+    spdlog::info("Printing kernel compilation log.");
+    std::cout << context.compilation_log.value()
+              << util::newline_if_missing(context.compilation_log.value());
+}
 
+void handle_compilation_log(bool compilation_succeeded, execution_context_t& context)
+{
+    maybe_print_compilation_log(compilation_succeeded, context);
     if (context.compilation_log and not context.options.compilation_log_file.empty()) {
         auto log { context.compilation_log.value() };
         write_data_to_file(
@@ -595,7 +602,6 @@ void handle_compilation_log(bool compilation_succeeded, execution_context_t& con
             log_file_write_at_info_level);
     }
 }
-
 void maybe_write_intermediate_representation(execution_context_t& context)
 {
     if (not context.options.write_ptx_to_file) { return; }

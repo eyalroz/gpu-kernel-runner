@@ -287,7 +287,7 @@ inline bool is_valid_identifier(const std::string& str)
 
 inline std::string newline_if_missing(const std::string& str)
 {
-    return (str.end()[-1] != '\n') ? "\n" : "";
+    return str.empty() ? "\n" : (str.end()[-1] != '\n') ? "\n" : "";
 }
 
 template <class I>

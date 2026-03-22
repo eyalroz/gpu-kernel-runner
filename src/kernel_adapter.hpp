@@ -4,10 +4,8 @@
 #include "execution_context.hpp"
 #include "parsers.hpp"
 
-#include "util/miscellany.hpp"
 #include "util/functional.hpp"
 #include "util/factory_producible.hpp"
-#include "util/optional_and_any.hpp"
 #include "util/static_block.hpp"
     // This file itself does not use static blocks, but individual kernel adapters may
     // want to use them for registering themselves in the factory.
@@ -22,6 +20,8 @@ std::ostream& operator<<(std::ostream& os, cuda::grid::dimensions_t dims);
 
 // Notes:
 // * The returned size is in bytes, not elements
+// * This was conceived for raw buffers,  not images, for which other
+//   explicitly-specified information allows for calculating the size
 using size_calculator_type = std::size_t (*)(
     const host_buffers_t& input_buffers,
     const scalar_arguments_map& scalar_arguments,
@@ -102,6 +102,15 @@ public: // constructors & destructor
         scalar_pusher_type pusher;
         parameter_direction_t direction; // always input for scalars
         bool required;
+        buffer_kind_t buffer_kind;
+        // TODO: Change this to non-OpenCL data structures
+        // TODO: Add support for multi-channel/complex channel image
+        kernel_parameters::element_type_descriptor_t element_type;
+        size_t num_channels; // TODO: support any channel order; for now, we'll make an arbitrary choice.
+        size_t num_dimensions; // May only be 2 or 3 (although OpenCL supports 1D images)
+        // Note: The actual dimensions and pitches may vary - just like the buffer size.
+        // We will either use whatever dims & pitches the argument comes with, or alternatively,
+        // constrain those using later-time validation mechanisms
 
         const std::vector<std::string>& get_aliases() const noexcept { return aliases_; }
         single_parameter_details aliases(std::initializer_list<const char*> extra_aliases) const;
@@ -209,15 +218,38 @@ protected:
         return single_parameter_details {name, name_aliases, scalar, parser<T>, no_size_calc, pusher<T>, input, required};
     }
 
-    static single_parameter_details buffer_details(
+    static single_parameter_details raw_buffer_details(
         const char*            name,
         parameter_direction_t  direction,
         size_calculator_type   size_calculator = no_size_calc,
         bool                   required = is_required,
-        std::initializer_list<std::string> name_aliases = no_aliases());
+        const std::initializer_list<std::string>& name_aliases = no_aliases());
+
+    static single_parameter_details image_details(
+        const char*            name,
+        size_t                 num_dimensions,
+        parameter_direction_t  direction,
+        size_t                 num_channels, // TODO: support any channel order; for now, we'll make an arbitrary choice.
+        kernel_parameters::element_type_descriptor_t element_type,
+        // TODO: calculator for dims & pitches? It makes sense... but no time for that right now
+        bool                   required = is_required,
+        const std::initializer_list<std::string>& name_aliases = no_aliases());
+
+    static single_parameter_details image_details(
+        const char*            name,
+        size_t                 num_dimensions,
+        parameter_direction_t  direction,
+        size_t                 num_channels,
+        const std::string&     element_type_name,
+        bool                   required = is_required,
+        const std::initializer_list<std::string>& name_aliases = no_aliases());
+
 }; // kernel_adapter
 
 name_set buffer_names(const kernel_adapter& kernel_adapter, parameter_direction_t direction);
+
+name_set image_names(const kernel_adapter& kernel_adapter, parameter_direction_t direction);
+name_set image_names(const kernel_adapter& kernel_adapter);
 
 template <typename Predicate, typename = std::enable_if_t<not std::is_same<Predicate, parameter_direction_t>::value, void> >
 name_set buffer_names(const kernel_adapter& kernel_adapter, Predicate pred)
@@ -279,10 +311,29 @@ bool is_output(kernel_adapter::single_parameter_details spd) noexcept;
 bool is_buffer(kernel_adapter::single_parameter_details spd) noexcept;
 bool is_scratch(kernel_adapter::single_parameter_details spd) noexcept;
 bool is_scalar(kernel_adapter::single_parameter_details spd) noexcept;
+bool is_image(kernel_adapter::single_parameter_details spd) noexcept;
+bool is_raw_buffer(kernel_adapter::single_parameter_details spd) noexcept;
+
+size_t calculate_image_size(std::string const& image_name, execution_context_t const &context);
 
 std::size_t apply_size_calc(const size_calculator_type& calc, const execution_context_t& context);
 
-optional<size_t> calculate_buffer_size(
+/**
+ * Uses all available information to determine the size of a buffer
+ *
+ * @note Buffer sizes can be determined using an adapter-specified calculated; a
+ * default size calculator for image buffers, which requires the image parameters to have
+ * been specified (some by the adapter, some by the user on the command-line); by the
+ * input file size for the case of an input buffer; or by explicit setting of size on
+ * the command-line (relevant for output buffers).
+ *
+ * @note If some of the indicators provided for the buffer size conflict - this function
+ * will nott
+ *
+ * @return Either the resolved size, or nullopt if there was insufficient information
+ * to determine that size.
+ */
+optional<size_t> resolve_buffer_size(
     kernel_adapter::single_parameter_details const& buffer_details,
     execution_context_t const& context);
 
@@ -301,5 +352,9 @@ optional<size_t> calculate_buffer_size(
 #define KA_KERNEL_KEY(kk) \
     constexpr static const char* key_ { kk }; \
     std::string key() const override { return key_; }
+
+// Convenience literals for specifying single parameter data for OpenCL images.
+inline int operator ""_dims(unsigned long long num_dimensions) { return static_cast<int>(num_dimensions); }
+inline int operator ""_channels(unsigned long long num_channels) { return static_cast<int>(num_channels); }
 
 #endif /* KERNEL_ADAPTER_HPP_ */

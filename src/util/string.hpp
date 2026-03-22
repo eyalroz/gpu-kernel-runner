@@ -45,16 +45,23 @@ inline std::string to_uppercase(std::string str) {
  *
  * @note As per @url https://stackoverflow.com/a/60782724/1593077
  */
-inline std::vector<std::string> split(const std::string& str, char delim)
+inline std::vector<std::string> split(const std::string& str, char const* delimiters)
 {
 	std::vector<std::string> strings;
 	size_t start;
 	size_t end = 0;
-	while ((start = str.find_first_not_of(delim, end)) != std::string::npos) {
-		end = str.find(delim, start);
+	while ((start = str.find_first_not_of(delimiters, end)) != std::string::npos) {
+		end = str.find_first_of(delimiters, start);
 		strings.push_back(str.substr(start, end - start));
 	}
 	return strings;
+}
+
+inline std::vector<std::string> split(const std::string& str, char delimiter)
+{
+	char delimiters[2];
+	delimiters[0] = delimiter; delimiters[1] = '\0';
+	return split(str, delimiters);
 }
 
 /**

@@ -266,6 +266,8 @@ execution_context_t initialize_execution_context(const parsed_cmdline_options_t&
     }
     execution_context.kernel_adapter_ = kernel_adapter::produce_subclass(string(parsed_options.kernel.key));
 
+    execution_context.buffers.image_names = image_names(*execution_context.kernel_adapter_);
+
     collect_include_paths(execution_context);
     execution_context.language_standard =
         parsed_options.language_standard ? parsed_options.language_standard :
@@ -276,11 +278,17 @@ execution_context_t initialize_execution_context(const parsed_cmdline_options_t&
     return execution_context;
 }
 
-// The user may have specified arguments via aliases rather than their proper names
-void dealias_arguments(execution_context_t &context)
-{
+/**
+ * Dealias a map whose keys may either be parameter names or aliases, into a map with only
+ * proper parameter names for keys.
+ *
+ * @throws in case two aliases/names of the same parameter are in the map, i.e. if one
+ * specified the same value twice for the same parameter, via an alias.
+ */
+template <typename Map>
+Map dealias_map(const Map& map, const execution_context_t& context) noexcept(false) {
     auto param_details = context.kernel_adapter_->parameter_details();
-    auto key_mapper = [&param_details](const string& alias) -> string {
+    auto dealias_name = [&param_details](const string& alias) -> string {
         auto iter = std::find_if(std::cbegin(param_details), std::cend(param_details),
             [&](const kernel_adapter::single_parameter_details& spd) {
                 bool result = spd.has_alias(alias);
@@ -289,13 +297,22 @@ void dealias_arguments(execution_context_t &context)
         return (iter == param_details.cend()) ? alias : iter->name;
     };
 
-    context.kernel_arguments = util::transform<argument_values_t>(
-        context.options.aliased_kernel_arguments,
-        [&key_mapper](const auto& pair) -> std::pair<string, string> {
-            const auto& key = pair.first;
-            const auto& value = pair.second;
-            return {key_mapper(key), value};
-        } );
+    return util::transform<Map>(map,
+    [&dealias_name](const auto& pair) -> typename Map::value_type {
+        const auto& param_name = pair.first;
+        const auto& value = pair.second;
+        return { dealias_name(param_name), value };
+    } );
+};
+
+// The user may have specified arguments via aliases rather than their proper names
+void dealias_arguments(execution_context_t &context)
+{
+    context.output_buffer_sizes = dealias_map(context.options.aliased_output_buffer_sizes, context);
+    context.output_buffer_sizes = dealias_map(context.options.aliased_output_buffer_sizes, context);
+    context.buffer_dimensions = dealias_map(context.options.aliased_buffer_dimensions, context);
+    context.buffer_pitches = dealias_map(context.options.aliased_buffer_pitches, context);
+    context.kernel_arguments = dealias_map(context.options.aliased_kernel_arguments, context);
 
     auto params_with_args = util::keys(context.kernel_arguments);
     spdlog::trace("Arguments have been specified on the command-line for parameters {}", params_with_args);
@@ -424,14 +441,16 @@ void validate_single_input_buffer_size(
 {
     auto name = buffer_details.name;
     auto const &buffer = context.buffers.host_side.inputs.at(name);
-    auto calculated_size = calculate_buffer_size(buffer_details, context);
+    auto calculated_size = resolve_buffer_size(buffer_details, context);
     if (not calculated_size) {
         spdlog::debug("No size calculator nor specified size for input buffer '{}'; assuming size is valid", buffer_details.name);
         return;
     }
     if (*calculated_size == buffer.size()) {
         spdlog::trace("Input buffer '{}' is of size {} bytes, as expected", name, buffer.size());
+        return;
     }
+    // TODO: Should we really accept oversized _image_ inputs?
     if (context.options.accept_oversized_inputs and *calculated_size < buffer.size()) {
         spdlog::info("Input buffer '{}' is of size {} bytes, exceeding the expected size of {} bytes",
             buffer_details.name, buffer.size(), *calculated_size);
@@ -459,7 +478,7 @@ void validate_input_buffer_sizes(execution_context_t& context)
 void validate_arguments(execution_context_t& context)
 {
     validate_scalars(context);
-    validate_input_buffer_sizes(context);
+    validate_input_buffer_sizes(context); // this includes images
 
     if (not context.kernel_adapter_->extra_validity_checks(context)) {
         // TODO: Have the kernel adapter report an error instead of just a boolean;
@@ -492,7 +511,7 @@ void schedule_single_run(execution_context_t& context, run_index_t run_index)
         schedule_zero_output_buffers(context);
     }
     if (context.options.clear_l2_cache) {
-        schedule_zero_single_buffer(context, context.buffers.device_side.l2_cache_clearing_gadget.value());
+        schedule_zero_single_raw_buffer(context, context.buffers.device_side.l2_cache_clearing_gadget.value());
         spdlog::debug("Hopefully cleared the L2 cache by memset'ing a dummy buffer");
     }
     schedule_reset_of_inout_buffers_working_copy(context);
@@ -715,6 +734,23 @@ void initialize_logging()
     spdlog::cfg::load_env_levels(); // support setting the logging verbosity with an environment variable
 }
 
+// Make sure that, for every one of the image kernel parameters, the command-line
+// has specified sufficient information about the relevant argument fo for us to derive the rest and launch the
+// kernel
+void ensure_image_arguments_are_well_described(execution_context_t const& context)
+{
+    for (auto const& image_name : image_names(*context.kernel_adapter_)) {
+        auto dims = util::safe_lookup(context.buffer_dimensions, image_name);
+        dims or die("No dimensions specified for kernel image parameter {}", image_name);
+        auto image_dimensionality = dims->size();
+        auto pitches = util::safe_lookup(context.buffer_pitches, image_name);
+        if (pitches and pitches->size() != image_dimensionality) {
+            die ("For kernel image parameter {} with {} dimensions, expected {} pitches but got {}",
+                image_name, dims->size(), image_dimensionality, pitches->size());
+        };
+    }
+}
+
 int main(int argc, char** argv)
 {
     initialize_logging();
@@ -745,6 +781,7 @@ int main(int argc, char** argv)
 
     if (context.options.compile_only) { return EXIT_SUCCESS; }
 
+    ensure_image_arguments_are_well_described(context);
     read_input_buffers_from_files(context);
     generate_additional_scalar_arguments(context);
     validate_arguments(context);

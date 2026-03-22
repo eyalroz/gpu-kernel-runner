@@ -39,6 +39,12 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
         ("a,arg,argument", "Set one of the kernel's argument, keyed by name, with a serialized value for a scalar (e.g. foo=123) or a path to the contents of a buffer (e.g. bar=/path/to/data.bin)", cxxopts::value<std::vector<string>>())
         ("A,no-implicit-compilation-options,no-implicit-compile-options,suppress-default-compile-options,suppress-default-compilation-options,no-default-compile-options,no-default-compilation-options", "Avoid setting any compilation options not explicitly requested by the user", cxxopts::value<bool>()->default_value("false"))
         ("buffer-size,output-buffer-size,output-size,arg-size", "Set one of the buffers' sizes, keyed by name, in bytes (e.g. myresult=1024)", cxxopts::value<std::vector<string>>())
+
+        ("buffer-dimensions,image-dimensions,buffer-dims,image-dims,arg-dims,arg-dimensions", "Set one of the buffers' logical dimensions (1D ... 3D; mostly relevant for images)", cxxopts::value<std::vector<string>>())
+        ("buffer-pitches,buffer-pitches-in-bytes,arg-pitches,arg-pitches-in-bytes,image-pitches,image-pitches-in-bytes", "Set the pitch for all-but-the-last dimensions of the buffer (for 2D, 3D)", cxxopts::value<std::vector<string>>())
+//        ("buffer-element-num-channels,image-num-channels,num-image-channels,num-buffer-channels,num-buffer-element-channels,num-image-element-channels", "Set the number of channels (= number of distinct numeric values) for each element of the buffer/image", cxxopts::value<std::vector<string>>())
+//        ("buffer-element-type,image-element-type,image-data-type", "Set the format for all-but-the-last dimensions of the buffer (for 2D, 3D)", cxxopts::value<std::vector<string>>())
+
         ("d,dev,device,device-index", "Device index", cxxopts::value<int>()->default_value("0"))
         ("D,preprocessor-definition,define", "Set a preprocessor definition for NVRTC (can be used repeatedly; specify either DEFINITION or DEFINITION=VALUE)", cxxopts::value<std::vector<string>>())
         ("c,compile,compilation,compile-only", "Compile the kernel, but don't actually run it", cxxopts::value<bool>()->default_value("false"))
@@ -92,6 +98,7 @@ void parse_kv_pairs(
 {
     if (parse_result.count(cmdline_param_name) == 0) { return; }
     const auto& args = parse_result[cmdline_param_name].as<std::vector<string>>();
+    spdlog::trace("Got {} args for {}.", args.size(), cmdline_param_name);
     for(auto const& definition : args) {
         auto equals_pos = definition.find(separator);
         switch(equals_pos) {
@@ -462,7 +469,7 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
         },
         [&](auto const& buffer_name, auto const& size_str) {
             auto buffer_size = std::stoul(size_str);
-            parsed_options.output_buffer_sizes[buffer_name] = buffer_size;
+            parsed_options.aliased_output_buffer_sizes[buffer_name] = buffer_size;
         });
 
     parse_kv_pairs(parse_result, "argument", "Kernel argument", '=',
@@ -473,6 +480,55 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
             parsed_options.aliased_kernel_arguments[term] = value;
         });
 
+    parse_kv_pairs(parse_result, "buffer-dimensions", "Kernel (image) buffer argument dimensions", '=',
+        [&](auto const& buffer_name) {
+            die("No dimensions specified for kernel argument '{}'", buffer_name);
+        },
+        [&](auto const& buffer_name, auto const& value) {
+            auto post_split = util::split(value, ",x");
+            if (post_split.size() < 2 or post_split.size() > 3) {
+                die("Buffer dimensions specification for kernel argument '{}': {} logical dimensions are not supported: \"{}\"",
+                    buffer_name, post_split.size(), value);
+            }
+            auto dims = util::transform<dimensions_t>(post_split, [](auto const& str) { return std::stoul(str);});
+            parsed_options.aliased_buffer_dimensions[buffer_name] = dims;
+        });
+
+    parse_kv_pairs(parse_result, "buffer-pitches", "Kernel (image) buffer argument pitches", '=',
+        [&](auto const& buffer_name) {
+            die("No pitches specified for kernel argument \"{}\"", buffer_name);
+        },
+        [&](auto const& buffer_name, auto const& value) {
+            auto post_split = util::split(value, ',');
+            if (post_split.size() < 1 or post_split.size() > 2) {
+                die("Pitches specification for kernel argument {}: {} pitch dimensions are not supported", buffer_name, post_split.size());
+            }
+            auto pitches = util::transform<dimensions_t>(post_split, [](auto const& str) { return std::stoul(str);});
+            parsed_options.aliased_buffer_pitches[buffer_name] = pitches;
+        });
+
+// For now - the number of channels and the element type in those channels cannot be
+// specified at runtime. The kernel must rely on the images being of a certain type
+//
+//    parse_kv_pairs(parse_result, "image-num-channels", "Kernel image argument number of channels", '=',
+//        [&](auto const& str) {
+//            die("Number of channels setting is not in a name=number format: \"{}\"", str);
+//        },
+//        [&](auto const& buffer_name, auto const& num_str) {
+//            auto num_channels = std::stoul(num_str);
+//            parsed_options.buffer_num_channels[buffer_name] = num_channels;
+//        });
+//
+//    parse_kv_pairs(parse_result, "image-element-type", "Kernel image argument channel element data type", '=',
+//        [&](auto const& str) {
+//            die("Image channel element data type setting is not in a name=typename format: \"{}\"", str);
+//        },
+//        [&](auto const& buffer_name, string data_type_name) {
+//            util::trim(data_type_name);
+//            auto const& tds = kernel_parameters::image_channel_element_type_descriptors;
+//            util::contains(tds, data_type_name) or die("Unknown channel element type {} specified for image kernel argument {}", data_type_name, buffer_name);
+//            parsed_options.buffer_channel_element_types[buffer_name] = tds.at(data_type_name);
+//        });
 
     if (parse_result.count("include-path") > 0) {
         parsed_options.include_dir_paths = parse_result["include-path"].as<std::vector<string>>();

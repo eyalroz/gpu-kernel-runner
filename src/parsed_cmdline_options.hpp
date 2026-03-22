@@ -40,8 +40,20 @@ struct parsed_cmdline_options_t {
     split_preprocessor_definitions_t preprocessor_definitions;
     std::vector<std::string> extra_compilation_options;
 
-    // std::unordered_map<std::string, std::string> raw_output_size_settings;
-    std::unordered_map<std::string, std::size_t> output_buffer_sizes;
+    std::unordered_map<std::string, std::size_t> aliased_output_buffer_sizes;
+
+    // These are _logical_ dimensions of buffers; used for 'image'-kind buffers,
+    // and raw buffers don't need it
+    std::unordered_map<std::string, dimensions_t> aliased_buffer_dimensions;
+
+    // Pitches in bytes for all-but-the-last dimensi
+    std::unordered_map<std::string, dimensions_t> aliased_buffer_pitches;
+
+    // For now - the number of channels and the element type in those channels cannot be
+    // specified at runtime. The kernel must rely on the images being of a certain type
+    //
+    // std::unordered_map<std::string, std::size_t> buffer_num_channels;
+    // std::unordered_map<std::string, kernel_parameters::element_type_descriptor_t> buffer_channel_element_types;
 
     argument_values_t aliased_kernel_arguments;
     include_paths_t include_dir_paths;

@@ -31,11 +31,29 @@ DISABLE_WARNING_POP
 
 using string_map = std::unordered_map<std::string, std::string>;
 using include_paths_t = std::vector<std::string>;
-using buffer_size_map = std::unordered_map<std::string, size_t>;
+using device_buffer_info_map_t = std::unordered_map<std::string, device_side_buffer_info_t>;
 
 // TODO: Switch to a variant, perhaps?
 union device_buffer_type {
-    cl::Buffer opencl;
+    struct  {
+        bool is_image;
+        // These two types have a null/dummy state, so we don't have to enclose
+        // them in a variant or union or take similar protective measures. Although...
+        // maybe we should, just to be on the safe side.
+        cl::Buffer raw;
+        cl::Image2D image2d;
+        cl::Image3D image3d;
+        // The following are only relevant for images. Why oh why don't the official C++
+        // wrappers include this information? :-(
+        size_t ndims() const noexcept { return (dims[1] == 0) ? 1 : (dims[2] == 0) ? 2 : 3; }
+        cl::size_t<3> dims; // Note that the values to be passed to some CL API functions may be different, e.g. using 1's
+        cl::size_t<2> pitches;
+        std::size_t num_channels;
+        kernel_parameters::element_type_descriptor_t channel_elements_type;
+
+        cl::Image& image() noexcept { return ndims() == 2 ? static_cast<cl::Image&>(image2d) : static_cast<cl::Image&>(image3d); }
+        cl::Image const& image() const noexcept { return ndims() == 2 ? static_cast<cl::Image const&>(image2d) : static_cast<cl::Image const&>(image3d); }
+    } opencl;
     memory_region cuda;
 
     // A brittle and dangerous hack
@@ -51,7 +69,7 @@ using device_buffers_map = std::unordered_map<std::string, device_buffer_type>;
 using scalar_arguments_map = std::unordered_map<std::string, any>;
 struct marshalled_arguments_type {
     std::vector<const void*> pointers;
-    std::vector<size_t> sizes;
+    std::vector<size_t> sizes; // Only used with OpenCL, not CUDA
 };
 class kernel_adapter;
 
@@ -62,6 +80,9 @@ struct execution_context_t {
     argument_values_t kernel_arguments;
         // The result of mapping the argument name aliases to the actual, canonical
         // argument names
+    std::unordered_map<std::string, size_t> output_buffer_sizes;
+    std::unordered_map<std::string, dimensions_t> buffer_dimensions;
+    std::unordered_map<std::string, dimensions_t> buffer_pitches;
 
     // The adapter also holds the parsed kernel-specific command-line options
     struct {
@@ -85,6 +106,9 @@ struct execution_context_t {
             maybe_string_map inputs;
             string_map outputs; // , expected;
         } filenames;
+        // std::unordered_map<std::string, buffer_kind_t> kinds;
+        /// indicators of which buffer arguments are images rather than raw buffers
+        name_set image_names;
     } buffers;
         // Note: in-out buffers will appear both in the input and the output buffer maps;
         // The input copy will not be used by the kernel directly; rather, before a run,

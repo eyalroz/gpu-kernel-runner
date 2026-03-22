@@ -46,6 +46,7 @@ inline name_set get_defined_terms(const preprocessor_definitions_t definitions)
     );
 }
 
+
 /**
  * Imbue a string defined for the preprocessor with a type, to obtain
  * the value as it will (supposedly) be used in the source code.

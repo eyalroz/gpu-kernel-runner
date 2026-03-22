@@ -16,8 +16,8 @@ public:
     const parameter_details_type& parameter_details() const override
     {
         static const parameter_details_type pd = {
-            buffer_details("A", inout, buffer_size_calc).alias("accumulator"),
-            buffer_details("B", input, buffer_size_calc),
+            raw_buffer_details("A", inout, buffer_size_calc).alias("accumulator"),
+            raw_buffer_details("B", input, buffer_size_calc),
             scalar_details<length_type>("length").aliases({"size", "num_elements", "nelements"}),
         };
         return pd;

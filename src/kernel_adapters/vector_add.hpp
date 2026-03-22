@@ -16,9 +16,9 @@ public:
     {
         static const parameter_details_type pd = {
             // buffer_details("C",  output,    size_by_length),
-            buffer_details("C",  output),
-            buffer_details("A",  input),
-            buffer_details("B",  input),
+            raw_buffer_details("C", output),
+            raw_buffer_details("A", input),
+            raw_buffer_details("B", input),
             scalar_details<length_type>("length"),
         };
         return pd;

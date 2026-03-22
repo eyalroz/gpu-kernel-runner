@@ -46,11 +46,12 @@ void schedule_zero_buffer(
     const device_buffer_type               buffer,
     const optional<const cuda::stream_t*>  cuda_stream,
     const cl::CommandQueue*                opencl_queue,
-    const std::string&                     buffer_name);
+    const std::string&                     buffer_name,
+    const device_side_buffer_info_t&       buffer_info);
 
 void schedule_zero_output_buffers(execution_context_t& context);
 
-void schedule_zero_single_buffer(const execution_context_t& context, const device_buffer_type& buffer);
+void schedule_zero_single_raw_buffer(const execution_context_t& context, const device_buffer_type& buffer);
 
 void create_all_device_side_buffers(execution_context_t& context);
 
@@ -68,10 +69,10 @@ enum : bool {
 };
 
 void write_data_to_file(
-    std::string          kind,
-    std::string          name,
-    const_memory_region  data,
-    filesystem::path     destination,
-    bool                 overwrite_allowed,
-    bool                 log_at_info_level);
+    std::string              kind,
+    std::string              name,
+    const_memory_region      data,
+    const filesystem::path&  destination,
+    bool                     overwrite_allowed,
+    bool                     log_at_info_level);
 

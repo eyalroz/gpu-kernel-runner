@@ -211,8 +211,8 @@ public:
             // Example detail lines:
             //
             //  scalar_details<int>("x"),
-            //  buffer_details("my_results", output),
-            //  buffer_details("my_data", input),
+            //  raw_buffer_details("my_results", output),
+            //  raw_buffer_details("my_data", input),
         };
         return pd;
     }

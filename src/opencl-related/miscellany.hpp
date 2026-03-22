@@ -8,6 +8,7 @@
 #include <string>
 #include <cstring>
 #include <iomanip>
+#include <spdlog/common.h>
 
 template <execution_ecosystem_t Ecosystem>
 std::vector<filesystem::path> get_ecosystem_include_paths_();
@@ -64,5 +65,20 @@ void ensure_gpu_device_validity_<execution_ecosystem_t::opencl>(
 
 cl_channel_order get_image_channel_order(device_side_buffer_info_t const & buffer_info);
 cl_channel_type get_image_channel_type(device_side_buffer_info_t const & buffer_info);
+
+std::string format_as(const cl::size_t<3>& dimensions);
+
+// template <>
+// class spdlog::fmt_lib::formatter<dimensions_t> {
+// public:
+//     constexpr auto parse (format_parse_context& ctx) { return ctx.begin(); }
+//     template <typename Context>
+//     constexpr auto format (dimensions_t const& dimensions, Context& ctx)
+//     {
+//         if (dimensions[1] == 0) { return format_to(ctx.out(), "({})", dimensions[0]); }
+//         if (dimensions[2] == 0) { return format_to(ctx.out(), "({},{})", dimensions[0], dimensions[1]); }
+//         return format_to(ctx.out(), "({},{},{})", dimensions[0], dimensions[1], dimensions[2]);
+//     }
+// };
 
 #endif // KERNEL_RUNNER_OPENCL_MISC_HPP_

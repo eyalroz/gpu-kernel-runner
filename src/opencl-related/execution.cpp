@@ -43,7 +43,8 @@ void set_opencl_kernel_arguments(
     marshalled_arguments_type& args)
 {
     (args.pointers.size() == args.sizes.size()) or die(
-        "Number of kernel arguments does not match number of kernel argument sizes");
+        "Number of kernel arguments does not match number of kernel argument sizes: {} != {}",
+        args.pointers.size(), args.sizes.size());
     spdlog::debug("Passing {} arguments to the kernel...", args.pointers.size());
     for (cl_uint i = 0; i < args.pointers.size(); i++) {
         kernel.setArg(i, args.sizes[i], args.pointers[i]);

@@ -12,6 +12,7 @@
 #include "opencl-related/miscellany.hpp"
 
 #include "util/miscellany.hpp"
+#include "util/string.hpp"
 #include "util/spdlog-extra.hpp"
 
 #include <cxxopts/cxxopts.hpp>

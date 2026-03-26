@@ -15,8 +15,6 @@
 #include "util/string.hpp"
 #include "util/spdlog-extra.hpp"
 
-#include <cxxopts/cxxopts.hpp>
-
 #include <spdlog/spdlog.h>
 #include <spdlog/cfg/env.h>
 

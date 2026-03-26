@@ -8,16 +8,11 @@
 #include <algorithm>
 #include <string>
 #include <cctype>
+// #include <locale>
 #include <util/optional_and_any.hpp>
 #include "functional.hpp"
 
 namespace util {
-
-inline std::string to_lowercase(std::string str) {
-    std::transform(str.begin(), str.end(), str.begin(),
-        [](unsigned char c){ return std::tolower(c); });
-    return str;
-}
 
 namespace detail {
 
@@ -196,14 +191,6 @@ inline optional<std::string> get_env ( const std::string& key )
     return get_env(key.c_str());
 }
 
-inline bool case_insensitive_equals(const std::string& lhs, const std::string& rhs)
-{
-    return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(),
-        [](char a, char b) {
-            return tolower(a) == tolower(b);
-        });
-}
-
 template <typename I, typename I2 = I>
 constexpr I round_up(I x, I2 y) noexcept
 {
@@ -262,34 +249,6 @@ inline bool in_range(T x, std::initializer_list<U> l)
 //template <typename T>
 //inline bool in_range(T x, T min, T max) { return in_range(x, {min, max}); }
 
-inline bool is_valid_identifier(const std::string& str)
-{
-    if (str.length() == 0) { return false; }
-
-    {
-        char first_char = *str.cbegin();
-        if (!(
-              util::in_range(first_char, {'a', 'z'}) or
-              util::in_range(first_char, {'A', 'Z'}) or
-              first_char == '_'))
-            return false;
-    }
-
-    // Traverse the string for the rest of the characters
-    return std::all_of(str.cbegin()+1, str.cend(),
-        [](auto ch) {
-          return util::in_range(ch, {'a', 'z'}) or
-            util::in_range(ch, {'A', 'Z'}) or
-            util::in_range(ch, {'0', '9'}) or
-            ch == '_';
-        });
-}
-
-inline std::string newline_if_missing(const std::string& str)
-{
-    return str.empty() ? "\n" : (str.end()[-1] != '\n') ? "\n" : "";
-}
-
 template <class I>
 int naive_num_digits(I number)
 {
@@ -307,13 +266,13 @@ int naive_num_digits(I number)
 template <typename S, typename T = S>
 constexpr typename std::common_type<S,T>::type gcd(S u, T v) noexcept
 {
-// TODO: Shouldn't we first cast everything into the common type?
-while (v != 0) {
-    auto remainder = u % v;
-    u = v;
-    v = remainder;
-    }
-    return u;
+    // TODO: Shouldn't we first cast everything into the common type?
+    while (v != 0) {
+        auto remainder = u % v;
+        u = v;
+        v = remainder;
+        }
+        return u;
 }
 #else
 template <typename S, typename T = S>
@@ -326,8 +285,31 @@ constexpr KAT_FHD typename std::common_type<S,T>::type gcd(S u, T v) noexcept
 template <typename S, typename T = S>
 constexpr typename std::common_type<S,T>::type lcm(S u, T v) noexcept
 {
-using result_type = typename std::common_type<S,T>::type;
-return (result_type{u} / gcd(u,v)) * v;
+    using result_type = typename std::common_type<S,T>::type;
+    return (result_type{u} / gcd(u,v)) * v;
+}
+
+inline bool is_valid_identifier(const std::string& str)
+{
+    if (str.length() == 0) { return false; }
+
+    {
+        char first_char = *str.cbegin();
+        if (!(
+            util::in_range(first_char, {'a', 'z'}) or
+            util::in_range(first_char, {'A', 'Z'}) or
+            first_char == '_'))
+            return false;
+    }
+
+    // Traverse the string for the rest of the characters
+    return std::all_of(str.cbegin()+1, str.cend(),
+        [](auto ch) {
+            return util::in_range(ch, {'a', 'z'}) or
+                   util::in_range(ch, {'A', 'Z'}) or
+                   util::in_range(ch, {'0', '9'}) or
+                   ch == '_';
+        });
 }
 
 } // namespace util

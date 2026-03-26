@@ -2,6 +2,7 @@
 #include "cmdline_arguments.hpp"
 
 #include "util/miscellany.hpp"
+#include "util/string.hpp"
 #include "util/cxxopts-extra.hpp"
 #include "util/spdlog-extra.hpp"
 

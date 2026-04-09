@@ -43,6 +43,16 @@ optional<std::string> locate_cuda_include_directory()
 {
     filesystem::path candidate;
 
+    constexpr const char *cuda_include_dir_env_var_names[] = { "CUDA_INCLUDE_DIR", "CUDA_INCLUDE", "CUDA_INCLUDE_PATH" };
+    for (auto env_var_name : cuda_include_dir_env_var_names) {
+        auto env_var_value = util::get_env(env_var_name);
+        if (env_var_value and check_potential_cuda_include_dir(*env_var_value)) {
+            spdlog::trace( "Using the CUDA include directory specified in {}, "
+               "to append to  the compilation options", env_var_name);
+            return env_var_value;
+        }
+    }
+
     constexpr const char *cuda_root_env_var_names[] = { "CUDA_ROOT", "CUDA_PATH", "CUDA_DIR" };
     for (auto env_var_name : cuda_root_env_var_names) {
         auto cuda_root_env_dir = util::get_env(env_var_name);

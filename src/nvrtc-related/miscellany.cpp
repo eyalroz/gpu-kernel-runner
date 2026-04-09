@@ -12,7 +12,7 @@ std::vector<filesystem::path> get_ecosystem_include_paths_<execution_ecosystem_t
         result.emplace_back(cuda_include_dir.value());
     }
     else {
-        spdlog::warn("Cannot locate CUDA include directory - trying to build the kernel with it missing.");
+        spdlog::info("Could not determine the CUDA include directory - trying to build the kernel anyway.");
     }
     return result;
 }

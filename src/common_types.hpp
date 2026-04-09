@@ -7,6 +7,7 @@
 
 #include <string>
 #include <cstdint>
+#include <climits>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -23,11 +24,12 @@ using std::uint64_t;
 using std::int64_t;
 using std::uint8_t;
 using std::int8_t;
+using std::size_t;
 
 using device_id_t = int;
 using run_index_t = unsigned;
 
-using duration_t = std::chrono::duration<std::uint64_t, std::nano>;
+using duration_t = std::chrono::duration<uint64_t, std::nano>;
 using durations_t = std::vector<duration_t>;
 
 using string_map = std::unordered_map<std::string, std::string>;
@@ -54,8 +56,12 @@ namespace kernel_parameters {
 enum : bool { is_required = true, isnt_required = false };
 enum class kind_t { buffer, scalar };
 
+// OpenCL and CUDA codes for these element types are inside the ecosystem-specific directories
+
 } // namespace kernel_parameters
 
+inline bool is_buffer(kernel_parameters::kind_t kind) noexcept { return (kind == kernel_parameters::kind_t::buffer); }
+inline bool is_scalar(kernel_parameters::kind_t kind) noexcept { return (kind == kernel_parameters::kind_t::scalar); }
 
 inline constexpr const char* kernel_source_file_suffix(execution_ecosystem_t ecosystem)
 {
@@ -76,12 +82,12 @@ enum class parameter_direction_t {
     scratch = 3
 };
 
-inline bool is_input(parameter_direction_t dir)
+inline bool is_input(parameter_direction_t dir) noexcept
 {
     return dir == parameter_direction_t::in or dir == parameter_direction_t::inout;
 }
 
-inline bool is_output(parameter_direction_t dir)
+inline bool is_output(parameter_direction_t dir) noexcept
 {
     return dir == parameter_direction_t::inout or dir == parameter_direction_t::out;
 }

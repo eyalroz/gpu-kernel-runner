@@ -28,8 +28,79 @@
 
 // §6.4.3 Explicit conversions
 // ===========================
-// destType convert_destType<_sat><_roundingMode>(sourceType)
-// destTypen convert_destTypen<_sat><_roundingMode>(sourceTypen)
+
+/**
+ * The two forms of explicit conversion functions are:
+ * For scalar types:
+ *
+ *   destType convert_destType<_sat><_roundingMode>(sourceType)
+ *
+ * For vectorized types with length n:
+ *
+ *   destTypen convert_destTypen<_sat><_roundingMode>(sourceTypen)
+ *
+ * ... and the basic types to/from we can convert are:
+ * char, uchar, short, ushort, int, uint, long, ulong, float
+ *
+ * To avoid massive repetitions, we'll be using macros and templates to define
+ * the different conversion functions
+ */
+
+#define PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSIONS(src, tgt) \
+inline tgt convert_ ## tgt ## _rtz(src v) { return static_cast<tgt>(__ ## src ## 2 ## tgt ## _rz(v)); } \
+inline tgt convert_ ## tgt ## _rte(src v) { return static_cast<tgt>(__ ## src ## 2 ## tgt ## _rn(v)); } \
+inline tgt convert_ ## tgt ## _rtp(src v) { return static_cast<tgt>(__ ## src ## 2 ## tgt ## _ru(v)); } \
+inline tgt convert_ ## tgt ## _rtn(src v) { return static_cast<tgt>(__ ## src ## 2 ## tgt ## _rd(v)); } \
+inline tgt convert_ ## tgt ##     (src v) { return convert_ ## tgt ## _rtz(v); } \
+
+#define PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSION_VECTORIZATIONS(tgt, ocl_mode) \
+template <typename src> \
+inline tgt ## 2 convert_ ## tgt ## 2_ ## ocl_mode(src ## 2 v) noexcept \
+{ return { convert_ ## tgt_ ## ocl_mode(v.x), convert_ ## tgt_ ## ocl_mode(v.y) }; } \
+template <typename src> \
+inline tgt ## 3 convert_ ## tgt ## 3_ ## ocl_mode(src ## 3 v) noexcept \
+{ return { convert_ ## tgt_ ## ocl_mode(v.x), convert_ ## tgt_ ## ocl_mode(v.y), convert_ ## tgt_ ## ocl_mode(v.z) }; } \
+template <typename src> \
+inline tgt ## 4 convert_ ## tgt ## 4_ ## ocl_mode(src ## 4 v) noexcept \
+{ return { convert_ ## tgt_ ## ocl_mode(v.x), convert_ ## tgt_ ## ocl_mode(v.y), convert_ ## tgt_ ## ocl_mode(v.z), convert_ ## tgt_ ## ocl_mode(v.w) }; }
+
+
+#define PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(tgt) \
+\
+template <typename src> \
+inline tgt convert_ ## tgt (src v) noexcept { return static_cast<tgt>(v); } \
+PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSIONS(half, tgt) \
+PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSIONS(float, tgt) \
+PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSIONS(double, tgt) \
+\
+template <typename src> \
+inline tgt convert_ ## tgt ## 2(src ## 2 v) noexcept \
+{ return { convert_ ## tgt(v.x), convert_ ## tgt(v.y) }; } \
+template <typename src> \
+inline tgt convert_ ## tgt ## 3(src ## 3 v) noexcept \
+{ return { convert_ ## tgt(v.x), convert_ ## tgt(v.y), convert_ ## tgt(v.z) }; } \
+template <typename src> \
+inline tgt convert_ ## tgt ## 4(src ## 4 v) noexcept \
+{ return { convert_ ## tgt(v.x), convert_ ## tgt(v.y), convert_ ## tgt(v.z), convert_ ## tgt(v.w) }; } \
+PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSION_VECTORIZATIONS(tgt, rtz) \
+PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSION_VECTORIZATIONS(tgt, rte) \
+PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSION_VECTORIZATIONS(tgt, rtp) \
+PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSION_VECTORIZATIONS(tgt, rtn) 
+
+// TODO: Define _sat conversions
+
+PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(char)
+PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(uchar)
+PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(short)
+PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(ushort)
+PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(int)
+PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(uint)
+PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(long)
+PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(ulong)
+
+
+// do saturated versions
+
 
 // §6.4.4.2. Reinterpreting Types Using as_type() and as_typen()
 // =============================================================
@@ -38,6 +109,27 @@
 // Built-in Vector Data Types (except bool, void, and half [19])
 // may be also reinterpreted as another data type of the same size"
 
+#define PORT_FROM_OPENCL_DEFINE_ASTYPE(tgt) \
+template <typename src> \
+inline tgt as_ ## tgt (src v) \
+{ \
+    static_assert(sizeof(tgt) == sizeof(src), "as_type for types of different size is not supported"); \
+    return reinterpret_cast<tgt>(v); \
+}
+
+PORT_FROM_OPENCL_DEFINE_ASTYPE(char)
+PORT_FROM_OPENCL_DEFINE_ASTYPE(uchar)
+PORT_FROM_OPENCL_DEFINE_ASTYPE(short)
+PORT_FROM_OPENCL_DEFINE_ASTYPE(ushort)
+PORT_FROM_OPENCL_DEFINE_ASTYPE(int)
+PORT_FROM_OPENCL_DEFINE_ASTYPE(uint)
+PORT_FROM_OPENCL_DEFINE_ASTYPE(long)
+PORT_FROM_OPENCL_DEFINE_ASTYPE(ulong)
+// half is _not_ supported for as_type
+PORT_FROM_OPENCL_DEFINE_ASTYPE(float)
+PORT_FROM_OPENCL_DEFINE_ASTYPE(double)
+
+// TODO: Allow for interpreting 4-component vector-types as 3-component OpenCL types, see §6.4.4.2
 
 // §6.15.1. Work-Item Functions
 // ============================
@@ -210,25 +302,6 @@ inline double sincos(double x, double *cosval) { double sinval; sincos(x, &sinva
 inline double atan2pi(double y, double x) noexcept { return atan2(y, x) * M_1_PI; }
 inline double tanpi(double x) noexcept { return tan(M_PI * x); }
 
-inline double2 remquo(double2 x, double2 y, int2 *quo) noexcept
-{
-    return { remquo(x.x, y.x, &quo->x), remquo(x.y, y.y, &quo->y) };
-}
-
-inline double4 remquo(double4 x, double4 y, int4 *quo) noexcept
-{
-    return {
-        remquo(x.x, y.x, &quo->x),
-        remquo(x.y, y.y, &quo->y),
-        remquo(x.z, y.z, &quo->z),
-        remquo(x.w, y.w, &quo->w)
-    };
-}
-
-// TODO: Implement
-// doublen remquo(doublen x, doublen y, intn *quo)
-// for n=3,8,16
-
 inline double fract(double x, double *iptr) noexcept
 {
     double floor_ = floor(x);
@@ -244,35 +317,7 @@ inline double frexp(double x, int *exp) noexcept
     return x_.parts.significand;
 }
 
-inline double2 frexp(double2 x, int2 *exp) noexcept
-{
-    return {
-        frexp(x.x, &exp->x),
-        frexp(x.y, &exp->y),
-    };
-}
 
-inline double4 frexp(double4 x, int4 *exp) noexcept
-{
-    return {
-        frexp(x.x, &exp->x),
-        frexp(x.y, &exp->y),
-        frexp(x.z, &exp->z),
-        frexp(x.w, &exp->w),
-    };
-}
-
-// TODO: implement frexp for doublen with n = 3,8,16
-
-inline double2 ldexp(double2 x, int2 k) noexcept { return { ldexp(x.x, k.x), ldexp(x.y, k.y), }; }
-inline double4 ldexp(double4 x, int4 k) noexcept { return { ldexp(x.x, k.x), ldexp(x.y, k.y), ldexp(x.z, k.z), ldexp(x.w, k.w) }; }
-
-// TODO: implement ldexp for doublen with n = 3,8,16
-
-// Not implemented: double2 nan(ulong2 nancode)
-// double nan(ulong nancode);
-double2 pow(double2 x, int2 y) { return { pow(x.x, y.x), pow(x.y, y.y) }; }
-double4 pow(double4 x, int4 y) { return { pow(x.x, y.x), pow(x.y, y.y), pow(x.z, y.z), pow(x.w, y.w) }; }
 
 inline double lgamma_r(double x, int *signp) noexcept
 {
@@ -282,26 +327,16 @@ inline double lgamma_r(double x, int *signp) noexcept
     gamma_.parts.sign = 0; // make it positive;
     return logf(gamma_.value);
 }
-double2 lgamma_r(double2 x, int2 *signp) { return { lgamma_r(x.x, &signp->x), lgamma_r(x.y, &signp->y) }; }
-double4 lgamma_r(double4 x, int4 *signp) { return { lgamma_r(x.x, &signp->x), lgamma_r(x.y, &signp->y), lgamma_r(x.w, &signp->w), lgamma_r(x.w, &signp->w) }; }
 
 inline int ilogb(double x) noexcept { return reinterpret_cast<detail_::destructured_double&>(x).parts.exponent; }
-inline int2 ilogb(double2 x) noexcept { return { ilogb(x.x), ilogb(x.y) }; }
-inline int4 ilogb(double4 x) noexcept { return { ilogb(x.x), ilogb(x.y), ilogb(x.z), ilogb(x.w) }; }
 
-inline double maxmag(double x, double y) noexcept
+template <typename T, typename S>
+inline double maxmag(T x, S y) noexcept
 {
     double abs_x = fabs(x);
     double abs_y = fabs(y);
     if (abs_x == abs_y) { return fmax(x,y); }
     return (abs_x > abs_y) ? x : y;
-}
-inline double minmag(double x, double y) noexcept
-{
-    double abs_x = fabs(x);
-    double abs_y = fabs(y);
-    if (abs_x == abs_y) { return fmin(x,y); }
-    return (abs_x < abs_y) ? x : y;
 }
 
 inline double mad(double a, double b, double c) noexcept { return fma(a, b, c); }
@@ -355,34 +390,9 @@ inline float frexp(float x, int *exp) noexcept
     return x_.parts.significand;
 }
 
-inline float2 frexp(float2 x, int2 *exp) noexcept
-{
-    return {
-        frexp(x.x, &exp->x),
-        frexp(x.y, &exp->y),
-    };
-}
-
-inline float4 frexp(float4 x, int4 *exp) noexcept
-{
-    return {
-        frexp(x.x, &exp->x),
-        frexp(x.y, &exp->y),
-        frexp(x.z, &exp->z),
-        frexp(x.w, &exp->w),
-    };
-}
-// TODO: implement frexp for floatn with n = 3,8,16
 inline float hypot(float x, float y) noexcept { return hypotf(x, y); }
 inline int ilogb(float x) noexcept { return reinterpret_cast<detail_::destructured_float&>(x).parts.exponent; }
-inline int2 ilogb(float2 x) noexcept { return { ilogb(x.x), ilogb(x.y) }; }
-inline int4 ilogb(float4 x) noexcept { return { ilogb(x.x), ilogb(x.y), ilogb(x.z), ilogb(x.w) }; }
 inline float ldexp(float x, int k) noexcept { return ldexpf(x, k); }
-inline float2 ldexp(float2 x, int k) noexcept { return { ldexpf(x.x, k), ldexpf(x.y, k) }; }
-inline float4 ldexp(float4 x, int k) noexcept { return { ldexpf(x.x, k), ldexpf(x.y, k), ldexpf(x.z, k), ldexpf(x.w, k) }; }
-inline float2 ldexp(float2 x, int2 k) noexcept { return { ldexpf(x.x, k.x), ldexpf(x.y, k.y) }; }
-inline float4 ldexp(float4 x, int4 k) noexcept { return { ldexpf(x.x, k.x), ldexpf(x.y, k.y), ldexpf(x.z, k.z), ldexpf(x.w, k.w) }; }
-// TODO: implement ldexp with vectorized and non-vectorized k for floatn with n = 3,8,16
 inline float lgamma(float x) noexcept { return lgammaf(x); }
 inline float lgamma_r(float x, int *signp) noexcept
 {
@@ -392,8 +402,6 @@ inline float lgamma_r(float x, int *signp) noexcept
     gamma_.parts.sign = 0; // make it positive;
     return logf(gamma_.value);
 }
-float2 lgamma_r(float2 x, int2 *signp) { return { lgamma_r(x.x, &signp->x), lgamma_r(x.y, &signp->y) }; }
-float4 lgamma_r(float4 x, int4 *signp) { return { lgamma_r(x.x, &signp->x), lgamma_r(x.y, &signp->y), lgamma_r(x.w, &signp->w), lgamma_r(x.w, &signp->w) }; }
 inline float log(float x) noexcept { return logf(x); }
 inline float log2(float x) noexcept { return log2f(x); }
 inline float log10(float x) noexcept { return log10f(x); }
@@ -418,12 +426,9 @@ inline float modf(float x, float *iptr) noexcept { return modff(x, iptr); }
 // Not implementing nan, since it doesn't take a parameter which could distinguish float's from doubles etc.
 inline float nextafter(float x, float y) noexcept { return nextafterf(x, y); }
 inline float pow(float x, float y) noexcept { return powf(x, y); }
-inline float2 pow(float2 x, int2 y) { return { pow(x.x, y.x), pow(x.y, y.y) }; }
-inline float4 pow(float4 x, int4 y) { return { pow(x.x, y.x), pow(x.y, y.y), pow(x.z, y.z), pow(x.w, y.w) }; }
 inline float powr(float x, float y) noexcept { return  exp2f(y * log2f(x)); }
 inline float remainder(float x, float y) noexcept { return remainderf(x, y); }
 inline float remquo(float x, float y, int *quo) noexcept { return remquof(x, y, quo); }
-inline float2 remquo(float2 x, float2 y, int2 *quo) { return { remquo(x.x, y.x, &quo->x), remquo(x.y, y.y, &quo->y) }; }
 inline float rint(float x) noexcept { return rintf(x); }
 // No root, rootn function in CUDA.
 inline float round(float x) noexcept { return roundf(x); }
@@ -500,42 +505,9 @@ inline half frexp(half x, int *exp) noexcept
     return x_.parts.significand;
 }
 
-inline half2 frexp(half2 x, int2 *exp) noexcept
-{
-    return {
-        frexp(x.x, &exp->x),
-        frexp(x.y, &exp->y),
-    };
-}
-
-#ifdef HAVE_HALF_4
-inline half4 frexp(half4 x, int4 *exp) noexcept
-{
-return {
-        frexp(x.x, &exp->x),
-        frexp(x.y, &exp->y),
-        frexp(x.z, &exp->z),
-        frexp(x.w, &exp->w),
-    };
-}
-#endif
-
-// TODO: implement frexp for halfn with n = 3,8,16
 inline half hypot(half x, half y) noexcept { return hypotf(x, y); }
 inline int ilogb(half x) noexcept { return reinterpret_cast<detail_::destructured_half&>(x).parts.exponent; }
-inline int2 ilogb(half2 x) noexcept { return { ilogb(x.x), ilogb(x.y) }; }
-#ifdef HAVE_HALF_4
-inline int4 ilogb(half4 x) noexcept { return { ilogb(x.x), ilogb(x.y), ilogb(x.z), ilogb(x.w) }; }
-#endif
 //inline half ldexp(half x, int k) noexcept { return hldexp(x, k); }
-//inline half2 ldexp(half2 x, int k) noexcept { return { hldexp(x.x, k), hldexp(x.y, k) }; }
-#ifdef HAVE_HALF_4
-//inline half4 ldexp(half4 x, int k) noexcept { return { hldexp(x.x, k), hldexp(x.y, k), hldexp(x.z, k), hldexp(x.w, k) }; }
-#endif
-//inline half2 ldexp(half2 x, int2 k) noexcept { return { hldexp(x.x, k.x), hldexp(x.y, k.y) }; }
-#ifdef HAVE_HALF_4
-//inline half4 ldexp(half4 x, int4 k) noexcept { return { hldexp(x.x, k.x), hldexp(x.y, k.y), hldexp(x.z, k.z), hldexp(x.w, k.w) }; }
-#endif
 // TODO: implement ldexp with vectorized and non-vectorized k for halfn with n = 3,8,16
 //inline half lgamma(half x) noexcept { return hlgamma(x); }
 //inline half lgamma_r(half x, int *signp) noexcept
@@ -546,10 +518,6 @@ inline int4 ilogb(half4 x) noexcept { return { ilogb(x.x), ilogb(x.y), ilogb(x.z
 //    gamma_.parts.sign = 0; // make it positive;
 //    return hlog(gamma_.value);
 //}
-half2 lgamma_r(half2 x, int2 *signp) { return { lgamma_r(x.x, &signp->x), lgamma_r(x.y, &signp->y) }; }
-#ifdef HAVE_HALF4
-half4 lgamma_r(half4 x, int4 *signp) { return { lgamma_r(x.x, &signp->x), lgamma_r(x.y, &signp->y), lgamma_r(x.w, &signp->w), lgamma_r(x.w, &signp->w) }; }
-#endif
 inline half log(half x) noexcept { return hlog(x); }
 inline half log2(half x) noexcept { return hlog2(x); }
 inline half log10(half x) noexcept { return hlog10(x); }
@@ -575,14 +543,9 @@ inline half log10(half x) noexcept { return hlog10(x); }
 // Not implementing nan(), since it doesn't take a parameter which could distinguish half's from doubles etc.
 // inline half nextafter(half x, half y) noexcept { return hnextafter(x, y); }
 // inline half pow(half x, half y) noexcept { return hpow(x, y); }
-inline half2 pow(half2 x, int2 y) { return { pow(x.x, y.x), pow(x.y, y.y) }; }
-#ifdef HAVE_HALF_4
-inline half4 pow(half4 x, int4 y) { return { pow(x.x, y.x), pow(x.y, y.y), pow(x.z, y.z), pow(x.w, y.w) }; }
-#endif
 //inline half powr(half x, half y) noexcept { return hpowr(x, y); }
 // inline half remainder(half x, half y) noexcept { return hremainder(x, y); }
 // inline half remquo(half x, half y, int *quo) noexcept { return hremquo(x, y, *quo); }
-// inline half2 remquo(half2 x, half2 y, int2 *quo) { return { remquo(x.x, y.x, &quo->x), remquo(x.y, y.y, &quo->y) }; }
 inline half rint(half x) noexcept { return hrint(x); }
 // No root, rootn function in CUDA.
 // inline half round(half x) noexcept { return hround(x); }
@@ -759,51 +722,6 @@ ulong popcount(ulong x) { return __popcll(x); }
 // TODO: Implement vectorized versions of the integer math functions above.
 // For now we've only done upsample for n=2 and n=4
 
-short2  upsample(char2   hi, uchar2 lo) { return { upsample((char) hi.x, lo.x), upsample((char) hi.y, lo.y) }; }
-ushort2 upsample(uchar2  hi, uchar2 lo) { return { upsample(hi.x, lo.x), upsample(hi.y, lo.y) }; }
-int2    upsample(short2  hi, short2 lo) { return { upsample(hi.x, lo.x), upsample(hi.y, lo.y) }; }
-uint2   upsample(ushort2 hi, short2 lo) { return { upsample(hi.x, lo.x), upsample(hi.y, lo.y) }; }
-long2   upsample(int2    hi, int2   lo) { return { upsample(hi.x, lo.x), upsample(hi.y, lo.y) }; }
-ulong2  upsample(uint2   hi, int2   lo) { return { upsample(hi.x, lo.x), upsample(hi.y, lo.y) }; }
-
-short4 upsample(char4 hi, uchar4 lo) {
-    return {
-        upsample((char) hi.x, lo.x), upsample((char) hi.y, lo.y),
-        upsample((char) hi.z, lo.z), upsample((char) hi.w, lo.w)
-    };
-}
-
-ushort4 upsample(uchar4 hi, uchar4 lo) {
-    return {
-        upsample(hi.x, lo.x), upsample(hi.y, lo.y),
-        upsample(hi.z, lo.z), upsample(hi.w, lo.w)
-    };
-}
-int4 upsample(short4 hi, short4 lo) {
-    return {
-        upsample(hi.x, lo.x), upsample(hi.y, lo.y),
-        upsample(hi.z, lo.z), upsample(hi.w, lo.w)
-    };
-}
-uint4 upsample(ushort4 hi, short4 lo) {
-    return {
-        upsample(hi.x, lo.x), upsample(hi.y, lo.y),
-        upsample(hi.z, lo.z), upsample(hi.w, lo.w)
-    };
-}
-long4 upsample(int4 hi, int4 lo) {
-    return {
-        upsample(hi.x, lo.x), upsample(hi.y, lo.y),
-        upsample(hi.z, lo.z), upsample(hi.w, lo.w)
-    };
-}
-ulong4 upsample(uint4 hi, int4 lo) {
-    return {
-        upsample(hi.x, lo.x), upsample(hi.y, lo.y),
-        upsample(hi.z, lo.z), upsample(hi.w, lo.w)
-    };
-}
-
 // The following functions need to be implemented for int's and their vectorizations: mad24, mul24
 
 int mul24(int x, int y)        { return __mul24(x, y); }
@@ -811,24 +729,6 @@ int mad24(int x, int y, int z) { return __mul24(x, y) + z; }
 // TODO: Implement vectorizations of mul24, mad24
 
 // The following are available, for some reason, only for a specific combination of types:
-
-// TODO: Implement these
-uint dot(uchar4 a, uchar4 b);
-int dot(char4 a, char4 b);
-int dot(uchar4 a, char4 b);
-int dot(char4 a, uchar4 b);
-uint dot_acc_sat(uchar4 a, uchar4 b, uint acc);
-int dot_acc_sat(char4 a, char4 b, int acc);
-int dot_acc_sat(uchar4 a, char4 b, int acc);
-int dot_acc_sat(char4 a, uchar4 b, int acc);
-uint dot_4x8packed_uu_uint(uint a, uint b);
-int dot_4x8packed_ss_int(uint a, uint b);
-int dot_4x8packed_us_int(uint a, uint b);
-int dot_4x8packed_su_int(uint a, uint b);
-uint dot_acc_sat_4x8packed_uu_uint(uint a, uint b, uint acc);
-int dot_acc_sat_4x8packed_ss_int(uint a, uint b, int acc);
-int dot_acc_sat_4x8packed_us_int(uint a, uint b, int acc);
-int dot_acc_sat_4x8packed_su_int(uint a, uint b, int acc);
 
 // §6.15.3.1. Extended Bit Operations
 // --------------------------------------------------------------

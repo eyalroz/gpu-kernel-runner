@@ -18,7 +18,7 @@
 #ifndef __OPENCL_VERSION__
 
 // §6.7: Address space qualifiers
-// ------------------------
+// ------------------------------
 
 #define __global
 #define __private
@@ -33,13 +33,25 @@
 // _Not_ defining __read_only/read_only , __write_only/write_only,  __read_write/read_write , which
 // apply to OpenCL images, that should not be used in kernels being ported from CUDA to OpenCL
 
-// §6.9 Function qualifiers, §6.10. Storage-Class Specifiers
-// ---------------------------------------------------------
+// §6.9 Function qualifiers
+// ------------------------
 #ifndef __kernel
 #define __kernel extern "C" __global__
 // TODO: Should we uncomment this next line?
 // #define kernel __kernel
 #endif
+
+// §6.9.2. Optional Attribute Qualifiers
+// -------------------------------------
+
+// Have not defined: __attribute__((vec_type_hint(<type>)))
+//
+// TODO: Can we do something about  __attribute__((work_group_size_hint(X, Y, Z))) ?
+
+// Nothing to define for §6.10 Storage-Class Specifiers
+
+// §6.11 Restriction
+// -----------------
 
 #ifndef restrict
 #if defined(__CDT_PARSER__) || defined (__JETBRAINS_IDE__)
@@ -51,14 +63,6 @@
 #define __restrict __restrict__
 #endif
 #endif // restrict
-// and note __local is missing!
-
-// §6.9.2. Optional Attribute Qualifiers
-// -------------------------------------
-
-// Have not defined: __attribute__((vec_type_hint(<type>)))
-//
-// TODO: Can we do something about  __attribute__((work_group_size_hint(X, Y, Z))) ?
 
 
 

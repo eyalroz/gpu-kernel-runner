@@ -27,6 +27,12 @@ inline std::string to_lowercase(std::string str) {
 	return str;
 }
 
+/// Make all Latin characters in a string uppercase (in-place)
+inline std::string to_uppercase(std::string str) {
+	std::transform(str.begin(), str.end(), str.begin(),
+		[](unsigned char c){ return std::toupper(c); });
+	return str;
+}
 /**
  * Splits a string into a sequence of strings between occurrences
  * of a chosen delimiter.

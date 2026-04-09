@@ -312,6 +312,22 @@ inline bool is_valid_identifier(const std::string& str)
         });
 }
 
+template <typename Map, typename Key>
+optional<typename Map::mapped_type> safe_lookup(const Map& map, Key key)
+{
+    auto find_result = map.find(key);
+    if (find_result == std::cend(map)) { return nullopt; }
+    return find_result->second;
+}
+
+template <typename Container, typename Product = typename Container::value_type>
+Product product(Container const& container)
+{
+    Product result = 1;
+    for(auto const& x : container) { result *= x; }
+    return result;
+}
+
 } // namespace util
 
 #endif // UTIL_MISCELLANY_HPP_

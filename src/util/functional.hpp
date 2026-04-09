@@ -37,6 +37,12 @@ DestinationContainer transform(const SourceContainer& container, F func)
     return transformed;
 }
 
+template<typename Container, typename T>
+auto inner_product(const Container& lhs, const Container& rhs, T init)
+-> decltype(std::inner_product(lhs.begin(), rhs.begin(), init))
+{
+    return std::inner_product(lhs.begin(), rhs.begin(), init);
+}
 
 namespace projected {
 
@@ -151,6 +157,17 @@ OutContainer transform_if(InContainer in_container, Predicate pred, UnaryOperato
     transform_if(std::cbegin(in_container), std::cend(in_container),
         std::inserter(result, std::end(result)), std::forward<Predicate>(pred), std::forward<UnaryOperator>(op));
     return result;
+}
+
+/// Create a map from any container, by extracting/deriving a key from each of its values
+template<template <typename, typename, typename...> class Map, typename Container, typename KeyExtractor>
+Map<std::result_of_t<KeyExtractor(typename Container::value_type)>, typename Container::value_type>
+to_map(const Container& container, KeyExtractor key_extractor)
+{
+    using mapped_type = typename Container::value_type;
+    using key_type = std::result_of_t<KeyExtractor(mapped_type)>;
+    auto add_key = [&](mapped_type const& value) { return std::make_pair(key_extractor(value), value); };
+    return util::transform<Map<key_type, mapped_type>>(container, add_key);
 }
 
 } // namespace util

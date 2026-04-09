@@ -20,21 +20,21 @@ void copy_buffer_to_device(
     const execution_context_t& context,
     const std::string&         buffer_name,
     const device_buffer_type&  device_side_buffer,
-    const host_buffer_t&    host_side_buffer);
+    const host_buffer_t&       host_side_buffer);
 
 void copy_buffer_on_device(
     execution_ecosystem_t      ecosystem,
     cl::CommandQueue*          queue,
     const device_buffer_type&  destination,
-    const device_buffer_type&  origin);
+    const device_buffer_type&  source);
 
 void copy_input_buffers_to_device(const execution_context_t& context);
 
 void copy_buffer_to_host(
     execution_ecosystem_t      ecosystem,
-    cl::CommandQueue*          opencl_queue,
+    cl::CommandQueue* const    opencl_queue,
     const device_buffer_type&  device_side_buffer,
-    host_buffer_t&          host_side_buffer);
+    host_buffer_t&             host_side_buffer);
 
 // Note: must take the context as non-const, since it has vector members, and vectors
 // are value-types, not reference-types, i.e. copying into those vectors changes
@@ -52,7 +52,7 @@ void schedule_zero_output_buffers(execution_context_t& context);
 
 void schedule_zero_single_buffer(const execution_context_t& context, const device_buffer_type& buffer);
 
-void create_device_side_buffers(execution_context_t& context);
+void create_all_device_side_buffers(execution_context_t& context);
 
 // Note: Will create buffers also for each inout buffers
 void create_host_side_output_buffers(execution_context_t& context);

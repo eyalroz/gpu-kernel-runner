@@ -1,5 +1,6 @@
 
 #include "kernel_adapter.hpp"
+#include "util/spdlog-extra.hpp"
 
 std::ostream& operator<<(std::ostream& os, cuda::grid::dimensions_t dims)
 {
@@ -40,7 +41,7 @@ kernel_adapter::parameter_details_type kernel_adapter::scalar_parameter_details(
     return util::filter(all_params, [](const single_parameter_details& param) { return param.kind == scalar; });
 }
 
-kernel_adapter::parameter_details_type kernel_adapter::buffer_details() const
+kernel_adapter::parameter_details_type kernel_adapter::all_buffer_details() const
 {
     parameter_details_type all_params = parameter_details();
     return util::filter(all_params, [](const single_parameter_details& param) { return param.kind == buffer; });
@@ -73,7 +74,7 @@ kernel_adapter::single_parameter_details kernel_adapter::buffer_details(
     const char*            name,
     parameter_direction_t  direction,
     size_calculator_type   size_calculator,
-    bool                   required ,
+    bool                   required,
     std::initializer_list<std::string> name_aliases)
 {
     if ((direction == scratch) and (size_calculator == no_size_calc)) {
@@ -145,7 +146,7 @@ void push_back_buffer(
     }
     else {
         argument_ptrs_and_maybe_sizes.pointers.push_back(&(buffer.opencl));
-        argument_ptrs_and_maybe_sizes.sizes.push_back(sizeof(cl::Buffer));
+        argument_ptrs_and_maybe_sizes.sizes.push_back(sizeof(cl_mem));
     }
 }
 
@@ -162,5 +163,24 @@ std::size_t apply_size_calc(const size_calculator_type& calc, const execution_co
         context.options.forced_launch_config_components);
 }
 
-bool is_input (kernel_adapter::single_parameter_details spd) { return is_input(spd.direction);  }
-bool is_output(kernel_adapter::single_parameter_details spd) { return is_output(spd.direction); }
+bool is_input (kernel_adapter::single_parameter_details spd) noexcept     { return is_input(spd.direction);  }
+bool is_output(kernel_adapter::single_parameter_details spd) noexcept     { return is_output(spd.direction); }
+bool is_buffer(kernel_adapter::single_parameter_details spd) noexcept     { return is_buffer(spd.kind); }
+bool is_scratch(kernel_adapter::single_parameter_details spd) noexcept    { return spd.direction == parameter_direction_t::scratch; }
+bool is_scalar(kernel_adapter::single_parameter_details spd) noexcept     { return is_scalar(spd.kind); }
+
+
+// Returns nullopt if there's no information allowing us to make this calculation:
+// No size calculator function, no image details, and no user-specified size
+optional<size_t> calculate_buffer_size(
+    kernel_adapter::single_parameter_details const& buffer_details,
+    execution_context_t const& context)
+{
+    if (not buffer_details.size_calculator) { return nullopt; }
+    return buffer_details.size_calculator(
+        context.buffers.host_side.inputs,
+        context.scalar_input_arguments.typed,
+        context.preprocessor_definitions.finalized.valueless,
+        context.preprocessor_definitions.finalized.valued,
+        context.options.forced_launch_config_components);
+}

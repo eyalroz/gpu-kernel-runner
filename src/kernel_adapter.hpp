@@ -20,7 +20,8 @@
 // to complain about dimensions_t's they get.
 std::ostream& operator<<(std::ostream& os, cuda::grid::dimensions_t dims);
 
-// Note: The returned size is in bytes, not elements
+// Notes:
+// * The returned size is in bytes, not elements
 using size_calculator_type = std::size_t (*)(
     const host_buffers_t& input_buffers,
     const scalar_arguments_map& scalar_arguments,
@@ -91,6 +92,7 @@ public: // constructors & destructor
     kernel_adapter& operator=(kernel_adapter&) = default;
     kernel_adapter& operator=(kernel_adapter&&) = default;
 
+    // This should really be a case class
     struct single_parameter_details {
         const char* name;
         std::vector<std::string> aliases_;
@@ -138,7 +140,7 @@ public:
 
     virtual const parameter_details_type & parameter_details() const = 0;
     virtual parameter_details_type scalar_parameter_details() const;
-    virtual parameter_details_type buffer_details() const;
+    virtual parameter_details_type all_buffer_details() const;
     // TODO: Could use an optional-ref return type here
     /**
      * @brief Obtains the set of preprocessor definitions which may affect the kernel's  compilation,
@@ -272,10 +274,18 @@ inline void kernel_adapter::pusher(
     return kernel_adapters::push_back_scalar<Scalar>(argument_ptrs_and_maybe_sizes, context, scalar_parameter_name);
 }
 
-bool is_input (kernel_adapter::single_parameter_details spd);
-bool is_output(kernel_adapter::single_parameter_details spd);
+bool is_input (kernel_adapter::single_parameter_details spd) noexcept;
+bool is_output(kernel_adapter::single_parameter_details spd) noexcept;
+bool is_buffer(kernel_adapter::single_parameter_details spd) noexcept;
+bool is_scratch(kernel_adapter::single_parameter_details spd) noexcept;
+bool is_scalar(kernel_adapter::single_parameter_details spd) noexcept;
 
 std::size_t apply_size_calc(const size_calculator_type& calc, const execution_context_t& context);
+
+optional<size_t> calculate_buffer_size(
+    kernel_adapter::single_parameter_details const& buffer_details,
+    execution_context_t const& context);
+
 
 // Boilerplate macros for subclasses of kernel_adapter.
 // Each of these needs to be invoked once in any subclass

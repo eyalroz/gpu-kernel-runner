@@ -17,7 +17,6 @@
  *  | Instead of                | Use                                                   | Explanation/Note                              |
  *  |:--------------------------|:------------------------------------------------------|:----------------------------------------------|
  *  | `__local` / `__shared`    | `__local_array` , `__local_variable` or `__local_ptr` | Let a macro sort out the memory space marking |
- *  | `max(x,y)`                | `fmax(x,y)`                                           | it's too risky to define a `max(x,y)` macro   |
  *  | struct foo = { 12, 3.4 }; | struct foo = make_compound(foo){ 12, 3.4; }           | Allow for different construction syntax       |
  *  | constexpr                 | either CONSTEXPR_OR_CONSTANT_MEM, or an enum          |                                               |
  *  | vector type literals      | definition of a vector type variable, then assignment | We could implement vector-type named          |
@@ -34,12 +33,15 @@
  *  |:-------------------------------------------|:----------------------------------------------|
  *  | __ROUNDING_MODE__                          | It's deprecated by OpenCL 1.1                 |
  *  | addressing multiple vector members at once | Just don't do it; address them individually   |
- *  | clang Blocks (as per §6.14 Blocks)         | Not supported in CUDA C++                     |
- *  | subgroups and related builtin functions    | Not supported in CUDA                         |
+ *  | clang Blocks (as per OpenCL spec §6.14 )   | Not supported in CUDA C++                     |
+ *  | subgroups and related builtin functions    | Not supported in CUDA C++                     |
  *
  *
  * @note Use of dynamic shared memory is very different between OpenCL and CUDA, you'll
  * have to either avoid it or work the differences out yourself.
+ *
+ * @note The definition in this header (and the included headers) refer to V3.0.19 of the OpenCL
+ * specification, published July 10th, 2025.
  */
 #ifndef PORT_FROM_OPENCL_CUH_
 #define PORT_FROM_OPENCL_CUH_
@@ -57,6 +59,13 @@
  * - Feature macros: 6.2.1
  * - Subgroup-related functions: 6.2.2
  * - standalone & member operators: 6.5
+ * - vector operations: 6.6
+ * - address space qualifiers: 6.7
+ * - access qualifiers: 6.8
+ *
+ * TODO:
+ * - Define constructs relating to vector-types of lengths 8 and 16;
+ * - Complete partial definitions of constructs relating to vector-types of length 3
  */
 
 #endif // PORT_FROM_OPENCL_CUH_

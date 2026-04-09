@@ -54,6 +54,7 @@ add_executable(kernel-runner
 	src/opencl-related/build.cpp
 	src/opencl-related/execution.cpp
 	src/opencl-related/ugly_error_handling.cpp
+	src/opencl-related/miscellany.cpp
 	src/nvrtc-related/build.cpp
 	src/nvrtc-related/execution.cpp
 	src/nvrtc-related/standard_header_substitutes.cpp

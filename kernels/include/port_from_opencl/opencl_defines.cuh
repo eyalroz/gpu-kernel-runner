@@ -20,12 +20,17 @@
 // §6.12. Preprocessor Directives and Macros
 // ------------------------------------------
 
+// Not making the OpenCL version definitions - as we rely on those to distinguish
+// between being in CUDA vs OpenCL code. If someone else users them, they likely
+// want to do the same.
+
 // TODO: Define __FAST_RELAXED_MATH__ if the CUDA compiler is in that mode
 
 // See https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#hardware-implementation
 #define __ENDIAN_LITTLE__ 1
 
 // Not defining OpenCL's __ROUNDING_MODE__, it is deprecated
+
 
 // §6.15.2.1
 // --------------------------------------

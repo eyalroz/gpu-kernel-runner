@@ -145,7 +145,6 @@ foreach(tgt ${compiled-targets})
 	target_include_directories(${tgt} SYSTEM PRIVATE third-party)
 	target_include_directories(${tgt} PRIVATE src src/cuda-samples-helpers)
 	target_warning_options(${tgt})
-	target_compile_definitions(${tgt} PRIVATE CUDA_INCLUDE_DIR="${CUDAToolkit_INCLUDE_DIRS}")
 	target_link_libraries(
 		${tgt}
 		PRIVATE

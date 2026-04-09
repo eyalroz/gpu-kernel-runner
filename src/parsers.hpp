@@ -26,7 +26,7 @@ any parser(const std::string& str)
     std::istringstream iss;
 
     T result;
-    iss.exceptions();
+    // Should we do something with the stream's exception mask?
     iss.str(str);
     iss >> result;
     return result;

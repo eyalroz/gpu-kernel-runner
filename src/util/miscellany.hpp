@@ -75,8 +75,9 @@ bool remove_first(Container& container, const Key& key)
 template <typename Container, typename Key>
 void remove(Container& container, const Key& key)
 {
-    std::remove(container.begin(), container.end(), key);
+    (void) std::remove(container.begin(), container.end(), key);
 }
+
 // This is a bit ugly, but we don't have ranges
 template <typename Map>
 std::unordered_set<typename Map::key_type>

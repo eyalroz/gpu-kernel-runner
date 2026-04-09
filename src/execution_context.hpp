@@ -66,7 +66,11 @@ struct execution_context_t {
     // The adapter also holds the parsed kernel-specific command-line options
     struct {
         struct {
-            host_buffers_t inputs, outputs; // , expected;
+            host_buffers_t inputs, outputs;
+            // Note: There is no "inout" member here, because an "inout" buffer
+            // will in fact have one input host buffer and one output host buffer.
+            // It is probably not worth it to unify those just to avoid the extra
+            // allocation.
         } host_side;
         struct {
             device_buffers_map inputs, outputs, scratch;

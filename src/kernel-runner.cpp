@@ -139,7 +139,7 @@ void resolve_buffer_filenames(execution_context_t& context)
 
     const auto& args = context.kernel_arguments;
     auto params_with_args = util::keys(args);
-    for(const auto& buffer : ka.buffer_details()) {
+    for(const auto& buffer : ka.all_buffer_details()) {
         if (buffer.name == nullptr or *(buffer.name) == '\0') {
             die("Empty/missing kernel parameter name encountered");
         }
@@ -264,8 +264,7 @@ execution_context_t initialize_execution_context(const parsed_cmdline_options_t&
     else { // OpenCL
         initialize_execution_context<execution_ecosystem_t::opencl>(execution_context);
     }
-    execution_context.kernel_adapter_ =
-        kernel_adapter::produce_subclass(string(parsed_options.kernel.key));
+    execution_context.kernel_adapter_ = kernel_adapter::produce_subclass(string(parsed_options.kernel.key));
 
     collect_include_paths(execution_context);
     execution_context.language_standard =
@@ -418,38 +417,44 @@ void validate_scalars(execution_context_t& context)
     }
 }
 
+// Only call this if an argument has been specified and an input buffer has been read for the parameter
+void validate_single_input_buffer_size(
+    execution_context_t const& context,
+    kernel_adapter::single_parameter_details buffer_details)
+{
+    auto name = buffer_details.name;
+    auto const &buffer = context.buffers.host_side.inputs.at(name);
+    auto calculated_size = calculate_buffer_size(buffer_details, context);
+    if (not calculated_size) {
+        spdlog::debug("No size calculator nor specified size for input buffer '{}'; assuming size is valid", buffer_details.name);
+        return;
+    }
+    if (*calculated_size == buffer.size()) {
+        spdlog::trace("Input buffer '{}' is of size {} bytes, as expected", name, buffer.size());
+    }
+    if (context.options.accept_oversized_inputs and *calculated_size < buffer.size()) {
+        spdlog::info("Input buffer '{}' is of size {} bytes, exceeding the expected size of {} bytes",
+            buffer_details.name, buffer.size(), *calculated_size);
+        return;
+    }
+    die("Input buffer for kernel argument '{}' is of size {} bytes, {} its required {}size of {} bytes",
+        buffer_details.name, buffer.size(),
+        (buffer.size() > calculated_size ? "exceeding" : "lower than"),
+        (context.options.accept_oversized_inputs ? "minimum " : ""),
+        *calculated_size);
+}
+
 void validate_input_buffer_sizes(execution_context_t& context)
 {
     spdlog::debug("Validating input buffer sizes");
     auto& all_params = context.kernel_adapter_->parameter_details();
     auto input_buffer_details = util::filter(all_params,
-        [&](const auto& param_details) {
-            return is_input(param_details.direction) and param_details.kind == kernel_parameters::kind_t::buffer;
-        });
+        [&](const auto& param_details) { return is_input(param_details) and is_buffer(param_details); });
     for (auto const& buffer_details : input_buffer_details) {
-        auto const &buffer = context.buffers.host_side.inputs[buffer_details.name];
-        if (not buffer_details.size_calculator) {
-            spdlog::debug("No size calculator for input buffer '{}'; assuming size is valid", buffer_details.name);
-            continue;
-        }
-        auto calculated = apply_size_calc(buffer_details.size_calculator, context);
-        if (calculated == buffer.size()) {
-            spdlog::trace("Input buffer '{}' is of size {} bytes, as expected",
-                buffer_details.name, buffer.size());
-            continue;
-        }
-        if (context.options.accept_oversized_inputs and calculated < buffer.size()) {
-            spdlog::info("Input buffer '{}' is of size {} bytes, exceeding the expected size of {} bytes",
-                buffer_details.name, buffer.size(), calculated);
-            continue;
-        }
-        die("Input buffer '{}' is of size {} bytes, {} its required {}size of {} bytes",
-            buffer_details.name, buffer.size(),
-            (buffer.size() > calculated ? "exceeding" : "lower than"),
-            (context.options.accept_oversized_inputs ? "minimum " : ""),
-            calculated);
+        validate_single_input_buffer_size(context, buffer_details);
     }
 }
+
 
 void validate_arguments(execution_context_t& context)
 {
@@ -516,7 +521,7 @@ void finalize_kernel_arguments(execution_context_t& context)
         for(size_t i = 0; i < context.finalized_arguments.pointers.size() - 1; i++ ) {
             auto arg = context.finalized_arguments.pointers[i];
             auto spd = context.kernel_adapter_->parameter_details()[i];
-            if (spd.kind != kernel_parameters::kind_t::buffer) {
+            if (is_scalar(spd)) {
                 spdlog::trace("Kernel argument {0:1}: Scalar", i, num_digits);
                 continue;
             }
@@ -633,7 +638,6 @@ void handle_execution_durations(execution_context_t &context)
     }
     if (not context.options.execution_durations_file.empty()) {
         std::ofstream ofs(context.options.execution_durations_file);
-        ofs.exceptions();
         print_execution_durations(ofs, context.durations);
     }
 }
@@ -705,11 +709,15 @@ void verify_launch_configuration(execution_context_t const& context)
     }
 }
 
-int main(int argc, char** argv)
+void initialize_logging()
 {
     spdlog::set_level(spdlog::level::info);
     spdlog::cfg::load_env_levels(); // support setting the logging verbosity with an environment variable
+}
 
+int main(int argc, char** argv)
+{
+    initialize_logging();
     auto parsed_cmdline_options = parse_command_line(argc, argv);
 
     if (parsed_cmdline_options.early_exit_action) {
@@ -741,7 +749,7 @@ int main(int argc, char** argv)
     generate_additional_scalar_arguments(context);
     validate_arguments(context);
     create_host_side_output_buffers(context);
-    create_device_side_buffers(context);
+    create_all_device_side_buffers(context);
     copy_input_buffers_to_device(context);
 
     finalize_kernel_arguments(context);
@@ -760,3 +768,4 @@ int main(int argc, char** argv)
 
     spdlog::info("All done.");
 }
+

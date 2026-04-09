@@ -2,12 +2,19 @@
 
 #include "kernel_adapter.hpp"
 #include "util/buffer_io.hpp"
+#include "opencl-related/miscellany.hpp"
 
+#include "util/spdlog-extra.hpp"
 #include <spdlog/spdlog.h>
 
 using std::size_t;
 using std::string;
 
+// Notes:
+// * This function does not utilize, nor set, the expected/intended buffer sizes;
+//   it merely reads what's actually in the buffer files
+// * Not using memory-mapping, this is a plain read
+// * No need for any special treatment for image-type kernel arguments
 host_buffers_t read_input_buffers_from_files(
     const name_set&           buffer_names,
     const maybe_string_map&   filenames,
@@ -37,18 +44,18 @@ host_buffers_t read_input_buffers_from_files(
 
 void read_input_buffers_from_files(execution_context_t& context)
 {
+    // TODO: Check that we don't need to re-check that these are actually buffers
     auto input_buffer_names = buffer_names(*context.kernel_adapter_,
-        [&](const auto& spd) {
-            return is_input(spd.direction) and spd.kind == kernel_parameters::kind_t::buffer;
-        }
-    );
+        [&](const auto& spd) { return is_input(spd.direction); } );
     context.buffers.host_side.inputs = read_input_buffers_from_files(
         input_buffer_names,
         context.buffers.filenames.inputs,
         context.options.buffer_base_paths.input);
 }
 
-// This function is synchronous and not effect by the sync_after_buffer_op option
+// Notes:
+// * This function is synchronous and not affected by the sync_after_buffer_op option
+// * This works for raw buffers and for images
 void copy_buffer_to_device(
     const execution_context_t& context,
     const std::string&         buffer_name,
@@ -62,9 +69,11 @@ void copy_buffer_to_device(
         cuda::context::current::scoped_override_t scoped_context_override{ *context.cuda.context };
         cuda::memory::copy(device_side_buffer.cuda.data(), host_side_buffer.data(), host_side_buffer.size());
     } else { // OpenCL
-        const constexpr auto blocking { CL_TRUE };
-        context.opencl.queue.enqueueWriteBuffer(device_side_buffer.opencl, blocking, 0, host_side_buffer.size(),
-            host_side_buffer.data());
+        const constexpr auto is_blocking { CL_TRUE };
+        constexpr const auto no_offset { 0 };
+        context.opencl.queue.enqueueWriteBuffer(
+            device_side_buffer.opencl, is_blocking, no_offset,
+             host_side_buffer.size(), host_side_buffer.data());
     }
 }
 
@@ -72,14 +81,16 @@ void copy_buffer_on_device(
     execution_ecosystem_t      ecosystem,
     cl::CommandQueue*          queue,
     const device_buffer_type&  destination,
-    const device_buffer_type&  origin)
+    const device_buffer_type&  source)
 {
     if (ecosystem == execution_ecosystem_t::cuda) {
-        cuda::memory::copy(destination.cuda.data(), origin.cuda.data(), destination.cuda.size());
+        cuda::memory::copy(destination.cuda.data(), source.cuda.data(), destination.cuda.size());
     } else { // OpenCL
+        // OpenCL
+        constexpr const auto no_offset { 0 };
         size_t size;
-        origin.opencl.getInfo(CL_MEM_SIZE, &size);
-        queue->enqueueCopyBuffer(origin.opencl, destination.opencl, 0, 0, size);
+        source.opencl.getInfo(CL_MEM_SIZE, &size);
+        queue->enqueueCopyBuffer(source.opencl, destination.opencl, no_offset, no_offset, size);
     }
 }
 
@@ -100,7 +111,6 @@ void copy_input_buffers_to_device(const execution_context_t& context)
         const auto& host_side_buffer = input_pair.second;
         const auto& device_side_buffer = context.buffers.device_side.inputs.at(name);
         copy_buffer_to_device(context, name, device_side_buffer, host_side_buffer);
-
     }
 
     spdlog::debug("Copying in-out buffers to the GPU (to pristine, not-to-be-altered copies).");
@@ -115,17 +125,19 @@ void copy_input_buffers_to_device(const execution_context_t& context)
 
 void copy_buffer_to_host(
     execution_ecosystem_t      ecosystem,
-    cl::CommandQueue*          opencl_queue,
+    cl::CommandQueue* const    opencl_queue,
     const device_buffer_type&  device_side_buffer,
-    host_buffer_t&          host_side_buffer)
+    host_buffer_t&             host_side_buffer)
 {
     if (ecosystem == execution_ecosystem_t::cuda) {
         cuda::memory::copy(host_side_buffer.data(), device_side_buffer.cuda.data(), host_side_buffer.size());
     } else {
         // OpenCL
-        const constexpr auto blocking { CL_TRUE };
+        const constexpr auto is_blocking { CL_TRUE };
         constexpr const auto no_offset { 0 };
-        opencl_queue->enqueueReadBuffer(device_side_buffer.opencl, blocking, no_offset, host_side_buffer.size(), host_side_buffer.data());
+        opencl_queue->enqueueReadBuffer(device_side_buffer.opencl,
+            is_blocking, no_offset, host_side_buffer.size(),
+            host_side_buffer.data());
     }
 }
 
@@ -173,11 +185,11 @@ device_buffer_type create_device_side_buffer(
     return result;
 }
 
-device_buffers_map create_device_side_buffers(
+static device_buffers_map create_device_side_buffers(
     execution_ecosystem_t                   ecosystem,
     const optional<const cuda::context_t>&  cuda_context,
     optional<cl::Context>                   opencl_context,
-    const buffer_size_map                   buffer_sizes)
+    const buffer_size_map&                  buffer_sizes)
 {
     return util::transform<device_buffers_map>(
         buffer_sizes,
@@ -195,27 +207,26 @@ device_buffers_map create_device_side_buffers(
 }
 
 device_buffers_map create_device_side_buffers(
-    execution_ecosystem_t                   ecosystem,
-    const optional<const cuda::context_t>&  cuda_context,
-    optional<cl::Context>                   opencl_context,
-    const host_buffers_t&                   host_side_buffers)
+    execution_context_t const& context,
+    const host_buffers_t& host_side_buffers)
 {
     auto buffer_sizes = util::transform<buffer_size_map>(
         host_side_buffers,
         [&](const auto& p) -> std::pair<string, size_t>
         { return { p.first, p.second.size() }; });
-    return create_device_side_buffers(ecosystem, cuda_context, opencl_context, buffer_sizes);
+    return create_device_side_buffers(
+        context.ecosystem,
+        context.cuda.context,
+        context.opencl.context,
+        buffer_sizes);
 }
 
-device_buffers_map create_scratch_buffers(execution_context_t& context)
+device_buffers_map create_all_device_scratch_buffers(execution_context_t& context)
 {
-    auto scratch_buffer_details = util::filter(
-        context.get_kernel_adapter().buffer_details(),
-        [&](const auto& buffer_details) {
-            return buffer_details.direction == parameter_direction_t::scratch;
-        });
+    auto scratch_buffer_param_details = util::filter(
+        context.get_kernel_adapter().all_buffer_details(), is_scratch);
     auto buffer_sizes = util::transform<buffer_size_map>(
-        scratch_buffer_details,
+        scratch_buffer_param_details,
         [&](const auto& buffer_details) -> std::pair<string, size_t>
         { return { buffer_details.name, apply_size_calc(buffer_details.size_calculator, context) }; });
     return create_device_side_buffers(context.ecosystem, context.cuda.context, context.opencl.context, buffer_sizes);
@@ -259,6 +270,7 @@ void schedule_zero_output_buffers(execution_context_t& context)
         const auto& buffer = context.buffers.device_side.outputs.at(buffer_name);
         // Note: A bit of a kludge, but - we can't copy the optional, since stream copying is verbotten,
         // and we can't use an optional<stream_t&>, since C++ doesn't like optional-of-references
+        // TODO: Switch to optional_ref; we can get it, for example, from the CUDA API wrappers
         auto maybe_cuda_stream_ptr = context.cuda.stream ? optional<cuda::stream_t*>(&context.cuda.stream.value()) : nullopt;
         schedule_zero_buffer(context.ecosystem, buffer, maybe_cuda_stream_ptr, &context.opencl.queue, buffer_name);
     }
@@ -273,8 +285,9 @@ void schedule_zero_single_buffer(const execution_context_t& context, const devic
     // Note: A bit of a kludge, but - we can't copy the optional, since stream copying is verbotten,
     // and we can't use an optional<stream_t&>, since C++ doesn't like optional-of-references
     auto maybe_cuda_stream_ptr = context.cuda.stream ? optional<const cuda::stream_t*>(&context.cuda.stream.value()) : nullopt;
-    schedule_zero_buffer(context.ecosystem, buffer, maybe_cuda_stream_ptr, &context.opencl.queue,
-                         "kernel_runner_L2_cache_clearing_gadget");
+    schedule_zero_buffer(
+        context.ecosystem, buffer, maybe_cuda_stream_ptr, &context.opencl.queue,
+        "kernel_runner_L2_cache_clearing_gadget");
     if (context.options.sync_after_buffer_op) { gpu_sync(context); }
 }
 
@@ -290,24 +303,16 @@ static size_t get_l2_cache_size(const execution_context_t& context)
     }
 }
 
-void create_device_side_buffers(execution_context_t& context)
+void create_all_device_side_buffers(execution_context_t& context)
 {
     spdlog::debug("Creating {} GPU-side buffers.", context.buffers.host_side.inputs.size());
-    context.buffers.device_side.inputs = create_device_side_buffers(
-        context.ecosystem,
-        context.cuda.context,
-        context.opencl.context,
-        context.buffers.host_side.inputs);
+    context.buffers.device_side.inputs = create_device_side_buffers(context, context.buffers.host_side.inputs);
     spdlog::debug("Input buffers, and pristine copies of in-out buffers, created in GPU memory.");
-    context.buffers.device_side.outputs = create_device_side_buffers(
-        context.ecosystem,
-        context.cuda.context,
-        context.opencl.context,
-        context.buffers.host_side.outputs);
-            // ... and remember the behavior regarding in-out buffers: For each in-out buffers, a buffer
-            // is created in _both_ previous function calls
+    context.buffers.device_side.outputs = create_device_side_buffers(context, context.buffers.host_side.outputs);
+        // ... and remember the behavior regarding in-out buffers: For each in-out buffers, a buffer
+        // is created in _both_ previous function calls
     spdlog::debug("Output buffers, and a work copy of the input buffers, have created in GPU memory");
-    context.buffers.device_side.scratch = create_scratch_buffers(context);
+    context.buffers.device_side.scratch = create_all_device_scratch_buffers(context);
     spdlog::debug("Scratch buffers created in GPU memory");
     if (context.options.clear_l2_cache) {
         auto size = get_l2_cache_size(context);
@@ -320,45 +325,49 @@ void create_device_side_buffers(execution_context_t& context)
     gpu_sync(context);
 }
 
-// Note: Will create buffers also for each inout buffers
+size_t get_output_buffer_size(const execution_context_t &context,
+    const kernel_adapter::single_parameter_details &buffer_details, const char *&buffer_name)
+{
+    // maybe we've already computed this?
+    auto already_existing = util::safe_lookup(context.buffers.host_side.outputs, buffer_name);
+    if (already_existing) {
+        return already_existing->size();
+    }
+    // The following should only work for inout buffers; should we double-check?
+    auto as_input_buffer = util::safe_lookup(context.buffers.host_side.inputs, buffer_name);
+    auto explicitly_specified_size = util::safe_lookup(context.options.output_buffer_sizes, std::string{buffer_name});
+    if (as_input_buffer and explicitly_specified_size) {
+        // TODO: Can this sanity check be moved to when the input buffers are read from files?
+        if (as_input_buffer->size() != *explicitly_specified_size) {
+            die("Explicitly-specified size of output buffer {} and its input file size disagree: {} != {}",
+                buffer_name, as_input_buffer->size(), *explicitly_specified_size);
+        }
+    }
+    if (as_input_buffer) { return as_input_buffer->size(); }
+    if (explicitly_specified_size) { return *explicitly_specified_size; }
+    auto calculated = calculate_buffer_size(buffer_details, context);
+    if (calculated) { return *calculated; }
+    die("Cannot determine the size of output buffer '{}': No user-specified size "
+        "and no size calculator is available", buffer_name);
+}
+
+// Notes:
+// * Will create buffers also for inout parameters, not just output-only
+// * No need for special treatment of image-type kernel arguments
 void create_host_side_output_buffers(execution_context_t& context)
 {
     // TODO: Double-check that all output and inout buffers have entries in the map we've received.
 
     auto& all_params = context.kernel_adapter_->parameter_details();
     auto output_buffer_details = util::filter(all_params,
-        [&](const auto& param_details) {
-            return is_output(param_details.direction) and param_details.kind == kernel_parameters::kind_t::buffer;
-        }
-    );
+        [&](const auto& spd) { return is_output(spd) and is_buffer(spd); });
     spdlog::debug("Creating {} host-side output buffers", output_buffer_details.size());
 
-    context.buffers.host_side.outputs = util::transform<decltype(context.buffers.host_side.outputs)>(
+    context.buffers.host_side.outputs = util::transform<host_buffers_t>(
         output_buffer_details,
         [&](const kernel_adapter::single_parameter_details& buffer_details) {
             auto buffer_name = buffer_details.name;
-            size_t buffer_size;
-            if (buffer_details.direction == parameter_direction_t::inout) {
-                buffer_size = context.buffers.host_side.inputs.at(buffer_name).size();
-                // TODO: What if an output size has been specified on the command line
-            }
-            else if (util::contains(context.options.output_buffer_sizes, std::string{buffer_name})) {
-                buffer_size = context.options.output_buffer_sizes.at(buffer_name);
-            }
-            else {
-                if (buffer_details.size_calculator == nullptr) {
-                    spdlog::critical("Cannot determine the size of output buffer '{}': No used-specified size and no size calculator available", buffer_name);
-                    throw std::logic_error(
-                        "Cannot determine the size of output buffer '" + std::string{buffer_name}
-                        + "': No user-specified size and no size calculator function available");
-                }
-                buffer_size = buffer_details.size_calculator(
-                    context.buffers.host_side.inputs,
-                    context.scalar_input_arguments.typed,
-                    context.preprocessor_definitions.finalized.valueless,
-                    context.preprocessor_definitions.finalized.valued,
-                    context.options.forced_launch_config_components);
-            }
+            auto buffer_size = get_output_buffer_size(context, buffer_details, buffer_name);
             auto host_side_output_buffer = host_buffer_t(buffer_size);
             spdlog::trace("Created a host-side output buffer of size {} for kernel parameter '{}'", buffer_size,  buffer_name);
             return std::make_pair(buffer_details.name, std::move(host_side_output_buffer));
@@ -371,6 +380,7 @@ void schedule_reset_of_inout_buffers_working_copy(execution_context_t& context)
     auto& ka = *context.kernel_adapter_;
     auto inout_buffer_names = buffer_names(ka, parameter_direction_t::inout);
     if (inout_buffer_names.empty()) {
+        spdlog::trace("There are no output-only buffers to reset to zero.");
         return;
     }
     spdlog::debug("Scheduling an initialization of the work-copies of the in-out buffers with the pristine copies.");

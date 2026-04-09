@@ -10,6 +10,7 @@
 #include <spdlog/cfg/helpers.h>
 
 #include <vector>
+#include <unordered_map>
 
 using std::size_t;
 using std::string;
@@ -73,6 +74,39 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
         ("h,help", "Print usage information")
         ;
     return options;
+}
+
+namespace detail_ {
+
+} // namespace detail_
+
+// TODO: Support dying by default, when a handler is not specified
+template <typename F, typename G>
+void parse_kv_pairs(
+    const cxxopts::ParseResult &parse_result,
+    char const* cmdline_param_name,
+    char const* message_prefix,
+    char separator,
+    F key_only_handler,
+    G single_kv_pair_handler)
+{
+    if (parse_result.count(cmdline_param_name) == 0) { return; }
+    const auto& args = parse_result[cmdline_param_name].as<std::vector<string>>();
+    for(auto const& definition : args) {
+        auto equals_pos = definition.find(separator);
+        switch(equals_pos) {
+            case string::npos:
+                spdlog::trace("{} without definition: {}", message_prefix, definition);
+                key_only_handler(definition); break;
+            case 0:
+                die("{} value specified with an empty name/alias: \"{}\" ", message_prefix, definition);
+            default:
+                auto key = definition.substr(0, equals_pos);
+                auto value = definition.substr(equals_pos + 1);
+                spdlog::trace("{}: {}={}", message_prefix, key, value);
+                single_kv_pair_handler(key, value); break;
+        }
+    }
 }
 
 parsed_cmdline_options_t parse_command_line(int argc, char** argv)
@@ -411,59 +445,34 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
             parse_result["dynamic-shared-memory-size"].as<unsigned>();
     }
 
-    if (parse_result.count("define") > 0) {
-        const auto& parsed_defines = parse_result["define"].as<std::vector<string>>();
-        for(const auto& definition : parsed_defines) {
-            auto equals_pos = definition.find('=');
-            switch (equals_pos) {
-                case string::npos:
-                    spdlog::trace("Preprocessor definition: {}", definition);
-                    parsed_options.preprocessor_definitions.valueless.emplace(definition);
-                    break;
-                case 0:
-                    die("Preprocessor definition specified with an empty name: \"{}\" ", definition);
-                default:
-                    auto defined_term = definition.substr(0, equals_pos);
-                    auto value = definition.substr(equals_pos + 1);
-                    spdlog::trace("Preprocessor definition: {}={}", defined_term, value);
-                    parsed_options.preprocessor_definitions.valued[defined_term] = value;
-            }
+    parse_kv_pairs(parse_result, "define", "Preprocessor definition", '=',
+        // Without-def
+        [&](auto const& term) {
+            parsed_options.preprocessor_definitions.valueless.emplace(term);
+        },
+        // With-def
+        [&](auto const& key, auto const& value) {
+            parsed_options.preprocessor_definitions.valued[key] = value;
         }
-    }
+    );
 
-    if (parse_result.count("output-buffer-size") > 0) {
-        const auto& buffer_size_settings = parse_result["output-buffer-size"].as<std::vector<string>>();
-        for(const auto& setting : buffer_size_settings) {
-            auto equals_pos = setting.find('=');
-            switch (equals_pos) {
-                case string::npos:
-                case 0:
-                    die("Output buffer size setting is not in a name=size format: \"{}\"", setting);
-                default:
-                    auto buffer_name = setting.substr(0, equals_pos);
-                    auto buffer_size = std::stoul(setting.substr(equals_pos + 1));
-                    spdlog::trace("Size of output buffer '{}' set to {} bytes", buffer_name, buffer_size);
-                    parsed_options.output_buffer_sizes.emplace(buffer_name, buffer_size);
-            }
-        }
-    }
+    parse_kv_pairs(parse_result, "output-buffer-size", "Output buffer size", '=',
+        [&](auto const& str) {
+            die("Output buffer size setting is not in a name=size format: \"{}\"", str);
+        },
+        [&](auto const& buffer_name, auto const& size_str) {
+            auto buffer_size = std::stoul(size_str);
+            parsed_options.output_buffer_sizes[buffer_name] = buffer_size;
+        });
 
-    if (parse_result.count("argument") > 0) {
-        const auto& kernel_arguments_assignments = parse_result["argument"].as<std::vector<string>>();
-        for(const auto& kernel_arg_definition : kernel_arguments_assignments) {
-            auto equals_pos = kernel_arg_definition.find('=');
-            switch(equals_pos) {
-                case string::npos:
-                    die("Kernel argument name/alias \"{}\" specified without a value", kernel_arg_definition);
-                case 0:
-                    die("Kernel argument value specified with an empty name/alias: \"{}\" ", kernel_arg_definition);
-                default:
-                    auto param_name = kernel_arg_definition.substr(0, equals_pos);
-                    auto value = kernel_arg_definition.substr(equals_pos+1);
-                    parsed_options.aliased_kernel_arguments.emplace(param_name, value);
-            }
-        }
-    }
+    parse_kv_pairs(parse_result, "argument", "Kernel argument", '=',
+        [&](auto const& term) {
+            die("Preprocessor definition name/alias \"{}\" specified without a value", term);
+        },
+        [&](auto const& term, auto const& value) {
+            parsed_options.aliased_kernel_arguments[term] = value;
+        });
+
 
     if (parse_result.count("include-path") > 0) {
         parsed_options.include_dir_paths = parse_result["include-path"].as<std::vector<string>>();

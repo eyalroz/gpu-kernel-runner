@@ -58,7 +58,7 @@ struct parsed_cmdline_options_t {
     bool print_execution_durations;
     bool generate_source_line_info;
     bool set_default_compilation_options; // target GPU, language standard etc.
-    bool compile_only;
+    bool compile_only; // When false, we actually execute; otherwise we stop after kernel compilation
     bool generate_debug_info;
     bool accept_oversized_inputs;
     filesystem::path ptx_output_file;

@@ -62,4 +62,7 @@ template <>
 void ensure_gpu_device_validity_<execution_ecosystem_t::opencl>(
     optional<unsigned> platform_id, int device_id, bool);
 
+cl_channel_order get_image_channel_order(device_side_buffer_info_t const & buffer_info);
+cl_channel_type get_image_channel_type(device_side_buffer_info_t const & buffer_info);
+
 #endif // KERNEL_RUNNER_OPENCL_MISC_HPP_

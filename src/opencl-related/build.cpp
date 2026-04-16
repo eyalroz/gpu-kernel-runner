@@ -95,15 +95,31 @@ load_preinclude_files(const include_paths_t& preincludes, const include_paths_t&
         include_dirs, [](const auto& dir) { return filesystem::path{dir}; });
     return util::transform<std::vector<host_buffer_t>>(
         preincludes,
-        [&](const auto& preinclude_file_path_suffix) {
-            for(const auto& p : include_dir_fs_paths) {
-                auto preinclude_path = p / preinclude_file_path_suffix;
-                if (filesystem::exists(preinclude_path)) {
-                    spdlog::debug("Loading pre-include \"{}\" from {}", preinclude_file_path_suffix, preinclude_path.native());
-                    return util::read_file_as_null_terminated_string(preinclude_path);
+        [&](const auto& preinclude_file_path_) {
+            filesystem::path preinclude_file_path = preinclude_file_path_;
+            // First search our process' CWD in case of a relative search path, or use
+            // the absolute path
+            if (filesystem::exists(preinclude_file_path)) {
+                spdlog::debug("Loading pre-include \"{}\"", preinclude_file_path_);
+                return util::read_file_as_null_terminated_string(preinclude_file_path);
+            }
+            else {
+                spdlog::trace("pre-include \"{}\" not found relative to current working directory {}",
+                    preinclude_file_path_, filesystem::current_path().native());
+            }
+            if (preinclude_file_path.is_relative()) {
+                for(const auto& p : include_dir_fs_paths) {
+                    auto preinclude_path = p / preinclude_file_path;
+                    if (filesystem::exists(preinclude_path)) {
+                        spdlog::debug("Loading pre-include \"{}\" from {}", preinclude_file_path_, preinclude_path.native());
+                        return util::read_file_as_null_terminated_string(preinclude_path);
+                    }
+                    else {
+                        spdlog::trace("pre-include \"{}\" not found in {}", preinclude_file_path_, preinclude_path.native());
+                    }
                 }
             }
-            die("Preinclude loading failed: Could not locate preinclude file \"{}\"", preinclude_file_path_suffix);
+            die("Preinclude loading failed: Could not locate preinclude file \"{}\"", preinclude_file_path_);
         });
 }
 

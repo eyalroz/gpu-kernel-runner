@@ -15,7 +15,7 @@ using std::string;
 //   it merely reads what's actually in the buffer files
 // * Not using memory-mapping, this is a plain read
 // * No need for any special treatment for image-type kernel arguments
-host_buffers_t read_input_buffers_from_files(
+static host_buffers_t read_input_buffers_from_files(
     const name_set&           buffer_names,
     const maybe_string_map&   filenames,
     const filesystem::path&   buffer_directory)

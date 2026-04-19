@@ -69,6 +69,12 @@ auto max_element(Container&& container, Projector projector) -> decltype(contain
 
 } // namespace projected
 
+template <typename Container1, typename Container2>
+constexpr auto equal(Container1 const& container1, Container2 const& container2) -> bool
+{
+    return std::equal(std::begin(container1), std::end(container1), std::begin(container2));
+}
+
 template <typename Container>
 constexpr auto min_element(Container&& container) -> decltype(std::begin(container))
 {

@@ -79,9 +79,12 @@ struct optional_launch_config_components_t {
     {
         if (overall_grid_dimensions) { return; }
         if (not block_dimensions or not grid_dimensions) {
-            throw std::invalid_argument{
-                "Launch config components does not have sufficient information "
-                "for completing the overall grid dimensions computation"};
+            throw std::invalid_argument {
+                "Insufficient information for deducing the overall grid dimensions: " +
+                    std::string(grid_dimensions ? "could not determine block dimensions" :
+                    block_dimensions ? "could not determine grid dimensions" :
+                    "could not determine any of the block or grid dimensions")
+            };
         }
         auto& bd = block_dimensions.value();
         auto& gd = grid_dimensions.value();
@@ -106,9 +109,12 @@ struct optional_launch_config_components_t {
     {
         if (grid_dimensions) { return; }
         if (not overall_grid_dimensions or not block_dimensions) {
-            throw std::invalid_argument{
-                "Launch config components does not have sufficient information "
-                "for completing the grid dimensions computation"};
+            throw std::invalid_argument {
+                "Insufficient information for deducing the grid dimensions in blocks: " +
+                std::string(overall_grid_dimensions ? "could not determine individual block dimensions" :
+                            block_dimensions ? "could not determine the overall grid dimensions" :
+                            "could not determine any of the block dimensions or the overall grid dimensions")
+            };
         }
         auto& bd = block_dimensions.value();
         auto& ogd = overall_grid_dimensions.value();

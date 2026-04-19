@@ -23,7 +23,6 @@ static host_buffers_t read_input_buffers_from_files(
     spdlog::debug("Reading input buffers from files.");
 
     host_buffers_t result;
-    std::unordered_map<string, filesystem::path> buffer_paths;
     for(const auto& name : buffer_names) {
         // Note: Even though the map is of optional<string>, we expect all relevant buffers
         // to have already had names determined

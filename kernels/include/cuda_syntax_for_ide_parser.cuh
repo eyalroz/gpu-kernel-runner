@@ -69,6 +69,9 @@ __CUDA_BUILTIN_VAR __cuda_builtin_gridDim_t gridDim;
 #ifndef __device_builtin__
 #define __device_builtin__
 #endif
+#ifndef __cudart_builtin__
+#define __cudart_builtin__
+#endif
 
 #ifndef __DEVICE__
 #define __DEVICE__

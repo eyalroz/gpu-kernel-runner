@@ -4,6 +4,8 @@
  * @brief Definitions and aliases of functions which are built-in for OpenCL,
  * but not for CUDA. These are mostly functions from §6.15 of the OpenCL
  * standard, as well as conversion 'operators' from §6.4.3 and §6.4.4.2 .
+ * Variants of functions working on vector types (intN, floatN etc.) do
+ * _not_ appear in this file; find them in @ref vectorized/builtin_functions.cuh
  *
  * @copyright (c) 2020-2026, GE HealthCare
  * @copyright (c) 2020-2026, Eyal Rozenberg
@@ -20,24 +22,88 @@
 #ifndef __OPENCL_VERSION__
 
 #include "opencl_scalar_types.cuh"
-#include "opencl_vector_types.cuh"
 #include "opencl_defines.cuh"
 
 #include <vector_types.h>
 #include <cuda_fp16.h>
 
+#if defined(__CDT_PARSER__) || defined (__JETBRAINS_IDE__)
+#endif
+
+// // The CLion clang-based compiler apparently includes device_functions.h in a way which
+// extern "C" {
+// int                    __float2int_rz(float x);
+// int                    __float2int_ru(float x);
+// int                    __float2int_rn(float x);
+// int                    __float2int_rd(float x);
+//
+// int                    __double2int_rz(double x);
+// int                    __double2int_ru(double x);
+// int                    __double2int_rn(double x);
+// int                    __double2int_rd(double x);
+//
+// unsigned long long     __float2ull_rz(float x);
+// unsigned long long     __float2ull_ru(float x);
+// unsigned long long     __float2ull_rn(float x);
+// unsigned long long     __float2ull_rd(float x);
+//
+// long long              __float2ll_rz(float x);
+// long long              __float2ll_ru(float x);
+// long long              __float2ll_rn(float x);
+// long long              __float2ll_rd(float x);
+//
+// uint                   __float2uint_rz(float x);
+// uint                   __float2uint_ru(float x);
+// uint                   __float2uint_rn(float x);
+// uint                   __float2uint_rd(float x);
+//
+// uint                   __double2uint_rz(double x);
+// uint                   __double2uint_ru(double x);
+// uint                   __double2uint_rn(double x);
+// uint                   __double2uint_rd(double x);
+//
+// unsigned long long     __double2ull_rz(double x);
+// unsigned long long     __double2ull_ru(double x);
+// unsigned long long     __double2ull_rn(double x);
+// unsigned long long     __double2ull_rd(double x);
+//
+// long long              __double2ll_rz(double x);
+// long long              __double2ll_ru(double x);
+// long long              __double2ll_rn(double x);
+// long long              __double2ll_rd(double x);
+//
+//
+// int __half2int_rn(const __half h);
+// int __half2int_rd(const __half h);
+// int __half2int_ru(const __half h);
+// short int __half2short_rn(const __half h);
+// short int __half2short_rd(const __half h);
+// short int __half2short_ru(const __half h);
+// unsigned int __half2uint_rn(const __half h);
+// unsigned int __half2uint_rd(const __half h);
+// unsigned int __half2uint_ru(const __half h);
+// unsigned short int __half2ushort_rn(const __half h);
+// unsigned short int __half2ushort_rd(const __half h);
+// unsigned short int __half2ushort_ru(const __half h);
+// unsigned long long int __half2ull_rn(const __half h);
+// unsigned long long int __half2ull_rd(const __half h);
+// unsigned long long int __half2ull_ru(const __half h);
+// long long int __half2ll_rn(const __half h);
+// long long int __half2ll_rd(const __half h);
+// long long int __half2ll_ru(const __half h);
+// }
+
+
+#endif // defined(__CDT_PARSER__) || defined (__JETBRAINS_IDE__)
+
+
 // §6.4.3 Explicit conversions
 // ===========================
 
 /**
- * The two forms of explicit conversion functions are:
- * For scalar types:
+ * The form of explicit conversion functions for scalar types is:
  *
  *   destType convert_destType<_sat><_roundingMode>(sourceType)
- *
- * For vectorized types with length n:
- *
- *   destTypen convert_destTypen<_sat><_roundingMode>(sourceTypen)
  *
  * ... and the basic types to/from we can convert are:
  * char, uchar, short, ushort, int, uint, long, ulong, float
@@ -46,75 +112,48 @@
  * the different conversion functions
  */
 
-#define PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSIONS(src, tgt) \
-inline tgt convert_ ## tgt ## _rtz(src v) { return static_cast<tgt>(__ ## src ## 2 ## tgt ## _rz(v)); } \
-inline tgt convert_ ## tgt ## _rte(src v) { return static_cast<tgt>(__ ## src ## 2 ## tgt ## _rn(v)); } \
-inline tgt convert_ ## tgt ## _rtp(src v) { return static_cast<tgt>(__ ## src ## 2 ## tgt ## _ru(v)); } \
-inline tgt convert_ ## tgt ## _rtn(src v) { return static_cast<tgt>(__ ## src ## 2 ## tgt ## _rd(v)); } \
-inline tgt convert_ ## tgt ##     (src v) { return convert_ ## tgt ## _rtz(v); } \
+// Note: The character '2' in these definitions does not describe a 2-element vector,
+// but is rather a shorthand for the word 'to', e.g. "float to int" becomes `__float2int`.
+#define PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSIONS(src, dst, dst_suffix) \
+inline __device__ dst convert_ ## dst ## _rtz (src v) { return static_cast<dst>(__ ## src ## 2 ## dst_suffix ## _rz (v)); } \
+inline __device__ dst convert_ ## dst ## _rte (src v) { return static_cast<dst>(__ ## src ## 2 ## dst_suffix ## _rn (v)); } \
+inline __device__ dst convert_ ## dst ## _rtp (src v) { return static_cast<dst>(__ ## src ## 2 ## dst_suffix ## _ru (v)); } \
+inline __device__ dst convert_ ## dst ## _rtn (src v) { return static_cast<dst>(__ ## src ## 2 ## dst_suffix ## _rd (v)); } \
+inline __device__ dst convert_ ## dst         (src v) { return convert_ ## dst ## _rtz (v); }
 
-#define PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSION_VECTORIZATIONS(tgt, ocl_mode) \
+#define PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(dst, dst_suffix, dst_suffix_for_half) \
 template <typename src> \
-inline tgt ## 2 convert_ ## tgt ## 2_ ## ocl_mode(src ## 2 v) noexcept \
-{ return { convert_ ## tgt_ ## ocl_mode(v.x), convert_ ## tgt_ ## ocl_mode(v.y) }; } \
-template <typename src> \
-inline tgt ## 3 convert_ ## tgt ## 3_ ## ocl_mode(src ## 3 v) noexcept \
-{ return { convert_ ## tgt_ ## ocl_mode(v.x), convert_ ## tgt_ ## ocl_mode(v.y), convert_ ## tgt_ ## ocl_mode(v.z) }; } \
-template <typename src> \
-inline tgt ## 4 convert_ ## tgt ## 4_ ## ocl_mode(src ## 4 v) noexcept \
-{ return { convert_ ## tgt_ ## ocl_mode(v.x), convert_ ## tgt_ ## ocl_mode(v.y), convert_ ## tgt_ ## ocl_mode(v.z), convert_ ## tgt_ ## ocl_mode(v.w) }; }
-
-
-#define PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(tgt) \
-\
-template <typename src> \
-inline tgt convert_ ## tgt (src v) noexcept { return static_cast<tgt>(v); } \
-PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSIONS(half, tgt) \
-PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSIONS(float, tgt) \
-PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSIONS(double, tgt) \
-\
-template <typename src> \
-inline tgt convert_ ## tgt ## 2(src ## 2 v) noexcept \
-{ return { convert_ ## tgt(v.x), convert_ ## tgt(v.y) }; } \
-template <typename src> \
-inline tgt convert_ ## tgt ## 3(src ## 3 v) noexcept \
-{ return { convert_ ## tgt(v.x), convert_ ## tgt(v.y), convert_ ## tgt(v.z) }; } \
-template <typename src> \
-inline tgt convert_ ## tgt ## 4(src ## 4 v) noexcept \
-{ return { convert_ ## tgt(v.x), convert_ ## tgt(v.y), convert_ ## tgt(v.z), convert_ ## tgt(v.w) }; } \
-PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSION_VECTORIZATIONS(tgt, rtz) \
-PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSION_VECTORIZATIONS(tgt, rte) \
-PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSION_VECTORIZATIONS(tgt, rtp) \
-PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSION_VECTORIZATIONS(tgt, rtn) 
+inline __device__ dst convert_ ## dst (src v) noexcept { return static_cast<dst>(v); } \
+PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSIONS(half, dst, dst_suffix_for_half) \
+PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSIONS(float, dst, dst_suffix) \
+PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSIONS(double, dst, dst_suffix)
 
 // TODO: Define _sat conversions
+// TODO: Define conversions to float, e.g. double2float
 
-PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(char)
-PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(uchar)
-PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(short)
-PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(ushort)
-PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(int)
-PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(uint)
-PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(long)
-PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(ulong)
-
-
-// do saturated versions
+PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(int, int, int)
+PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(char, int, short)
+PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(uchar, uint, ushort)
+PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(short, int, short)
+PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(ushort, uint, ushort)
+PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(long, ll, ll)
+PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(ulong, ull, ull)
+// Note: There is no 'long long' in OpenCL
 
 
-// §6.4.4.2. Reinterpreting Types Using as_type() and as_typen()
+// §6.4.4.2. Reinterpreting Types Using as_type()
 // =============================================================
 
 // "All data types described in Built-in Scalar Data Types and
 // Built-in Vector Data Types (except bool, void, and half [19])
 // may be also reinterpreted as another data type of the same size"
 
-#define PORT_FROM_OPENCL_DEFINE_ASTYPE(tgt) \
+#define PORT_FROM_OPENCL_DEFINE_ASTYPE(dst) \
 template <typename src> \
-inline tgt as_ ## tgt (src v) \
+inline dst as_ ## dst (src v) \
 { \
-    static_assert(sizeof(tgt) == sizeof(src), "as_type for types of different size is not supported"); \
-    return reinterpret_cast<tgt>(v); \
+    static_assert(sizeof(dst) == sizeof(src), "as_type for types of different size is not supported"); \
+    return reinterpret_cast<dst>(v); \
 }
 
 PORT_FROM_OPENCL_DEFINE_ASTYPE(char)
@@ -129,21 +168,19 @@ PORT_FROM_OPENCL_DEFINE_ASTYPE(ulong)
 PORT_FROM_OPENCL_DEFINE_ASTYPE(float)
 PORT_FROM_OPENCL_DEFINE_ASTYPE(double)
 
-// TODO: Allow for interpreting 4-component vector-types as 3-component OpenCL types, see §6.4.4.2
-
 // §6.15.1. Work-Item Functions
 // ============================
 
 namespace detail_ {
 
 constexpr __host__ __device__ inline unsigned int
-get_dim3_element(const dim3& d3, int index) noexcept
+get_dim3_element(const dim3& d3, int index, unsigned fallback) noexcept
 {
     switch (index) {
         case 0:  return d3.x;
         case 1:  return d3.y;
-        case 2:
-        default: return d3.z;
+        case 2:  return d3.z;
+        default: return fallback;
     }
 }
 
@@ -153,8 +190,8 @@ get_dim3_element(const dim3& d3, int index) noexcept
 /// Returns the number of dimensions in use. This is the value given to the work_dim argument specified in clEnqueueNDRangeKernel.
 inline uint get_work_dim() noexcept { return 3; }
 
-/// Returns the unique global work-item ID value for dimension identified by dimindx. The global work-item ID specifies the work-item ID based on the number of global work-items specified to execute the kernel.
-/// Valid values of dimindx are 0 to get_work_dim() - 1. For other values of dimindx, get_global_id() returns 0.
+/// Returns the unique global work-item ID value for dimension identified by dimension_index. The global work-item ID specifies the work-item ID based on the number of global work-items specified to execute the kernel.
+/// Valid values of dimension_index are 0 to get_work_dim() - 1. For other values of dimension_index, get_global_id() returns 0.
 inline size_t get_global_id(int dimension_index) noexcept
 {
     // Note: We could have used:
@@ -163,63 +200,85 @@ inline size_t get_global_id(int dimension_index) noexcept
     //  detail_::get_dim3_element(blockIdx, dimension_index) *
     //  detail_::get_dim3_element(blockDim, dimension_index) noexcept;
     //
-    // But I'm not sure we can trust the compiler to optimize
+    // But I'm not sure whether we can trust the compiler to optimize
     // all of that away
 
     switch (dimension_index) {
         case 0:  return threadIdx.x + static_cast<size_t>(blockIdx.x) * blockDim.x;
         case 1:  return threadIdx.y + static_cast<size_t>(blockIdx.y) * blockDim.y;
-        case 2:
-        default: return threadIdx.z + static_cast<size_t>(blockIdx.z) * blockDim.z;
+        case 2:  return threadIdx.z + static_cast<size_t>(blockIdx.z) * blockDim.z;
+        default: return 0;
     }
 }
 
-/// Returns the number of local work-items specified in dimension identified by dimindx. This value is at most the value given by the local_work_size argument to clEnqueueNDRangeKernel if local_work_size is not NULL; otherwise the OpenCL implementation chooses an appropriate local_work_size value which is returned by this function. If the kernel is executed with a non-uniform work-group size [41], calls to this built-in from some work-groups may return different values than calls to this built-in from other work-groups.
-/// Valid values of dimindx are 0 to get_work_dim() - 1. For other values of dimindx, get_local_size() returns 1.
+/**
+ * Returns the number of local work-items specified in dimension identified by dimension_index.
+ *
+ * @note in OpenCL per se, the logic here is more complex, as one may enqueue OpenCL kernels
+ * without specifying the local work size, and the OpenCL implementation chooses one for
+ * the kernel. OpenCL may also support a non-uniform work-group size. Both of these are
+ * not supported In CUDA, this is not supported.
+ *
+
+ * Valid values of dimension_index are 0 to get_work_dim() - 1. For other values of dimension_index, get_local_size() returns 1.
+ */
 inline size_t get_local_size(unsigned dimension_index) noexcept
 {
-    return detail_::get_dim3_element(blockDim, dimension_index);
+    enum { Fallback = 0 };
+    return detail_::get_dim3_element(blockDim, dimension_index, 1);
 }
 
-/// Returns the same value as that returned by get_local_size(dimindx) if the kernel is executed with a uniform work-group size.
-/// If the kernel is executed with a non-uniform work-group size, returns the number of local work-items in each of the work-groups that make up the uniform region of the global range in the dimension identified by dimindx. If the local_work_size argument to clEnqueueNDRangeKernel is not NULL, this value will match the value specified in local_work_size[dimindx]. If local_work_size is NULL, this value will match the local size that the implementation determined would be most efficient at implementing the uniform region of the global range.
-/// Valid values of dimindx are 0 to get_work_dim() - 1. For other values of dimindx, get_enqueued_local_size() returns 1.
-inline size_t get_enqueued_local_size(uint dimindx) noexcept;
+/**
+ * Returns the same value as that returned by `get_local_size(dimension_index)` if the kernel is executed with
+ * a uniform work-group size - which, in CUDA kernels, is _always_ the case.
+ *
+ * @note In non-NVIDIA-GPU OpenCL implementations, this function is not redundant and has non-trivial
+ * logic.
+ *
+ * @param dimension_index[in] A value in the range `0`..`get_work_dim() - 1`.
+ *
+ * @return If the value of @p dimension_index is outside the vlaid range, 1 is returned.
+ */
+inline size_t get_enqueued_local_size(uint dimension_index) noexcept { return get_local_size(dimension_index); }
 
-/// Returns the unique local work-item ID, i.e. a work-item within a specific work-group for dimension identified by dimindx.
-/// Valid values of dimindx are 0 to get_work_dim() - 1. For other values of dimindx, get_local_id() returns 0.
+/// Returns the unique local work-item ID, i.e. a work-item within a specific work-group for dimension identified by dimension_index.
+/// Valid values of dimension_index are 0 to get_work_dim() - 1. For other values of dimension_index, get_local_id() returns 0.
 inline size_t get_local_id(int dimension_index) noexcept
 {
-    return detail_::get_dim3_element(threadIdx, dimension_index);
+    enum { Fallback = 0 };
+    return detail_::get_dim3_element(threadIdx, dimension_index, Fallback);
 }
 
-/// Returns the number of work-groups that will execute a kernel for dimension identified by dimindx.
-/// Valid values of dimindx are 0 to get_work_dim() - 1. For other values of dimindx, get_num_groups() returns 1.
+/// Returns the number of work-groups that will execute a kernel for dimension identified by dimension_index.
+/// Valid values of dimension_index are 0 to get_work_dim() - 1. For other values of dimension_index, get_num_groups() returns 1.
 inline size_t get_num_groups(uint dimension_index) noexcept
 {
-    return detail_::get_dim3_element(gridDim, dimension_index);
+    enum { Fallback = 1 };
+    return detail_::get_dim3_element(gridDim, dimension_index, Fallback);
 }
 
-/// Returns the number of global work-items specified for dimension identified by dimindx. This value is given by the global_work_size argument to clEnqueueNDRangeKernel.
-/// Valid values of dimindx are 0 to get_work_dim() - 1. For other values of dimindx, get_global_size() returns 1.
+/// Returns the number of global work-items specified for dimension identified by dimension_index. This value is given by the global_work_size argument to clEnqueueNDRangeKernel.
+/// Valid values of dimension_index are 0 to get_work_dim() - 1. For other values of dimension_index, get_global_size() returns 1.
 inline size_t get_global_size(uint dimension_index) noexcept
 {
     return static_cast<size_t>(get_num_groups(dimension_index)) * get_local_size(dimension_index);
 }
 
-/// get_group_id returns the work-group ID which is a number from 0 .. get_num_groups(dimindx) - 1.
-/// Valid values of dimindx are 0 to get_work_dim() - 1. For other values, get_group_id() returns 0.
+/// get_group_id returns the work-group ID which is a number from 0 .. get_num_groups(dimension_index) - 1.
+/// Valid values of dimension_index are 0 to get_work_dim() - 1. For other values, get_group_id() returns 0.
 inline size_t get_group_id(int dimension_index) noexcept
 {
-    return detail_::get_dim3_element(blockIdx, dimension_index);
+    enum { Fallback = 0 };
+    return detail_::get_dim3_element(blockIdx, dimension_index, 0);
 }
 
 /**
- * get_global_offset returns the offset values specified in global_work_offset argument to clEnqueueNDRangeKernel.
- * Valid values of dimindx are 0 to get_work_dim() - 1. For other values, get_global_offset() returns 0.
- * Requires support for OpenCL C 1.1 or newer.
- * @param dimindx
- * @return
+ * get_global_offset returns the offset values for 3D global thread coordinates in the
+ * launch grid - which, for CUDA kernels, is always 0, since such offsets are not supported.
+ *
+ * @note Requires support for OpenCL C 1.1 or newer.
+ *
+ * @param dimension_index[in] A value in the range `0`..`get_work_dim() - 1`.
  */
 inline size_t get_global_offset(uint dimension_index) noexcept { (void) dimension_index; return 0; }
 
@@ -298,7 +357,7 @@ typedef union {
 
 inline double acospi(double x) noexcept { return acos(x) * M_1_PI; }
 inline double asinpi(double x) noexcept { return asin(x) * M_1_PI; }
-inline double sincos(double x, double *cosval) { double sinval; sincos(x, &sinval, cosval); return sinval; }
+// sincos is already defined in cuda
 inline double atan2pi(double y, double x) noexcept { return atan2(y, x) * M_1_PI; }
 inline double tanpi(double x) noexcept { return tan(M_PI * x); }
 
@@ -306,7 +365,9 @@ inline double fract(double x, double *iptr) noexcept
 {
     double floor_ = floor(x);
     *iptr = floor_;
-    return fmin(x - floor_, 0x1.fffffffffffffp-1);
+    double highest_fractional_under_1 = 0x1.ffffffffffffep-1;
+    // ... which is the normal form of 0x0.ffffffffffff - 52 bits set
+    return fmin(x - floor_, highest_fractional_under_1);
 }
 
 inline double frexp(double x, int *exp) noexcept
@@ -316,8 +377,6 @@ inline double frexp(double x, int *exp) noexcept
     *exp = x_.parts.exponent;
     return x_.parts.significand;
 }
-
-
 
 inline double lgamma_r(double x, int *signp) noexcept
 {
@@ -379,7 +438,9 @@ inline float fract(float x, float *iptr) noexcept
 {
     float floor_ = floor(x);
     *iptr = floor_;
-    return fmin(x - floor_, 0x1.fffffep-1f);
+    float highest_fractional_under_1 = 0x1.fffffep-1f;
+    // ... which is the normal form of 0x0.ffffff - 24 bits set
+    return fmin(x - floor_, highest_fractional_under_1);
 }
 
 inline float frexp(float x, int *exp) noexcept
@@ -494,7 +555,9 @@ inline half fract(half x, half *iptr) noexcept
 {
     half floor_ = floor(x);
     *iptr = floor_;
-    return fmin(x - floor_, 0x1.fffffep-1f);
+    half highest_fractional_under_1 = (half) 0x1.7ffep-1;
+    // ... which is the normal form of 0x0.ffffff - 24 bits set
+    return fmin(x - floor_, highest_fractional_under_1);
 }
 
 inline half frexp(half x, int *exp) noexcept
@@ -581,7 +644,7 @@ inline half rsqrt(half x) { return hrsqrt(x); }
 
 // Some of the OpenCL integer-math functions have CUDA equivalents with the exact same
 // names - either with an identical signature or through implicit conversions. These are:
-// abs, min, max .
+// min, max .
 
 // These functions should be implemented for each of:
 //
@@ -589,11 +652,12 @@ inline half rsqrt(half x) { return hrsqrt(x); }
 // and for their vector types
 
 // char:
-uchar abs_diff(char x, char y) { return x < y ? (y - x) : (x - y); }
+inline uchar abs(char x) { return x >= 0 ? x : -x; }
+inline uchar abs_diff(char x, char y) { return x < y ? (y - x) : (x - y); }
 char add_sat(char x, char y);
-char hadd(char x, char y) { return (x >> 1) + (y >> 1) + (x & y & 1); }
+inline char hadd(char x, char y) { return (x >> 1) + (y >> 1) + (x & y & 1); }
 char rhadd(char x, char y);
-char clamp(char x, char minval, char maxval) { return min(max(x, minval), maxval); }
+inline char clamp(char x, char minval, char maxval) { return min(max(x, minval), maxval); }
 char clz(char x);
 char ctz(char x);
 char mad_hi(char a, char b, char c);
@@ -605,11 +669,12 @@ char popcount(char x);
 short upsample(char hi, uchar lo);
 
 // uchar:
-uchar abs_diff(uchar x, uchar y) { return x < y ? (y - x) : (x - y); }
+inline uchar abs(uchar x) { return x; }
+inline uchar abs_diff(uchar x, uchar y) { return x < y ? (y - x) : (x - y); }
 uchar add_sat(uchar x, uchar y);
-uchar hadd(uchar x, uchar y) { return (x >> 1) + (y >> 1) + (x & y & 1); }
+inline uchar hadd(uchar x, uchar y) { return (x >> 1) + (y >> 1) + (x & y & 1); }
 uchar rhadd(uchar x, uchar y);
-uchar clamp(uchar x, uchar minval, uchar maxval) { return min(max(x, minval), maxval); }
+inline uchar clamp(uchar x, uchar minval, uchar maxval) { return min(max(x, minval), maxval); }
 uchar clamp(uchar x, char minval, char maxval);
 uchar clz(uchar x);
 uchar ctz(uchar x);
@@ -622,11 +687,12 @@ uchar popcount(uchar x);
 ushort upsample(uchar hi, uchar lo);
 
 // short:
-ushort abs_diff(short x, short y) { return x < y ? (y - x) : (x - y); }
+inline ushort abs(short x) { return x >= 0 ? x : -x; }
+inline ushort abs_diff(short x, short y) { return x < y ? (y - x) : (x - y); }
 short add_sat(short x, short y);
-short hadd(short x, short y) { return (x >> 1) + (y >> 1) + (x & y & 1); }
+inline short hadd(short x, short y) { return (x >> 1) + (y >> 1) + (x & y & 1); }
 short rhadd(short x, short y);
-short clamp(short x, short minval, short maxval) { return min(max(x, minval), maxval); }
+inline short clamp(short x, short minval, short maxval) { return min(max(x, minval), maxval); }
 short clz(short x);
 short ctz(short x);
 short mad_hi(short a, short b, short c);
@@ -638,11 +704,12 @@ short popcount(short x);
 int upsample(short hi, ushort lo);
 
 // ushort:
-ushort abs_diff(ushort x, ushort y) { return x < y ? (y - x) : (x - y); }
+inline ushort abs(ushort x) { return x; }
+inline ushort abs_diff(ushort x, ushort y) { return x < y ? (y - x) : (x - y); }
 ushort add_sat(ushort x, ushort y);
-ushort hadd(ushort x, ushort y) { return (x >> 1) + (y >> 1) + (x & y & 1); }
+inline ushort hadd(ushort x, ushort y) { return (x >> 1) + (y >> 1) + (x & y & 1); }
 ushort rhadd(ushort x, ushort y);
-ushort clamp(ushort x, ushort minval, ushort maxval) { return min(max(x, minval), maxval); }
+inline ushort clamp(ushort x, ushort minval, ushort maxval) { return min(max(x, minval), maxval); }
 ushort clamp(ushort x, short minval, short maxval);
 ushort clz(ushort x);
 ushort ctz(ushort x);
@@ -655,11 +722,12 @@ ushort popcount(ushort x);
 uint upsample(ushort hi, ushort lo);
 
 // int:
-uint abs_diff(int x, int y) { return x < y ? (y - x) : (x - y); }
+inline uint abs(int x) { return x >= 0 ? x : -x; }
+inline uint abs_diff(int x, int y) { return x < y ? (y - x) : (x - y); }
 int add_sat(int x, int y);
-int hadd(int x, int y) { return (x >> 1) + (y >> 1) + (x & y & 1); }
+inline int hadd(int x, int y) { return (x >> 1) + (y >> 1) + (x & y & 1); }
 int rhadd(int x, int y);
-int clamp(int x, int minval, int maxval) { return min(max(x, minval), maxval); }
+inline int clamp(int x, int minval, int maxval) { return min(max(x, minval), maxval); }
 int clz(int x);
 int ctz(int x);
 int mad_hi(int a, int b, int c);
@@ -667,32 +735,34 @@ int mad_sat(int a, int b, int c);
 int mul_hi(int x, int y);
 int rotate(int v, int i);
 int sub_sat(int x, int y);
-int popcount(int x) { return __popc(reinterpret_cast<uint&>(x)); }
+inline int popcount(int x) { return __popc(reinterpret_cast<uint&>(x)); }
 long upsample(int hi, uint lo);
 
 // uint:
-uint abs_diff(uint x, uint y) { return x < y ? (y - x) : (x - y); }
+inline uint abs(uint x) { return x; }
+inline uint abs_diff(uint x, uint y) { return x < y ? (y - x) : (x - y); }
 uint add_sat(uint x, uint y);
-uint hadd(uint x, uint y) { return (x >> 1) + (y >> 1) + (x & y & 1); }
+inline uint hadd(uint x, uint y) { return (x >> 1) + (y >> 1) + (x & y & 1); }
 uint rhadd(uint x, uint y);
-uint clamp(uint x, uint minval, uint maxval) { return min(max(x, minval), maxval); }
+inline uint clamp(uint x, uint minval, uint maxval) { return min(max(x, minval), maxval); }
 uint clamp(uint x, int minval, int maxval);
-uint clz(uint x)
+uint clz(uint x);
 uint ctz(uint x);
 uint mad_hi(uint a, uint b, uint c);
 uint mad_sat(uint a, uint b, uint c);
 uint mul_hi(uint x, uint y);
 uint rotate(uint v, uint i);
 uint sub_sat(uint x, uint y);
-uint popcount(uint x) { return __popc(x); }
+inline uint popcount(uint x) { return __popc(x); }
 ulong upsample(uint hi, uint lo);
 
 // long:
-ulong abs_diff(long x, long y) { return x < y ? (y - x) : (x - y); }
+inline ulong abs(long x) { return x >= 0 ? x : -x; }
+inline ulong abs_diff(long x, long y) { return x < y ? (y - x) : (x - y); }
 long add_sat(long x, long y);
-long hadd(long x, long y) { return (x >> 1) + (y >> 1) + (x & y & 1); }
+inline long hadd(long x, long y) { return (x >> 1) + (y >> 1) + (x & y & 1); }
 long rhadd(long x, long y);
-long clamp(long x, long minval, long maxval) { return min(max(x, minval), maxval); }
+inline long clamp(long x, long minval, long maxval) { return min(max(x, minval), maxval); }
 long clz(long x);
 long ctz(long x);
 long mad_hi(long a, long b, long c);
@@ -700,15 +770,16 @@ long mad_sat(long a, long b, long c);
 long mul_hi(long x, long y);
 long rotate(long v, long i);
 long sub_sat(long x, long y);
-long popcount(long x) { return __popcll(reinterpret_cast<ulong&>(x)); }
+inline long popcount(long x) { return __popcll(reinterpret_cast<ulong&>(x)); }
 long upsample(long hi, ulong lo);
 
 // ulong:
-ulong abs_diff(ulong x, ulong y) { return x < y ? (y - x) : (x - y); }
+inline ulong abs(ulong x) { return x; }
+inline ulong abs_diff(ulong x, ulong y) { return x < y ? (y - x) : (x - y); }
 ulong add_sat(ulong x, ulong y);
-ulong hadd(ulong x, ulong y) { return (x >> 1) + (y >> 1) + (x & y & 1); }
+inline ulong hadd(ulong x, ulong y) { return (x >> 1) + (y >> 1) + (x & y & 1); }
 ulong rhadd(ulong x, ulong y);
-ulong clamp(ulong x, ulong minval, ulong maxval) { return min(max(x, minval), maxval); }
+inline ulong clamp(ulong x, ulong minval, ulong maxval) { return min(max(x, minval), maxval); }
 ulong clamp(ulong x, long minval, long maxval);
 ulong clz(ulong x);
 ulong ctz(ulong x);
@@ -717,16 +788,15 @@ ulong mad_sat(ulong a, ulong b, ulong c);
 ulong mul_hi(ulong x, ulong y);
 ulong rotate(ulong v, ulong i);
 ulong sub_sat(ulong x, ulong y);
-ulong popcount(ulong x) { return __popcll(x); }
+inline ulong popcount(ulong x) { return __popcll(x); }
 
 // TODO: Implement vectorized versions of the integer math functions above.
 // For now we've only done upsample for n=2 and n=4
 
 // The following functions need to be implemented for int's and their vectorizations: mad24, mul24
 
-int mul24(int x, int y)        { return __mul24(x, y); }
-int mad24(int x, int y, int z) { return __mul24(x, y) + z; }
-// TODO: Implement vectorizations of mul24, mad24
+inline int mul24(int x, int y)        { return __mul24(x, y); }
+inline int mad24(int x, int y, int z) { return __mul24(x, y) + z; }
 
 // The following are available, for some reason, only for a specific combination of types:
 
@@ -806,27 +876,27 @@ ulong bit_reverse(ulong base);
 // No need to implement min and max - CUDA makes those available with the same name
 
 // float:
-float clamp(float x, float minval, float maxval) { return min(max(x, minval), maxval); }
+inline float clamp(float x, float minval, float maxval) { return min(max(x, minval), maxval); }
 float degrees(float radians);
-float mix(float x, float y, float a) { return x + (y - x) * a; }
+inline float mix(float x, float y, float a) { return x + (y - x) * a; }
 float radians(float degrees);
 float step(float edge, float x);
 float smoothstep(float edge0, float edge1, float x);
 float sign(float x);
 
 // double:
-double clamp(double x, double minval, double maxval) { return min(max(x, minval), maxval); }
+inline double clamp(double x, double minval, double maxval) { return min(max(x, minval), maxval); }
 double degrees(double radians);
-double mix(double x, double y, double a) { return x + (y - x) * a; }
+inline double mix(double x, double y, double a) { return x + (y - x) * a; }
 double radians(double degrees);
 double step(double edge, double x);
 double smoothstep(double edge0, double edge1, double x);
 double sign(double x);
 
 // half:
-half clamp(half x, half minval, half maxval) { return min(max(x, minval), maxval); }
+inline half clamp(half x, half minval, half maxval) { return min(max(x, minval), maxval); }
 half degrees(half radians);
-half mix(half x, half y, half a) { return x + (y - x) * a; }
+inline half mix(half x, half y, half a) { return x + (y - x) * a; }
 half radians(half degrees);
 half step(half edge, half x);
 half smoothstep(half edge0, half edge1, half x);

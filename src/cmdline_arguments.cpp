@@ -287,8 +287,11 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
     parsed_options.kernel_sources_base_path = parse_result["kernel-sources-dir"].as<string>();
     parsed_options.kernel.source_file = maybe_prepend_base_dir(
            parsed_options.kernel_sources_base_path, source_file_path);
-    (got.source_file_path or filesystem::exists(parsed_options.kernel.source_file)) or die(
-        "No source file specified, and inferred source file path does not exist: {}",
+    
+    filesystem::exists(parsed_options.kernel.source_file) or die(
+        (got.source_file_path ?
+         "Specified kernel source file does not exist: {}" :
+         "No kernel source file specified, and inferred file does not exist: {}"),
         parsed_options.kernel.source_file.native());
 
     spdlog::debug("Resolved kernel source file path: {}", parsed_options.kernel.source_file.native());

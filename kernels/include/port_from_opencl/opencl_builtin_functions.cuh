@@ -270,8 +270,10 @@ inline size_t get_local_linear_id() noexcept
 // functions. The best we can do is expand the overload sets with the
 // different-precision variants.
 
-// TODO: What about the implicit inclusions of __clang_cuda_math.h and
-//  __clang_cuda_runtime_wrapper.h by the clang parser? :-(
+// TODO: The clang parser used in some IDEs seems to include __clang_cuda_math.h and
+//  __clang_cuda_runtime_wrapper.h ; and they're annoying!
+
+// Table 11 functions
 
 namespace detail_ {
 
@@ -307,18 +309,46 @@ typedef union {
 // Default, multi-type implementations of some generics (which are not
 // offered by CUDA directly)
 
+///@{
+/// A forward declaration; see section 6.15.6 below
+template <typename T> bool isnan(X x) noexcept;
+///@}
+
+/**
+ * Absolute value
+ *
+ * @note Floating-point types, which have values not comparable with 0,
+ * as well as negative and positive 0, need a specialization of the general
+ * implementation. CUDA offers fabs()-like functions for these types: double,
+ * float, half
+ *
+ * @note For unsigned types, we rely on compiler optimization to remove the
+ * condition check, which always holds in that case.
+ *
+ */
+template <typename T> T fabs(T x) noexcept { return x >= 0 ? x : -x; }
+
 /// Maximum magnitude between two values
-template <typename I1, typename I2>
-double fmax(I1 x, I2 y) noexcept
+template <typename T>
+T fmax(T x, T y) noexcept
 {
-    static_assert(::std::is_integral<I1>::value and ::std::is_integral<I2>::value,
-        "fmx variant for integral types trigger for non-integral types");
+    if (::std::is_floating_point<T>::value and isnan(x)) { return y; }
+    if (::std::is_floating_point<T>::value and isnan(y)) { return x; }
     return x < y ? y : x;
 }
 
+/// Maximum magnitude between two values
+template <typename T>
+T fmin(T x, T y) noexcept
+{
+    if (::std::is_floating_point<T>::value and isnan(x)) { return y; }
+    if (::std::is_floating_point<T>::value and isnan(y)) { return x; }
+    return y < x ? y : x;
+}
+
 /// Maximum absolute value amongst two values
-template <typename T, typename S>
-double maxmag(T x, S y) noexcept
+template <typename T>
+T maxmag(T x, T y) noexcept
 {
     double abs_x = fabs(x);
     double abs_y = fabs(y);
@@ -327,8 +357,8 @@ double maxmag(T x, S y) noexcept
 }
 
 /// Minimum absolute value amongst two values
-template <typename T, typename S>
-double minmag(T x, S y) noexcept
+template <typename T>
+T minmag(T x, T y) noexcept
 {
     double abs_x = fabs(x);
     double abs_y = fabs(y);
@@ -342,16 +372,17 @@ double minmag(T x, S y) noexcept
 // acos, acosh, acospi, asin, asinh, asinpi, atan, atan2, atanh, atanpi,
 // atan2pi, cbrt, ceil, copysign, cos, cosh, cospi, erfc, erf, exp,
 // exp2, exp10, expm1, fabs, fdim, floor, fma, fmax, fmin, fmod,
-// ldexp, lgamma,
+// ldexp, lgamma, nextafter, pow, remainder, remquo, rint, round,
+// rsqrt, sin, sinh, sinpi, sqrt, tan, tanh, tgamma, trunc
+//
+// nan, sincos - provided, but with different signature
 
 // double-precision parameter, but missing in CUDA
 // ------------------------------------------------
 
 inline double acospi(double x) noexcept { return acos(x) * M_1_PI; }
 inline double asinpi(double x) noexcept { return asin(x) * M_1_PI; }
-inline double sincos(double x, double *cosval) { double sinval; sincos(x, &sinval, cosval); return sinval; }
 inline double atan2pi(double y, double x) noexcept { return atan2(y, x) * M_1_PI; }
-inline double tanpi(double x) noexcept { return tan(M_PI * x); }
 
 inline double fract(double x, double *iptr) noexcept
 {
@@ -380,6 +411,21 @@ inline double lgamma_r(double x, int *signp) noexcept
 inline int ilogb(double x) noexcept { return reinterpret_cast<detail_::destructured_double&>(x).parts.exponent; }
 
 inline double mad(double a, double b, double c) noexcept { return fma(a, b, c); }
+// TODO: implement this nan(), by taking the single bytes of the uint and constructing
+// a char buffer to pass to the CUDA-style nan(char const *); see:
+// https://stackoverflow.com/a/79906224/1593077
+double nan(uint nancode) noexcept;
+
+// Unfortunately, it doesn't seem CUDA offers something smarter for pown and powr than just pow...
+inline double pown(double x, int y) { return pow(x,y); }
+inline double powr(double x, double y) { return pow(x, y); }
+inline double rootn(double x, int y) { return pow(x, 1.0/y); }
+
+// Note the different signatures of the OpenCL-spec and CUDA-provided sincos()!
+inline double sincos(double x, double *cosval) { double sinval; sincos(x, &sinval, cosval); return sinval; }
+inline double sinpi(double x) noexcept { return sin(M_PI * x); }
+inline double tanpi(double x) noexcept { return tan(M_PI * x); }
+
 
 // float parameter
 // ---------------
@@ -400,6 +446,7 @@ inline float ceil(float x) noexcept { return ceilf(x); }
 inline float copysign(float x, float y) noexcept { return copysignf(x, y); }
 inline float cos(float x) noexcept { return cosf(x); }
 inline float cosh(float x) noexcept { return coshf(x); }
+inline float cospi(float x) { return cospif(x); }
 inline float erfc(float x) noexcept { return erfcf(x); }
 inline float erf(float x) noexcept { return erff(x); }
 inline float exp(float x) noexcept { return expf(x); }
@@ -411,9 +458,9 @@ inline float fdim(float x, float y) noexcept { return fdimf(x, y); }
 inline float floor(float x) noexcept { return floorf(x); }
 inline float fma(float a, float b, float c) { return fmaf(a, b, c); }
 inline float fmax(float x, float y) noexcept { return fmaxf(x, y); }
-// Not implemented: gentyped fmax(gentyped x, float y)
+// Implemented generically:  gentyped fmax(gentyped x, float y)
 inline float fmin(float x, float y) noexcept { return fminf(x, y); }
-// Not implemented: gentyped fmin(gentyped x, float y)
+// Implemented generically: gentyped fmin(gentyped x, float y)
 inline float fmod(float x, float y) noexcept { return fmodf(x, y); }
 inline float fract(float x, float *iptr) noexcept
 {
@@ -448,33 +495,25 @@ inline float log10(float x) noexcept { return log10f(x); }
 inline float log1p(float x) noexcept { return log1pf(x); }
 inline float logb(float x) noexcept { return logbf(x); }
 inline float mad(float a, float b, float c) noexcept { return fmaf(a, b, c); }
-inline float maxmag(float x, float y) noexcept
-{
-    float abs_x = fabsf(x);
-    float abs_y = fabsf(y);
-    if (abs_x == abs_y) { return fmaxf(x,y); }
-    return (abs_x > abs_y) ? x : y;
-}
-inline float minmag(float x, float y) noexcept
-{
-    float abs_x = fabsf(x);
-    float abs_y = fabsf(y);
-    if (abs_x == abs_y) { return fminf(x,y); }
-    return (abs_x < abs_y) ? x : y;
-}
 inline float modf(float x, float *iptr) noexcept { return modff(x, iptr); }
-// Not implementing nan, since it doesn't take a parameter which could distinguish float's from doubles etc.
+// TODO: implement this nan(), by taking the single bytes of the uint and constructing
+// a char buffer to pass to the CUDA-style nan(char const *); see:
+// https://stackoverflow.com/a/79906224/1593077
+float nan(uint nancode) noexcept;
 inline float nextafter(float x, float y) noexcept { return nextafterf(x, y); }
 inline float pow(float x, float y) noexcept { return powf(x, y); }
-inline float powr(float x, float y) noexcept { return  exp2f(y * log2f(x)); }
+inline float pown(float x, int y) noexcept { return  powf(x, y); }
+inline float powr(float x, float y) noexcept { return  powf(x, y); }
 inline float remainder(float x, float y) noexcept { return remainderf(x, y); }
 inline float remquo(float x, float y, int *quo) noexcept { return remquof(x, y, quo); }
 inline float rint(float x) noexcept { return rintf(x); }
-// No root, rootn function in CUDA.
+inline double rootn(float x, int y) { return powf(x, 1.0/y); }
 inline float round(float x) noexcept { return roundf(x); }
+inline float rsqrt(float x) { return rsqrtf(x); }
 inline float sin(float x) noexcept { return sinf(x); }
 inline float sincos(float x, float *cosval) { float sinval; sincosf(x, &sinval, cosval); return sinval; }
 inline float sinh(float x) noexcept { return sinhf(x); }
+inline float sinpi(float x) noexcept { return sinf(M_PI_F * x); }
 inline float sqrt(float x) noexcept { return sqrtf(x); }
 inline float tan(float x) noexcept { return tanf(x); }
 inline float tanh(float x) noexcept { return tanhf(x); }
@@ -482,12 +521,7 @@ inline float tanpi(float x) noexcept { return tanf(M_PI_F * x); }
 inline float tgamma(float x) noexcept { return tgammaf(x); }
 inline float trunc(float x) noexcept { return truncf(x); }
 
-#ifndef __CLANG_CUDA_RUNTIME_WRAPPER_H__
-inline float rsqrt(float x) { return rsqrtf(x); }
-inline float sinpi(float x) { return sinpif(x); }
-inline float cospi(float x) { return cospif(x); }
-#endif
-
+#ifdef PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
 // half-precision parameter
 // -------------------------
 
@@ -605,16 +639,45 @@ inline half rsqrt(half x) { return hrsqrt(x); }
 // inline half cospi(half x) { return hcospi(x); }
 #endif
 
-// `half_` functions from Table 11
-// ---------------
 
-// TODO: add these
+// allowed-half-precision functions (10-bit accuracy at least) from Table 12
+// ------------------------------------------------------------------
 
-// `native_` functions from Table 12
-// ---------------------------------
+//
+// float half_cos(float x)
+// float half_divide(float x, float y)
+// float half_exp(float x)
+// float half_exp2(float x)
+// float half_exp10(float x)
+// float half_log(float x)
+// float half_log2(float x)
+// float half_log10(float x)
+// float half_powr(float x, float y)
+// float half_recip(float x)
+// float half_rsqrt(float x)
+// float half_sin(float x)
+// float half_sqrt(float x)
+// float half_tan(float x)
 
-// TODO: add these
+// native-device-instruction functions (10-bit accuracy at least) from Table 12
+// ----------------------------------------------------------------------------
 
+// float native_cos(float x)
+// float native_divide(float x, float y)
+// float native_exp(float x)
+// float native_exp2(float x)
+// float native_exp10(float x)
+// float native_log(float x)
+// float native_log2(float x)
+// float native_log10(float x)
+// float native_powr(float x, float y)
+// float native_recip(float x)
+// float native_rsqrt(float x)
+// float native_sin(float x)
+// float native_sqrt(float x)
+// float native_tan(float x)
+
+#endif // PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
 
 // §6.15.3. Integer Functions
 // --------------------------------------------------------------
@@ -876,6 +939,13 @@ half sign(half x);
 
 // §6.15.6. Relational Functions
 // --------------------------------------------------------------
+
+template <typename T> bool isnan(T x) noexcept { return false; }
+// isnan() for floats provided by CUDA directly for floats and doubles
+#ifdef PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
+bool isnan(half x) noexcept { return x == CUDART_NAN_FP16; }
+#ENDIF
+
 
 // §6.15.7. Vector Data Load and Store Functions
 // --------------------------------------------------------------

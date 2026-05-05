@@ -31,6 +31,10 @@
 #error "This file requires compiling using C++11 or later"
 #endif
 
+#if defined(__CDT_PARSER__) || defined(__JETBRAINS_IDE__)
+#define PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
+#endif
+
 #ifdef PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
 #include <cuda_fp16.h>
 #endif

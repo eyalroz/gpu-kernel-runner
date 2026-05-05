@@ -11,7 +11,9 @@
  * @license BSD 3-clause license; see the `LICENSE` file or
  * @url https://opensource.org/licenses/BSD-3-Clause
  *
- * @note
+ * @todo Make all  definitions in this file respect
+ * PORT_FROM_OPENCL_ENABLE_HALF_PRECISION (currently, only
+ * the type conversions respect that)
  *
  */
 #ifndef PORT_FROM_OPENCL_BUILTIN_FUNCTIONS_CUH_
@@ -19,12 +21,15 @@
 
 #ifndef __OPENCL_VERSION__
 
+#include <math.h>
+
 #include "opencl_scalar_types.cuh"
-#include "opencl_vector_types.cuh"
 #include "opencl_defines.cuh"
 
 #include <vector_types.h>
-#include <cuda_fp16.h>
+
+#include <type_traits>
+#include <spdlog/fmt/bundled/format.h>
 
 // §6.4.3 Explicit conversions
 // ===========================
@@ -51,53 +56,45 @@ inline tgt convert_ ## tgt ## _rtz(src v) { return static_cast<tgt>(__ ## src ##
 inline tgt convert_ ## tgt ## _rte(src v) { return static_cast<tgt>(__ ## src ## 2 ## tgt ## _rn(v)); } \
 inline tgt convert_ ## tgt ## _rtp(src v) { return static_cast<tgt>(__ ## src ## 2 ## tgt ## _ru(v)); } \
 inline tgt convert_ ## tgt ## _rtn(src v) { return static_cast<tgt>(__ ## src ## 2 ## tgt ## _rd(v)); } \
-inline tgt convert_ ## tgt ##     (src v) { return convert_ ## tgt ## _rtz(v); } \
+inline template<> tgt convert_ ## tgt <src>(src v) { return convert_ ## tgt ## _rtz(v); } \
 
-#define PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSION_VECTORIZATIONS(tgt, ocl_mode) \
-template <typename src> \
-inline tgt ## 2 convert_ ## tgt ## 2_ ## ocl_mode(src ## 2 v) noexcept \
-{ return { convert_ ## tgt_ ## ocl_mode(v.x), convert_ ## tgt_ ## ocl_mode(v.y) }; } \
-template <typename src> \
-inline tgt ## 3 convert_ ## tgt ## 3_ ## ocl_mode(src ## 3 v) noexcept \
-{ return { convert_ ## tgt_ ## ocl_mode(v.x), convert_ ## tgt_ ## ocl_mode(v.y), convert_ ## tgt_ ## ocl_mode(v.z) }; } \
-template <typename src> \
-inline tgt ## 4 convert_ ## tgt ## 4_ ## ocl_mode(src ## 4 v) noexcept \
-{ return { convert_ ## tgt_ ## ocl_mode(v.x), convert_ ## tgt_ ## ocl_mode(v.y), convert_ ## tgt_ ## ocl_mode(v.z), convert_ ## tgt_ ## ocl_mode(v.w) }; }
-
+#ifdef PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
+#define PORT_FROM_OPENCL_DEFINE_HALF_TO_INT_CONVERSIONS(tgt) PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSIONS(half, tgt)
+#else
+#define PORT_FROM_OPENCL_DEFINE_HALF_TO_INT_CONVERSIONS(tgt)
+#endif
 
 #define PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(tgt) \
-\
-template <typename src> \
-inline tgt convert_ ## tgt (src v) noexcept { return static_cast<tgt>(v); } \
-PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSIONS(half, tgt) \
+template <typename Source> \
+tgt convert_ ## tgt (Source v) noexcept { return static_cast<tgt>(v); } \
+PORT_FROM_OPENCL_DEFINE_HALF_TO_INT_CONVERSIONS(half, tgt) \
 PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSIONS(float, tgt) \
-PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSIONS(double, tgt) \
-\
-template <typename src> \
-inline tgt convert_ ## tgt ## 2(src ## 2 v) noexcept \
-{ return { convert_ ## tgt(v.x), convert_ ## tgt(v.y) }; } \
-template <typename src> \
-inline tgt convert_ ## tgt ## 3(src ## 3 v) noexcept \
-{ return { convert_ ## tgt(v.x), convert_ ## tgt(v.y), convert_ ## tgt(v.z) }; } \
-template <typename src> \
-inline tgt convert_ ## tgt ## 4(src ## 4 v) noexcept \
-{ return { convert_ ## tgt(v.x), convert_ ## tgt(v.y), convert_ ## tgt(v.z), convert_ ## tgt(v.w) }; } \
-PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSION_VECTORIZATIONS(tgt, rtz) \
-PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSION_VECTORIZATIONS(tgt, rte) \
-PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSION_VECTORIZATIONS(tgt, rtp) \
-PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSION_VECTORIZATIONS(tgt, rtn) 
+PORT_FROM_OPENCL_DEFINE_FLOAT_TO_INT_CONVERSIONS(double, tgt)
+
+#ifdef PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
+#define PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_CHAR_TYPE(tgt) \
+template <typename Source> \
+tgt convert_ ## tgt (Source v) noexcept { return static_cast<tgt>(v); } \
+inline tgt convert_ ## tgt ## _rtz(half v) { return static_cast<tgt>(__ ## half ## 2 ## tgt ## _rz(v)); } \
+template<> tgt convert_ ## tgt <half>(half v) noexcept { return convert_ ## tgt ## _rtz(v); }
+// Note: CUDA does not offer intrinsics for converting float or double to char-sized types
+#else // PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
+#define PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_CHAR_TYPE(tgt) \
+template <typename Source> \
+tgt convert_ ## tgt (Source v) noexcept { return static_cast<tgt>(v); }
+#endif // PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
+
 
 // TODO: Define _sat conversions
 
-PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(char)
-PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(uchar)
+PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_CHAR_TYPE(char)
+PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_CHAR_TYPE(uchar)
 PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(short)
 PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(ushort)
 PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(int)
 PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(uint)
 PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(long)
 PORT_FROM_OPENCL_DEFINE_CONVERSIONS_TO_INT_TYPE(ulong)
-
 
 // do saturated versions
 
@@ -153,8 +150,12 @@ get_dim3_element(const dim3& d3, int index) noexcept
 /// Returns the number of dimensions in use. This is the value given to the work_dim argument specified in clEnqueueNDRangeKernel.
 inline uint get_work_dim() noexcept { return 3; }
 
-/// Returns the unique global work-item ID value for dimension identified by dimindx. The global work-item ID specifies the work-item ID based on the number of global work-items specified to execute the kernel.
-/// Valid values of dimindx are 0 to get_work_dim() - 1. For other values of dimindx, get_global_id() returns 0.
+/**
+ * Returns the unique global work-item ID value for one of the launch grid axes.
+ *
+ * @param[in] dimindx a value between 0 to get_work_dim() - 1. For an axis index outside
+ * this range, get_global_id() returns 0.
+ */
 inline size_t get_global_id(int dimension_index) noexcept
 {
     // Note: We could have used:
@@ -174,8 +175,18 @@ inline size_t get_global_id(int dimension_index) noexcept
     }
 }
 
-/// Returns the number of local work-items specified in dimension identified by dimindx. This value is at most the value given by the local_work_size argument to clEnqueueNDRangeKernel if local_work_size is not NULL; otherwise the OpenCL implementation chooses an appropriate local_work_size value which is returned by this function. If the kernel is executed with a non-uniform work-group size [41], calls to this built-in from some work-groups may return different values than calls to this built-in from other work-groups.
-/// Valid values of dimindx are 0 to get_work_dim() - 1. For other values of dimindx, get_local_size() returns 1.
+/**
+ * Returns the number of local work-items in one of the kernel's launch axes
+ *
+* @param[in] dimindx a value between 0 to get_work_dim() - 1. For an axis index outside
+ * this range, get_global_id() returns 1.
+ *
+ * @return The value of `local_work_size` specified for axis @p dimindx on launch -
+ * except if local_work_size is lost; otherwise the OpenCL implementation chooses
+ * an appropriate local_work_size value which is returned by this function.  calls to this
+ * built-in from some work-groups may return different values than calls to this
+ * built-in from other work-groups.
+ */
 inline size_t get_local_size(unsigned dimension_index) noexcept
 {
     return detail_::get_dim3_element(blockDim, dimension_index);
@@ -293,6 +304,46 @@ typedef union {
 
 } // namespace detail_
 
+// Default, multi-type implementations of some generics (which are not
+// offered by CUDA directly)
+
+/// Maximum magnitude between two values
+template <typename I1, typename I2>
+double fmax(I1 x, I2 y) noexcept
+{
+    static_assert(::std::is_integral<I1>::value and ::std::is_integral<I2>::value,
+        "fmx variant for integral types trigger for non-integral types");
+    return x < y ? y : x;
+}
+
+/// Maximum absolute value amongst two values
+template <typename T, typename S>
+double maxmag(T x, S y) noexcept
+{
+    double abs_x = fabs(x);
+    double abs_y = fabs(y);
+    if (abs_x == abs_y) { return fmax(x,y); }
+    return (abs_x > abs_y) ? x : y;
+}
+
+/// Minimum absolute value amongst two values
+template <typename T, typename S>
+double minmag(T x, S y) noexcept
+{
+    double abs_x = fabs(x);
+    double abs_y = fabs(y);
+    if (abs_x == abs_y) { return fmin(x,y); }
+    return (abs_x < abs_y) ? x : y;
+}
+
+
+// The following double-precision functions are available directly in CUDA and need no adaptation:
+//
+// acos, acosh, acospi, asin, asinh, asinpi, atan, atan2, atanh, atanpi,
+// atan2pi, cbrt, ceil, copysign, cos, cosh, cospi, erfc, erf, exp,
+// exp2, exp10, expm1, fabs, fdim, floor, fma, fmax, fmin, fmod,
+// ldexp, lgamma,
+
 // double-precision parameter, but missing in CUDA
 // ------------------------------------------------
 
@@ -317,8 +368,6 @@ inline double frexp(double x, int *exp) noexcept
     return x_.parts.significand;
 }
 
-
-
 inline double lgamma_r(double x, int *signp) noexcept
 {
     detail_::destructured_float gamma_;
@@ -329,15 +378,6 @@ inline double lgamma_r(double x, int *signp) noexcept
 }
 
 inline int ilogb(double x) noexcept { return reinterpret_cast<detail_::destructured_double&>(x).parts.exponent; }
-
-template <typename T, typename S>
-inline double maxmag(T x, S y) noexcept
-{
-    double abs_x = fabs(x);
-    double abs_y = fabs(y);
-    if (abs_x == abs_y) { return fmax(x,y); }
-    return (abs_x > abs_y) ? x : y;
-}
 
 inline double mad(double a, double b, double c) noexcept { return fma(a, b, c); }
 
@@ -677,8 +717,7 @@ uint hadd(uint x, uint y) { return (x >> 1) + (y >> 1) + (x & y & 1); }
 uint rhadd(uint x, uint y);
 uint clamp(uint x, uint minval, uint maxval) { return min(max(x, minval), maxval); }
 uint clamp(uint x, int minval, int maxval);
-uint clz(uint x)
-uint ctz(uint x);
+uint clz(uint x);
 uint mad_hi(uint a, uint b, uint c);
 uint mad_sat(uint a, uint b, uint c);
 uint mul_hi(uint x, uint y);

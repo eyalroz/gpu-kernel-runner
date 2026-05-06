@@ -451,24 +451,12 @@ void schedule_zero_output_buffers(execution_context_t& context)
     }
 }
 
-static size_t get_l2_cache_size(const execution_context_t& context)
-{
-    if (context.ecosystem == execution_ecosystem_t::cuda) {
-        return context.cuda.context->device().get_attribute(CU_DEVICE_ATTRIBUTE_L2_CACHE_SIZE);
-    }
-    else { // opencl
-        constexpr const size_t opencl_device_max_cache_size_mibytes { 48 };
-        spdlog::warn("OpenCL does not support determining L2 cache size; assuming it is no larger than {} MiB", opencl_device_max_cache_size_mibytes);
-        return opencl_device_max_cache_size_mibytes * 1024l * 1024l;
-    }
-}
-
 void schedule_zero_single_raw_buffer(const execution_context_t& context, const device_buffer_type& buffer)
 {
     // Note: A bit of a kludge, but - we can't copy the optional, since stream copying is verbotten,
     // and we can't use an optional<stream_t&>, since C++ doesn't like optional-of-references
     auto maybe_cuda_stream_ptr = context.cuda.stream ? optional<const cuda::stream_t*>(&context.cuda.stream.value()) : nullopt;
-    auto dsbi = make_raw_device_side_buffer_info(get_l2_cache_size(context));
+    auto dsbi = make_raw_device_side_buffer_info(context.l2_cache_size);
     schedule_zero_buffer(
         context.ecosystem, buffer, maybe_cuda_stream_ptr, &context.opencl.queue,
         "kernel_runner_L2_cache_clearing_gadget", dsbi);
@@ -490,7 +478,7 @@ void create_all_device_side_buffers(execution_context_t& context)
     context.buffers.device_side.scratch = create_all_device_scratch_buffers(context);
     spdlog::debug("Scratch buffers now all created in GPU memory");
     if (context.options.clear_l2_cache) {
-        auto sdbi = make_raw_device_side_buffer_info(get_l2_cache_size(context));
+        auto sdbi = make_raw_device_side_buffer_info(context.l2_cache_size);
         context.buffers.device_side.l2_cache_clearing_gadget.emplace(create_device_side_buffer(
             "kernel_runner_L2_cache_clearing_gadget", sdbi,
             context.ecosystem,

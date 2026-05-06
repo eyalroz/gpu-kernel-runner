@@ -264,6 +264,7 @@ execution_context_t initialize_execution_context(const parsed_cmdline_options_t&
     else { // OpenCL
         initialize_execution_context<execution_ecosystem_t::opencl>(execution_context);
     }
+
     execution_context.kernel_adapter_ = kernel_adapter::produce_subclass(string(parsed_options.kernel.key));
 
     execution_context.buffers.image_names = image_names(*execution_context.kernel_adapter_);

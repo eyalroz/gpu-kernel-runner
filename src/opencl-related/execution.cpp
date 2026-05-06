@@ -105,6 +105,9 @@ void initialize_execution_context<execution_ecosystem_t::opencl>(execution_conte
     constexpr const cl_command_queue_properties queue_properties { CL_QUEUE_PROFILING_ENABLE } ;
     execution_context.opencl.queue =
         cl::CommandQueue(execution_context.opencl.context, execution_context.opencl.device, queue_properties);
+    constexpr const size_t opencl_device_max_cache_size_mibytes { 48 };
+    spdlog::warn("OpenCL does not support determining L2 cache size; assuming it is no larger than {} MiB", opencl_device_max_cache_size_mibytes);
+    execution_context.l2_cache_size = opencl_device_max_cache_size_mibytes * 1024l * 1024l;
 }
 
 void launch_and_time_opencl_kernel(execution_context_t& execution_context, run_index_t run_index)

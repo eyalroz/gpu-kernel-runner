@@ -115,6 +115,7 @@ struct execution_context_t {
         // it will first be copied to the output, and the "output" buffer will be used
         // instead.
     device_id_t device_id;
+    size_t l2_cache_size; // If we can't figure this out, we'll estimate
     execution_ecosystem_t ecosystem;
 
     struct cuda_specific_t {

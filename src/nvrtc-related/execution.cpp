@@ -12,6 +12,7 @@ void initialize_execution_context<execution_ecosystem_t::cuda>(execution_context
     auto device = cuda::device::get(execution_context.options.gpu_device_id);
     execution_context.cuda.context = device.create_context();
     execution_context.cuda.stream.emplace(execution_context.cuda.context->create_stream(cuda::stream::async));
+    execution_context.l2_cache_size = execution_context.cuda.context->device().get_attribute(CU_DEVICE_ATTRIBUTE_L2_CACHE_SIZE);
     spdlog::trace("Created a CUDA context on GPU device {} ", execution_context.cuda.context->device_id());
 }
 

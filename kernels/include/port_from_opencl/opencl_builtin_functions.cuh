@@ -310,8 +310,13 @@ typedef union {
 // offered by CUDA directly)
 
 ///@{
-/// A forward declaration; see section 6.15.6 below
+namespace detail_ {
+/// A forward declaration; see section 6.15.6 below. Also, this
+/// does not have the same declaration as the official isnan(),
+/// and is defined for all numeric types, not just floating-point
+/// ones
 template <typename T> bool isnan(X x) noexcept;
+} // namespace detail_
 ///@}
 
 /**
@@ -332,8 +337,8 @@ template <typename T> T fabs(T x) noexcept { return x >= 0 ? x : -x; }
 template <typename T>
 T fmax(T x, T y) noexcept
 {
-    if (::std::is_floating_point<T>::value and isnan(x)) { return y; }
-    if (::std::is_floating_point<T>::value and isnan(y)) { return x; }
+    if (::std::is_floating_point<T>::value and detail_::isnan(x)) { return y; }
+    if (::std::is_floating_point<T>::value and detail_::isnan(y)) { return x; }
     return x < y ? y : x;
 }
 
@@ -341,8 +346,8 @@ T fmax(T x, T y) noexcept
 template <typename T>
 T fmin(T x, T y) noexcept
 {
-    if (::std::is_floating_point<T>::value and isnan(x)) { return y; }
-    if (::std::is_floating_point<T>::value and isnan(y)) { return x; }
+    if (::std::is_floating_point<T>::value and detail_::isnan(x)) { return y; }
+    if (::std::is_floating_point<T>::value and detail_::isnan(y)) { return x; }
     return y < x ? y : x;
 }
 
@@ -643,39 +648,38 @@ inline half rsqrt(half x) { return hrsqrt(x); }
 // allowed-half-precision functions (10-bit accuracy at least) from Table 12
 // ------------------------------------------------------------------
 
-//
-// float half_cos(float x)
-// float half_divide(float x, float y)
-// float half_exp(float x)
-// float half_exp2(float x)
-// float half_exp10(float x)
-// float half_log(float x)
-// float half_log2(float x)
-// float half_log10(float x)
-// float half_powr(float x, float y)
-// float half_recip(float x)
-// float half_rsqrt(float x)
-// float half_sin(float x)
-// float half_sqrt(float x)
-// float half_tan(float x)
+inline float half_cos(float x) { return cosf(x); }
+inline float half_divide(float x, float y) { return x / y; }
+inline float half_exp(float x) { return expf(x); }
+inline float half_exp2(float x) { return exp2f(x); }
+inline float half_exp10(float x) { return exp10f(x); }
+inline float half_log(float x) { return logf(x); }
+inline float half_log2(float x) { return log2f(x); }
+inline float half_log10(float x) { return log10f(x); }
+inline float half_powr(float x, float y) { return powf(x, y); }
+inline float half_recip(float x) { return 1 / x; }
+inline float half_rsqrt(float x) { return rsqrtf(x); }
+inline float half_sin(float x) { return sinf(x); }
+inline float half_sqrt(float x) { return sqrtf(x); }
+inline float half_tan(float x) { return tanf(x); }
 
 // native-device-instruction functions (10-bit accuracy at least) from Table 12
 // ----------------------------------------------------------------------------
 
-// float native_cos(float x)
-// float native_divide(float x, float y)
-// float native_exp(float x)
-// float native_exp2(float x)
-// float native_exp10(float x)
-// float native_log(float x)
-// float native_log2(float x)
-// float native_log10(float x)
-// float native_powr(float x, float y)
-// float native_recip(float x)
-// float native_rsqrt(float x)
-// float native_sin(float x)
-// float native_sqrt(float x)
-// float native_tan(float x)
+inline float native_cos(float x) { return cosf(x); }
+inline float native_divide(float x, float y) { return x / y; }
+inline float native_exp(float x) { return expf(x); }
+inline float native_exp2(float x) { return exp2f(x); }
+inline float native_exp10(float x) { return exp10f(x); }
+inline float native_log(float x) { return logf(x); }
+inline float native_log2(float x) { return log2f(x); }
+inline float native_log10(float x) { return log10f(x); }
+inline float native_powr(float x, float y) { return powf(x, y); }
+inline float native_recip(float x) { return 1 / x; }
+inline float native_rsqrt(float x) { return rsqrtf(x); }
+inline float native_sin(float x) { return sinf(x); }
+inline float native_sqrt(float x) { return sqrtf(x); }
+inline float native_tan(float x) { return tanf(x); }
 
 #endif // PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
 
@@ -940,9 +944,73 @@ half sign(half x);
 // §6.15.6. Relational Functions
 // --------------------------------------------------------------
 
+// generic / multi-type
+
+template <typename T> int isequal(T x, T y) noexcept { return x == y; }
+template <typename T> int isnotequal(T x, T y) noexcept { return x != y; }
+template <typename T> int isgreater(T x, T y) noexcept { return x > y; }
+template <typename T> int isgreaterequal(T x, T y) noexcept { return x >= y; }
+template <typename T> int islesser(T x, T y) noexcept { return x < y; }
+template <typename T> int islessequal(T x, T y) noexcept { return x <= y; }
+template <typename T> int islessgreater(T x, T y) noexcept { return x < y or x > y; }
+
+template <typename I> int any(I x);
+template <typename I> int all(I x);
+template <typename I>  bitselect(gentype a, gentype b, gentype c);
+gentype select(gentype a, gentype b, igentype c);
+
+
+// template <typename T> int isinf(T x) noexcept { return true; }
+namespace detail {
 template <typename T> bool isnan(T x) noexcept { return false; }
+} // namespace detail
+
+// relational functions for double arguments
+
+int isfinite(float x) noexcept { isfinite(x); }
+int isnormal(float x) noexcept
+{
+    detail_::destructured_float d = x;
+    return isfinite(x) &&  (x == 0 or d.parts.exponent != 0);
+}
+int isordered(float x, float y) { return x == x and y == y; }
+int isunordered(float x, float y) { return isnan(x) || isnan(y); }
+int signbit(float x) noexcept
+{
+    detail_::destructured_float d = x;
+    return d.parts.sign;
+}
+
+// relational functions for float arguments
+
+int isfinite(float x) noexcept { isfinite(x); }
+int isnormal(float x) noexcept
+{
+    detail_::destructured_float d = x;
+    return isfinite(x) &&  (x == 0 or d.parts.exponent != 0);
+}
+int isordered(float x, float y) { return x == x and y == y; }
+int isunordered(float x, float y) { return isnan(x) || isnan(y); }
+int signbit(float x) noexcept
+{
+    detail_::destructured_float d = x;
+    return d.parts.sign;
+}
+
+// Provided by CUDA isfinite, isinf
+
+
 // isnan() for floats provided by CUDA directly for floats and doubles
+
 #ifdef PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
+
+int isfinite(half x) noexcept
+{
+    detail_::destructured_half d = x;
+    return x.parts.exponent != 0b11111;
+}
+int isinf(half x) noexcept { return not __hisinf(x); }
+
 bool isnan(half x) noexcept { return x == CUDART_NAN_FP16; }
 #ENDIF
 

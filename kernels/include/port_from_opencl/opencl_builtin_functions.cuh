@@ -530,45 +530,27 @@ inline float trunc(float x) noexcept { return truncf(x); }
 // half-precision parameter
 // -------------------------
 
-// Note: CUDA (as of 13.1) does not provide half-precision versions of most of the
-// math functions it offers for float- and double-precision. Also, some OpenCL functions
-// which, for double and float, we have implemented using Pi-related constants -
-// but we don't have appropriate definitions for the half-precision versions of these
-// therefore, many of
-// the "implementations" here are commented-out.
+// Note: CUDA (as of 13.2) does not provide half-precision versions of most of the
+// math functions it offers for float- and double-precision. Also, we can't
+// reasonably implement some of the missing functions using alternative functions,
+// like we've done for the float and double types, since those implementations rely
+// on other missing functions.
+//
+// So, the following are missing:
+//
+// acos, acosh, acospi, asin, asinh, asinpi, atan, atan2, atanh, atanpi, atan2pi
+// cbrt, copysign, cosh, cospi, erf, erfc, expm1, fabs, fdim, fma, fmax, fmin, fmod,
+// ldexp, lgamma, lgamma_r, log1p, logb, mad, modf, nextafter, pow, powr, pown,
+// remainder, remquo, root, rootn, round, sincos, sinh, tan, tanh, tanpi, tgamma,
+// sinpi, cospi
 
-//inline half acos(half x) noexcept { return hacos(x); }
-//inline half acosh(half x) noexcept { return hacosh(x); }
-//inline half acospi(half x) noexcept { return hacos(x) * (half) M_1_PI_F; }
-//inline half asin(half x) noexcept { return hasin(x); }
-//inline half asinh(half x) noexcept { return hasinh(x); }
-//inline half asinpi(half x) noexcept { return hasin(x) * (half) M_1_PI_F; }
-//inline half atan(half y_over_x) noexcept { return hatan(y_over_x); }
-//inline half atan2(half y, half x) noexcept { return hatan2(y, x); }
-//inline half atanh(half x) noexcept { return hatanh(x); }
-//inline half atanpi(half x) noexcept { return hatan(x) * M_1_PI_F; }
-//inline half atan2pi(half y, half x) noexcept { return hatan2(y, x) * (half) M_1_PI_F; }
-//inline half cbrt(half x) noexcept { return hcbrt(x); }
+
 inline half ceil(half x) noexcept { return hceil(x); }
-//inline half copysign(half x, half y) noexcept { return hcopysign(x, y); }
 inline half cos(half x) noexcept { return hcos(x); }
-//inline half cosh(half x) noexcept { return hcosh(x); }
-//inline half cospi(half x) noexcept { return hcospi(x); }
-//inline half erfc(half x) noexcept { return herfc(x); }
-//inline half her(half x) noexcept { return herf(x); }
 inline half exp(half x) noexcept { return hexp(x); }
 inline half exp2(half x) noexcept { return hexp2(x); }
 inline half exp10(half x) noexcept { return hexp10(x); }
-//inline half expm1(half x) noexcept { return hexpm1(x); }
-//inline half fabs(half x) noexcept { return hfabs(x); }
-//inline half fdim(half x, half y) noexcept { return hfdim(x, y); }
 inline half floor(half x) noexcept { return hfloor(x); }
-//inline half fma(half a, half b, half c) { return hfma(a, b, c); }
-//inline half fmax(half x, half y) noexcept { return hfmax(x, y); }
-// Not implemented: gentyped fmax(gentyped x, half y)
-//inline half fmin(half x, half y) noexcept { return hfmin(x, y); }
-// Not implemented: gentyped fmin(gentyped x, half y)
-//inline half fmod(half x, half y) noexcept { return hfmod(x, y); }
 inline half fract(half x, half *iptr) noexcept
 {
     half floor_ = floor(x);
@@ -586,63 +568,14 @@ inline half frexp(half x, int *exp) noexcept
 
 inline half hypot(half x, half y) noexcept { return hypotf(x, y); }
 inline int ilogb(half x) noexcept { return reinterpret_cast<detail_::destructured_half&>(x).parts.exponent; }
-//inline half ldexp(half x, int k) noexcept { return hldexp(x, k); }
-// TODO: implement ldexp with vectorized and non-vectorized k for halfn with n = 3,8,16
-//inline half lgamma(half x) noexcept { return hlgamma(x); }
-//inline half lgamma_r(half x, int *signp) noexcept
-//{
-//    detail_::destructured_half gamma_;
-//    gamma_.value = htgamma(x);
-//    *signp = gamma_.parts.sign;
-//    gamma_.parts.sign = 0; // make it positive;
-//    return hlog(gamma_.value);
-//}
 inline half log(half x) noexcept { return hlog(x); }
 inline half log2(half x) noexcept { return hlog2(x); }
 inline half log10(half x) noexcept { return hlog10(x); }
-//inline half log1p(half x) noexcept { return hlog1p(x); }
-//inline half logb(half x) noexcept { return hlogb(x); }
-//inline half mad(half a, half b, half c) noexcept { return hfma(a, b, c); }
-//inline half maxmag(half x, half y) noexcept
-//{
-//    half abs_x = hfabs(x);
-//    half abs_y = hfabs(y);
-//    if (abs_x == abs_y) { return hfmax(x,y); }
-//    return (abs_x > abs_y) ? x : y;
-//}
-//inline half minmag(half x, half y) noexcept
-//{
-//    half abs_x = hfabs(x);
-//    half abs_y = hfabs(y);
-//    if (abs_x == abs_y) { return hfmin(x,y); }
-//    return (abs_x < abs_y) ? x : y;
-//}
-
-// inline half modf(half x, half *iptr) noexcept { return hmodf(x, iptr); }
-// Not implementing nan(), since it doesn't take a parameter which could distinguish half's from doubles etc.
-// inline half nextafter(half x, half y) noexcept { return hnextafter(x, y); }
-// inline half pow(half x, half y) noexcept { return hpow(x, y); }
-//inline half powr(half x, half y) noexcept { return hpowr(x, y); }
-// inline half remainder(half x, half y) noexcept { return hremainder(x, y); }
-// inline half remquo(half x, half y, int *quo) noexcept { return hremquo(x, y, *quo); }
 inline half rint(half x) noexcept { return hrint(x); }
-// No root, rootn function in CUDA.
-// inline half round(half x) noexcept { return hround(x); }
 inline half sin(half x) noexcept { return hsin(x); }
-// inline half sincos(half x, half *cosval) { half sinval; hsincos(x, &sinval, &cosval); return *cosval; }
-// inline half sinh(half x) noexcept { return hsinh(x); }
 inline half sqrt(half x) noexcept { return hsqrt(x); }
-// inline half tan(half x) noexcept { return htan(x); }
-// inline half tanh(half x) noexcept { return htanh(x); }
-// inline half tanpi(half x) noexcept { return htan((half) M_PI_F * x); }
-// inline half tgamma(half x) noexcept { return htgamma(x); }
 inline half trunc(half x) noexcept { return htrunc(x); }
-
-#ifndef __CLANG_CUDA_RUNTIME_WRAPPER_H__
 inline half rsqrt(half x) { return hrsqrt(x); }
-// inline half sinpi(half x) { return hsinpi(x); }
-// inline half cospi(half x) { return hcospi(x); }
-#endif
 
 
 // allowed-half-precision functions (10-bit accuracy at least) from Table 12

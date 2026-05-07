@@ -11,9 +11,9 @@
  * @license BSD 3-clause license; see the `LICENSE` file or
  * @url https://opensource.org/licenses/BSD-3-Clause
  *
- * @todo Make all  definitions in this file respect
- * PORT_FROM_OPENCL_ENABLE_HALF_PRECISION (currently, only
- * the type conversions respect that)
+ * @todo
+ * 1. Double-check all definitions in this file respect PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
+ * 2. Figure out where to get the definition of memory_scope from.
  *
  */
 #ifndef PORT_FROM_OPENCL_BUILTIN_FUNCTIONS_CUH_
@@ -954,36 +954,42 @@ template <typename T> int islesser(T x, T y) noexcept { return x < y; }
 template <typename T> int islessequal(T x, T y) noexcept { return x <= y; }
 template <typename T> int islessgreater(T x, T y) noexcept { return x < y or x > y; }
 
-template <typename I> int any(I x);
-template <typename I> int all(I x);
-template <typename I>  bitselect(gentype a, gentype b, gentype c);
-gentype select(gentype a, gentype b, igentype c);
+namespace detail_ {
+template <typename I> I msb_mask() noexcept { return 1 << (sizeof(I) * CHAR_BIT - 1); }
+template <typename I> I msb_of(I x) noexcept { return x & msb_mask<I>() ? 1 : 0; }
+}
 
+template <typename I> int any(I x) { return detail_::msb_of(x); }
+template <typename I> int all(I x) { return detail_::msb_of(x); }
+template <typename I> I bitselect(I a, I b, I c) { return (a & c) | (b & ~c); }
+template <typename I> select(I a, I b, I c) { return detail_::msb_of(c) ? a : b; }
 
-// template <typename T> int isinf(T x) noexcept { return true; }
-namespace detail {
+namespace detail_ {
+// Note: The OpenCL standard requires isnan() to be available only for floating-point
+// types, but some implementations above benefit from it being available for any type
 template <typename T> bool isnan(T x) noexcept { return false; }
-} // namespace detail
+} // namespace detail_
 
 // relational functions for double arguments
 
-int isfinite(float x) noexcept { isfinite(x); }
-int isnormal(float x) noexcept
+// Provided by CUDA: isfinite, isinf, isnan
+//int isfinite(double x) noexcept { isfinite(x); }
+int isnormal(double x) noexcept
 {
-    detail_::destructured_float d = x;
+    detail_::destructured_double d = x;
     return isfinite(x) &&  (x == 0 or d.parts.exponent != 0);
 }
-int isordered(float x, float y) { return x == x and y == y; }
-int isunordered(float x, float y) { return isnan(x) || isnan(y); }
-int signbit(float x) noexcept
+int isordered(double x, double y) noexcept { return x == x and y == y; }
+int isunordered(double x, double y) noexcept { return isnan(x) || isnan(y); }
+int signbit(double x) noexcept
 {
-    detail_::destructured_float d = x;
+    detail_::destructured_double d = x;
     return d.parts.sign;
 }
 
 // relational functions for float arguments
 
-int isfinite(float x) noexcept { isfinite(x); }
+// Provided by CUDA: isfinite, isinf, isnan
 int isnormal(float x) noexcept
 {
     detail_::destructured_float d = x;
@@ -997,32 +1003,59 @@ int signbit(float x) noexcept
     return d.parts.sign;
 }
 
-// Provided by CUDA isfinite, isinf
-
-
-// isnan() for floats provided by CUDA directly for floats and doubles
-
 #ifdef PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
-
 int isfinite(half x) noexcept
 {
     detail_::destructured_half d = x;
     return x.parts.exponent != 0b11111;
 }
 int isinf(half x) noexcept { return not __hisinf(x); }
-
 bool isnan(half x) noexcept { return x == CUDART_NAN_FP16; }
-#ENDIF
-
+int isordered(half x, half y) noexcept { return x == x and y == y; }
+int isunordered(half x, half y) noexcept { return isnan(x) || isnan(y); }
+int signbit(half x) noexcept
+{
+    detail_::destructured_half d = x;
+    return d.parts.sign;
+}
+#endif
 
 // §6.15.7. Vector Data Load and Store Functions
 // --------------------------------------------------------------
 
+// Note: Most of these functions are vectorized, and in this file
+// we only work on scalars; see the vectorized/ subdirectory
+
+#ifdef PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
+double vload_half(size_t offset, const half *p) { return __half2double(*(p + offset)); }
+void vstore_half(double data, size_t offset, half *p)      { *(p + offset) = __double2half(data); }
+void vstore_half_rte(double data, size_t offset, half *p)  { *(p + offset) = __double2half_rn(data); }
+void vstore_half_rtz(double data, size_t offset, half *p)  { *(p + offset) = __double2half_rz(data); }
+void vstore_half_rtp(double data, size_t offset, half *p)  { *(p + offset) = __double2half_ru(data); }
+void vstore_half_rtn(double data, size_t offset, half *p)  { *(p + offset) = __double2half_rd(data); }
+
+float vload_half(size_t offset, const half *p) { return __half2float(*(p + offset)); }
+void vstore_half(float data, size_t offset, half *p)      { *(p + offset) = __float2half(data); }
+void vstore_half_rte(float data, size_t offset, half *p)  { *(p + offset) = __float2half_rn(data); }
+void vstore_half_rtz(float data, size_t offset, half *p)  { *(p + offset) = __float2half_rz(data); }
+void vstore_half_rtp(float data, size_t offset, half *p)  { *(p + offset) = __float2half_ru(data); }
+void vstore_half_rtn(float data, size_t offset, half *p)  { *(p + offset) = __float2half_rd(data); }
+#endif // PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
+
 // §6.15.8. Synchronization Functions
 // --------------------------------------------------------------
 
-// void barrier(cl_mem_fence_flags flags);
-// void work_group_barrier(cl_mem_fence_flags flags);
+typedef enum {
+    CLK_LOCAL_MEM_FENCE,
+    CLK_GLOBAL_MEM_FENCE,
+    CLK_IMAGE_MEM_FENCE // CUDA doesn't really support this AFAICT
+} cl_mem_fence_flags;
+
+void work_group_barrier(cl_mem_fence_flags flags)
+{
+
+}
+void barrier(cl_mem_fence_flags flags) { return work_group_barrier(flags); }
 // void work_group_barrier(cl_mem_fence_flags flags, memory_scope scope);
 
 // Note: Subgroups are not supported in CUDA

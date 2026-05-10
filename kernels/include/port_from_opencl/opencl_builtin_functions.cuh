@@ -14,6 +14,7 @@
  * @todo
  * 1. Double-check all definitions in this file respect PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
  * 2. Figure out where to get the definition of memory_scope from.
+ * 3. Mark non-template functions as inline
  *
  */
 #ifndef PORT_FROM_OPENCL_BUILTIN_FUNCTIONS_CUH_
@@ -579,40 +580,46 @@ inline half rsqrt(half x) { return hrsqrt(x); }
 
 
 // allowed-half-precision functions (10-bit accuracy at least) from Table 12
-// ------------------------------------------------------------------
+// ------------------------------------------------------------------------
 
-inline float half_cos(float x) { return cosf(x); }
-inline float half_divide(float x, float y) { return x / y; }
-inline float half_exp(float x) { return expf(x); }
-inline float half_exp2(float x) { return exp2f(x); }
-inline float half_exp10(float x) { return exp10f(x); }
-inline float half_log(float x) { return logf(x); }
-inline float half_log2(float x) { return log2f(x); }
-inline float half_log10(float x) { return log10f(x); }
-inline float half_powr(float x, float y) { return powf(x, y); }
-inline float half_recip(float x) { return 1 / x; }
-inline float half_rsqrt(float x) { return rsqrtf(x); }
-inline float half_sin(float x) { return sinf(x); }
-inline float half_sqrt(float x) { return sqrtf(x); }
-inline float half_tan(float x) { return tanf(x); }
+// CUDA doesn't expose lower-precision operations, so let's be naive here
+
+template <typename T> T half_cos(T x) { return cos(x); }
+template <typename T> T half_divide(T x, T y) { return x/y; }
+template <typename T> T half_exp(T x) { return exp(x); }
+template <typename T> T half_exp2(T x) { return exp2(x); }
+template <typename T> T half_exp10(T x) { return exp10(x); }
+template <typename T> T half_log(T x) { return log(x); }
+template <typename T> T half_log2(T x) { return log2(x); }
+template <typename T> T half_log10(T x) { return log10(x); }
+template <typename T> T half_powr(T x, T y) { return powr(x); }
+template <typename T> T half_recip(T x) { return 1/x; }
+template <typename T> T half_rsqrt(T x) { return rsqrt(x); }
+template <typename T> T half_sin(T x) { return sin(x); }
+template <typename T> T half_sqrt(T x) { return sqrt(x); }
+template <typename T> T half_tan(T x) { return tan(x); }
+
 
 // native-device-instruction functions (10-bit accuracy at least) from Table 12
 // ----------------------------------------------------------------------------
 
-inline float native_cos(float x) { return cosf(x); }
-inline float native_divide(float x, float y) { return x / y; }
-inline float native_exp(float x) { return expf(x); }
-inline float native_exp2(float x) { return exp2f(x); }
-inline float native_exp10(float x) { return exp10f(x); }
-inline float native_log(float x) { return logf(x); }
-inline float native_log2(float x) { return log2f(x); }
-inline float native_log10(float x) { return log10f(x); }
-inline float native_powr(float x, float y) { return powf(x, y); }
-inline float native_recip(float x) { return 1 / x; }
-inline float native_rsqrt(float x) { return rsqrtf(x); }
-inline float native_sin(float x) { return sinf(x); }
-inline float native_sqrt(float x) { return sqrtf(x); }
-inline float native_tan(float x) { return tanf(x); }
+// We could specialize some of these functions for some of these types, perhaps,
+// but... let's be naive for now.
+
+template <typename T> T native_cos(T x) { return cos(x); }
+template <typename T> T native_divide(T x, T y) { return x/y; }
+template <typename T> T native_exp(T x) { return exp(x); }
+template <typename T> T native_exp2(T x) { return exp2(x); }
+template <typename T> T native_exp10(T x) { return exp10(x); }
+template <typename T> T native_log(T x) { return log(x); }
+template <typename T> T native_log2(T x) { return log2(x); }
+template <typename T> T native_log10(T x) { return log10(x); }
+template <typename T> T native_powr(T x, T y) { return powr(x); }
+template <typename T> T native_recip(T x) { return 1/x; }
+template <typename T> T native_rsqrt(T x) { return rsqrt(x); }
+template <typename T> T native_sin(T x) { return sin(x); }
+template <typename T> T native_sqrt(T x) { return sqrt(x); }
+template <typename T> T native_tan(T x) { return tan(x); }
 
 #endif // PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
 
@@ -628,140 +635,140 @@ inline float native_tan(float x) { return tanf(x); }
 // char, uchar, short, ushort, int, uint, long, ulong
 // and for their vector types
 
-// char:
-uchar abs_diff(char x, char y) { return x < y ? (y - x) : (x - y); }
-char add_sat(char x, char y);
-char hadd(char x, char y) { return (x >> 1) + (y >> 1) + (x & y & 1); }
-char rhadd(char x, char y);
-char clamp(char x, char minval, char maxval) { return min(max(x, minval), maxval); }
-char clz(char x);
-char ctz(char x);
-char mad_hi(char a, char b, char c);
-char mad_sat(char a, char b, char c);
-char mul_hi(char x, char y);
-char rotate(char v, char i);
-char sub_sat(char x, char y);
-char popcount(char x);
-short upsample(char hi, uchar lo);
+namespace detail_ {
 
-// uchar:
-uchar abs_diff(uchar x, uchar y) { return x < y ? (y - x) : (x - y); }
-uchar add_sat(uchar x, uchar y);
-uchar hadd(uchar x, uchar y) { return (x >> 1) + (y >> 1) + (x & y & 1); }
-uchar rhadd(uchar x, uchar y);
-uchar clamp(uchar x, uchar minval, uchar maxval) { return min(max(x, minval), maxval); }
-uchar clamp(uchar x, char minval, char maxval);
-uchar clz(uchar x);
-uchar ctz(uchar x);
-uchar mad_hi(uchar a, uchar b, uchar c);
-uchar mad_sat(uchar a, uchar b, uchar c);
-uchar mul_hi(uchar x, uchar y);
-uchar rotate(uchar v, uchar i);
-uchar sub_sat(uchar x, uchar y);
-uchar popcount(uchar x);
-ushort upsample(uchar hi, uchar lo);
+template <typename T>
+size_t num_bits() { return sizeof(T) * CHAR_BIT; }
 
-// short:
-ushort abs_diff(short x, short y) { return x < y ? (y - x) : (x - y); }
-short add_sat(short x, short y);
-short hadd(short x, short y) { return (x >> 1) + (y >> 1) + (x & y & 1); }
-short rhadd(short x, short y);
-short clamp(short x, short minval, short maxval) { return min(max(x, minval), maxval); }
-short clz(short x);
-short ctz(short x);
-short mad_hi(short a, short b, short c);
-short mad_sat(short a, short b, short c);
-short mul_hi(short x, short y);
-short rotate(short v, short i);
-short sub_sat(short x, short y);
-short popcount(short x);
-int upsample(short hi, ushort lo);
+template <typename I>
+using make_unsigned_t = typename ::std::make_unsigned<I>::type;
 
-// ushort:
-ushort abs_diff(ushort x, ushort y) { return x < y ? (y - x) : (x - y); }
-ushort add_sat(ushort x, ushort y);
-ushort hadd(ushort x, ushort y) { return (x >> 1) + (y >> 1) + (x & y & 1); }
-ushort rhadd(ushort x, ushort y);
-ushort clamp(ushort x, ushort minval, ushort maxval) { return min(max(x, minval), maxval); }
-ushort clamp(ushort x, short minval, short maxval);
-ushort clz(ushort x);
-ushort ctz(ushort x);
-ushort mad_hi(ushort a, ushort b, ushort c);
-ushort mad_sat(ushort a, ushort b, ushort c);
-ushort mul_hi(ushort x, ushort y);
-ushort rotate(ushort v, ushort i);
-ushort sub_sat(ushort x, ushort y);
-ushort popcount(ushort x);
-uint upsample(ushort hi, ushort lo);
+template <typename I>
+using enable_if_t = typename ::std::enable_if<I>::type;
 
-// int:
-uint abs_diff(int x, int y) { return x < y ? (y - x) : (x - y); }
-int add_sat(int x, int y);
-int hadd(int x, int y) { return (x >> 1) + (y >> 1) + (x & y & 1); }
-int rhadd(int x, int y);
-int clamp(int x, int minval, int maxval) { return min(max(x, minval), maxval); }
-int clz(int x);
-int ctz(int x);
-int mad_hi(int a, int b, int c);
-int mad_sat(int a, int b, int c);
-int mul_hi(int x, int y);
-int rotate(int v, int i);
-int sub_sat(int x, int y);
-int popcount(int x) { return __popc(reinterpret_cast<uint&>(x)); }
-long upsample(int hi, uint lo);
+template <typename I>
+using enable_if_integral_t = enable_if_t<::std::is_integral<I>>;
 
-// uint:
-uint abs_diff(uint x, uint y) { return x < y ? (y - x) : (x - y); }
-uint add_sat(uint x, uint y);
-uint hadd(uint x, uint y) { return (x >> 1) + (y >> 1) + (x & y & 1); }
-uint rhadd(uint x, uint y);
-uint clamp(uint x, uint minval, uint maxval) { return min(max(x, minval), maxval); }
-uint clamp(uint x, int minval, int maxval);
-uint clz(uint x);
-uint mad_hi(uint a, uint b, uint c);
-uint mad_sat(uint a, uint b, uint c);
-uint mul_hi(uint x, uint y);
-uint rotate(uint v, uint i);
-uint sub_sat(uint x, uint y);
-uint popcount(uint x) { return __popc(x); }
-ulong upsample(uint hi, uint lo);
+template <typename I> I ffs_nonzero(I x)
+{
+    static_assert(sizeof(I) == 1 or sizeof(I) == 2 sizeof(I) == 4 or sizeof(I) == 8, "Unsupported type size for clz");
 
-// long:
-ulong abs_diff(long x, long y) { return x < y ? (y - x) : (x - y); }
-long add_sat(long x, long y);
-long hadd(long x, long y) { return (x >> 1) + (y >> 1) + (x & y & 1); }
-long rhadd(long x, long y);
-long clamp(long x, long minval, long maxval) { return min(max(x, minval), maxval); }
-long clz(long x);
-long ctz(long x);
-long mad_hi(long a, long b, long c);
-long mad_sat(long a, long b, long c);
-long mul_hi(long x, long y);
-long rotate(long v, long i);
-long sub_sat(long x, long y);
-long popcount(long x) { return __popcll(reinterpret_cast<ulong&>(x)); }
-long upsample(long hi, ulong lo);
+    return (sizeof(I) <= sizeof(int)) ? __ffs(x) : __ffsll(x);
+}
 
-// ulong:
-ulong abs_diff(ulong x, ulong y) { return x < y ? (y - x) : (x - y); }
-ulong add_sat(ulong x, ulong y);
-ulong hadd(ulong x, ulong y) { return (x >> 1) + (y >> 1) + (x & y & 1); }
-ulong rhadd(ulong x, ulong y);
-ulong clamp(ulong x, ulong minval, ulong maxval) { return min(max(x, minval), maxval); }
-ulong clamp(ulong x, long minval, long maxval);
-ulong clz(ulong x);
-ulong ctz(ulong x);
-ulong mad_hi(ulong a, ulong b, ulong c);
-ulong mad_sat(ulong a, ulong b, ulong c);
-ulong mul_hi(ulong x, ulong y);
-ulong rotate(ulong v, ulong i);
-ulong sub_sat(ulong x, ulong y);
-ulong popcount(ulong x) { return __popcll(x); }
+template <typename I> I ffs(I x)
+{
+    static_assert(sizeof(I) == 1 or sizeof(I) == 2 sizeof(I) == 4 or sizeof(I) == 8, "Unsupported type size for clz");
+
+    I ffs_val = sizeof(I) <= sizeof(int) ? __ffs(x) : __ffsll(x);
+    if (sizeof(I) == 4 or sizeof(I) == 8) { return ffs_val; }
+    if (ffs_val < num_bits<I>()) { return ffs_val ; }
+    return num_bits<I>();
+}
+
+} // namespace detail_
+
+// , typename = detail_::enable_if_integral_t<I>
+template <typename I> detail_::make_unsigned_t<I> abs(I x) { return x >= 0 ? x : -x; }
+template <typename I> detail_::make_unsigned_t<I> abs_diff(I x) { return (x >= y) ? (x - y) : (y - x); }
+// char add_sat(char x, char y);
+template <typename I> I hadd(I x, I y) { return (x >> 1) + (y >> 1) + (x & y & 1); }
+template <typename I> I rhadd(I x, I y) { return (x >> 1) + (y >> 1) + (x & 1 + y & 1 + 1) >> 1; }
+template <typename I> I clamp(I x, I minval, I maxval) { return min(max(x, minval), maxval); }
+template <typename I> I clz(I x)
+{
+    static_assert(::std::is_integral<I>::value);
+    static_assert(sizeof(I) == 1 or sizeof(I) == 2 sizeof(I) == 4 or sizeof(I) == 8, "Unsupported type size for clz");
+    switch (sizeof(I)) {
+        case 1: return __clz(reinterpret_cast<uchar >(x)) - 24; // note the implicit promotion to int, but without sign-extension
+        case 2: return __clz(reinterpret_cast<ushort>(x)) - 16; // note the implicit promotion to int, but without sign-extension
+        case 4: return __clz(x); // unsigned int interpreted as int
+        default:
+        case 8: return __clzll(x);
+    }
+}
+template <typename I> I ctz(I x) { return (x == 0) ? detail_::num_bits<I>() : detail_::ffs_nonzero(x); }
+template <typename I> I mul_hi(I a, I b)
+{
+    // TODO: Consider using mulhi and umulhi, __mul64hi and __umul64hi !
+    static_assert(::std::is_unsigned<I>::value, "Only unsigned types supported for now");
+    static constexpr auto half_bits = detail_::num_bits<I>() / 2;
+    if (::std::is_unsigned<I>::value) {
+        return
+            (((a >> half_bits) * b + a * (b >> half_bits)) >> half_bits)
+            - (a >> half_bits) * (b >> half_bits);
+    }
+    // if (::std::is_signed<I>::value) {
+    //     bool sign_a = a < 0;
+    //     bool sign_b = b < 0;
+    //     if (sign_a) { a = -a; }
+    //     if (sign_b) { b = -b; }
+    //     auto output_sign = sign_a ^ sign_b; // no logical xor, alas
+    //     auto output_abs =
+    //         (((a >> half_bits) * b + a * (b >> half_bits)) >> half_bits)
+    //         - (a >> half_bits) * (b >> half_bits);
+    //     return output_sign ? -output_abs : output_abs;
+    // }
+}
+template <typename I> I mad_hi(I a, I b, I c)
+{
+    // TODO: Make sure everything has modulo-2^n semantics...
+    struct { I hi, lo; } parts = { a * b, mul_hi(a,b) };
+    if (c > ::std::numeric_limits<I>::max() - parts.lo) { return parts.hi + 1; }
+    if (::std::is_signed<I>::value) {
+        if (c < 0 and parts.lo - ::std::numeric_limits<I>::in() > -c) { return parts.hi - 1; }
+    }
+    return parts.hi;
+}
+template <typename I> I mad_sat(I a, I b, I c)
+{
+    static_assert(::std::is_unsigned<I>::value, "Only unsigned types supported for now");
+    if (mul_hi(a, b) > 0) { return ::std::numeric_limits<I>::max(); }
+    I m = a * b;
+    I maybe_result = m + c;
+    if ((m + c) < m) { return ::std::numeric_limits<I>::max(); }
+    return m + c;
+}
+template <typename I> I rotate(I v, I i)
+{
+    auto num_bits = detail_::num_bits<I>();
+    auto i = i % num_bits;
+    return (v << i) & (v >> (num_bits - i)); // What will this do for signed types?
+}
+template <typename I> I sub_sat(I x, I y)
+{
+    if (::std::is_unsigned<I>::value) {
+        return (y > x ? 0 : x - y);
+    }
+    if (y > 0) {
+        return (y > x -::std::numeric_limits<I>::min()) ? ::std::numeric_limits<I>::min() : x - y;
+    }
+    return ((x - y) < x) ? ::std::numeric_limits<I>::max() : x - y;
+}
+template <typename I> I upsample(I x);
+template <typename I> I popcount(I x)
+{
+    using UI = typename ::std::make_unsigned<I>::type;
+    UI x_ = x;
+    return (sizeof(I) <= sizeof(int)) ? __popc(x_) : __popcll(x_);
+}
+
+// specializations...
+
+short  upsample(char   hi, uchar  lo) { return ((short ) hi) * (short ) (1 << (sizeof(char  ) * CHAR_BIT)) + lo; }
+ushort upsample(uchar  hi, uchar  lo) { return ((ushort) hi) * (ushort) (1 << (sizeof(uchar ) * CHAR_BIT)) + lo; }
+int    upsample(short  hi, ushort lo) { return ((int   ) hi) * (int   ) (1 << (sizeof(short ) * CHAR_BIT)) + lo; }
+uint   upsample(ushort hi, ushort lo) { return ((uint  ) hi) * (uint  ) (1 << (sizeof(ushort) * CHAR_BIT)) + lo; }
+long   upsample(int    hi, uint   lo) { return ((long  ) hi) * (long  ) (1 << (sizeof(int   ) * CHAR_BIT)) + lo; }
+ulong  upsample(uint   hi, uint   lo) { return ((ulong ) hi) * (ulong ) (1 << (sizeof(uint  ) * CHAR_BIT)) + lo; }
+template <typename I> I upsample(I x) = delete;
 
 // TODO: Implement vectorized versions of the integer math functions above.
 // For now we've only done upsample for n=2 and n=4
 
-// The following functions need to be implemented for int's and their vectorizations: mad24, mul24
+// Built-in 24-bit Integer Functions (Table 14)
+
+// The following functions need to be implemented for int's
 
 int mul24(int x, int y)        { return __mul24(x, y); }
 int mad24(int x, int y, int z) { return __mul24(x, y) + z; }
@@ -862,6 +869,7 @@ double step(double edge, double x);
 double smoothstep(double edge0, double edge1, double x);
 double sign(double x);
 
+#ifdef PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
 // half:
 half clamp(half x, half minval, half maxval) { return min(max(x, minval), maxval); }
 half degrees(half radians);
@@ -870,6 +878,7 @@ half radians(half degrees);
 half step(half edge, half x);
 half smoothstep(half edge0, half edge1, half x);
 half sign(half x);
+#endif // PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
 
 // §6.15.5. Geometric Functions
 // --------------------------------------------------------------
@@ -888,12 +897,12 @@ template <typename T> int islessequal(T x, T y) noexcept { return x <= y; }
 template <typename T> int islessgreater(T x, T y) noexcept { return x < y or x > y; }
 
 namespace detail_ {
-template <typename I> I msb_mask() noexcept { return 1 << (sizeof(I) * CHAR_BIT - 1); }
+template <typename I> I msb_mask() noexcept { return 1 << (num_bits<I>() - 1); }
 template <typename I> I msb_of(I x) noexcept { return x & msb_mask<I>() ? 1 : 0; }
 }
 
-template <typename I> int any(I x) { return detail_::msb_of(x); }
-template <typename I> int all(I x) { return detail_::msb_of(x); }
+template <typename I> int any(I x) { return detail_::msb_of(x); } // this is meaningful mostly for vector types
+template <typename I> int all(I x) { return detail_::msb_of(x); } // this is meaningful mostly for vector types
 template <typename I> I bitselect(I a, I b, I c) { return (a & c) | (b & ~c); }
 template <typename I> select(I a, I b, I c) { return detail_::msb_of(c) ? a : b; }
 
@@ -906,7 +915,7 @@ template <typename T> bool isnan(T x) noexcept { return false; }
 // relational functions for double arguments
 
 // Provided by CUDA: isfinite, isinf, isnan
-//int isfinite(double x) noexcept { isfinite(x); }
+
 int isnormal(double x) noexcept
 {
     detail_::destructured_double d = x;
@@ -923,6 +932,7 @@ int signbit(double x) noexcept
 // relational functions for float arguments
 
 // Provided by CUDA: isfinite, isinf, isnan
+
 int isnormal(float x) noexcept
 {
     detail_::destructured_float d = x;
@@ -986,7 +996,7 @@ typedef enum {
 
 void work_group_barrier(cl_mem_fence_flags flags)
 {
-
+    __syncthreads();
 }
 void barrier(cl_mem_fence_flags flags) { return work_group_barrier(flags); }
 // void work_group_barrier(cl_mem_fence_flags flags, memory_scope scope);
@@ -1010,9 +1020,6 @@ void barrier(cl_mem_fence_flags flags) { return work_group_barrier(flags); }
 // §6.15.12. Atomic Functions
 // --------------------------------------------------------------
 
-// §6.15.13. Miscellaneous Vector Functions
-// --------------------------------------------------------------
-
 // §6.15.14. printf
 // --------------------------------------------------------------
 
@@ -1025,25 +1032,42 @@ void barrier(cl_mem_fence_flags flags) { return work_group_barrier(flags); }
 // §6.15.17. Work-group Collective Uniform Arithmetic Functions
 // --------------------------------------------------------------
 
-// §6.15.18. Pipe Functions
-// --------------------------------------------------------------
+// §6.15.18. Pipe Functions - pipes in general are not supported in CUDA
 
-// §6.15.19. Enqueuing Kernels
-// --------------------------------------------------------------
+// §6.15.19. Enqueuing Kernels - not supported, because OpenCL
+// in-kernel enqueue requires individual work items to enqueue
+// blocks of the additional kernel; CUDA in-kernel has each
+// enqueueing thread be responsible for a full launch grid.
+// See @url https://developer.download.nvidia.com/assets/cuda/docs/TechBrief_Dynamic_Parallelism_in_CUDA_v2.pdf
+// for details on launching kernels-within-kernels in CUDA.
 
-// §6.15.20. Sub-Group Functions
-// --------------------------------------------------------------
+
+
+// §6.15.20. Sub-Group Functions - CUDA doesn't support subgroups,
+// so skipping these
 
 // §6.15.21. Kernel Clock Functions
 // --------------------------------------------------------------
 
+ulong clock_read_device()     { return clock64();             }
+ulong clock_read_work_group() { return clock_read_device();   }
+ulong clock_read_sub_group()  { return clock_read_sub_group();}
 
-__device__ inline void barrier(int kind)
-{
-//    assert(kind == CLK_LOCAL_MEM_FENCE) noexcept;
-    __syncthreads();
+namespace detail_ {
+using destructured_ulong = struct {
+    ulong value;
+    uint2 components;
+};
 }
 
+uint2 clock_read_hilo_device()
+{
+    detail_::destructured_ulong clk;
+    clk.value = clock64();
+    return clk.components;
+}
+uint2 clock_read_hilo_work_group() { return clock_read_hilo_device(); }
+uint2 clock_read_hilo_sub_group()  { return clock_read_hilo_device(); }
 
 #endif // __OPENCL_VERSION__
 #endif // PORT_FROM_OPENCL_BUILTIN_FUNCTIONS_CUH_

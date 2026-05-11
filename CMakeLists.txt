@@ -21,6 +21,15 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
 include(CompileWithWarnings)
 
+function(poor_mans_remove_prefix str prefix_length out_var)
+  # We assume all parameters are valid, and that length is non-negative and doesn't exceed the sring length
+  string(LENGTH "${str}" __str_len)
+  math(EXPR __remaining_len "${__str_len} - ${prefix_length}")
+  # Extract substring from index = length, length = remaining
+  string(SUBSTRING "${str}" ${prefix_length} ${__remaining_len} __result)
+  set(${out_var} "${__result}" PARENT_SCOPE)
+endfunction()
+
 ############################
 ##  Package dependencies  ##
 ############################
@@ -65,10 +74,13 @@ add_library(kernel-adapters OBJECT)
 target_link_libraries(kernel-runner PRIVATE kernel-adapters)
 set(adapter-definition-root-dirs src/kernel_adapters)
 list(APPEND adapter-definition-root-dirs ${EXTRA_ADAPTER_SOURCE_DIRS})
-foreach(adapter-definitions-root-dir ${adapter-definition-root-dirs})
-	message(STATUS "Using adapters defined under ${adapter-definitions-root-dir}")
-	file(GLOB_RECURSE adapter-definitions "${adapter-definitions-root-dir}/*.hpp")
-	file(GLOB_RECURSE adapter-sources "${adapter-definitions-root-dir}/*.cpp")
+foreach(adapter-definitions-base-dir ${adapter-definition-root-dirs})
+	cmake_path(ABSOLUTE_PATH adapter-definitions-base-dir  NORMALIZE)
+	cmake_path(GET adapter-definitions-base-dir ROOT_NAME root-to-strip) 
+	string (LENGTH "${root-to-strip}" root-len)
+	message(STATUS "Using adapters defined under ${adapter-definitions-base-dir}")
+	file(GLOB_RECURSE adapter-definitions "${adapter-definitions-base-dir}/*.hpp")
+	file(GLOB_RECURSE adapter-sources "${adapter-definitions-base-dir}/*.cpp")
 	foreach(adapter-definition ${adapter-definitions})
 		target_sources(kernel-adapters PRIVATE "${adapter-definition}")
 	endforeach()
@@ -77,20 +89,23 @@ foreach(adapter-definitions-root-dir ${adapter-definition-root-dirs})
 	endforeach()
 	list(LENGTH adapter-sources num-sources-in-dir)
 	math(EXPR num-adapters-with-source "${num-adapters-with-source} + ${num-sources-in-dir}" OUTPUT_FORMAT DECIMAL)
-	set(adapter-definitions-with-sources ${adapter-sources})
-	list(TRANSFORM adapter-definitions-with-sources REPLACE "\\.cpp\$" ".hpp")
-	list(REMOVE_ITEM adapter-definitions ${adapter-definitions-with-sources})
-	list(LENGTH adapter-definitions num-generated-in-dir)
+	list(TRANSFORM adapter-sources REPLACE "\\.cpp\$" ".hpp" OUTPUT_VARIABLE adapter-definitions-with-sources)
+	set(adapter-definitions-requiring-generation ${adapter-definitions}) # ... this will make sense after the next line
+	list(REMOVE_ITEM adapter-definitions-requiring-generation ${adapter-definitions-with-sources})
+	list(LENGTH adapter-definitions-requiring-generation num-generated-in-dir)
 	math(EXPR num-generated-adapters "${num-generated-adapters} + ${num-generated-in-dir}" OUTPUT_FORMAT DECIMAL)
-	foreach(adapter-definition ${adapter-definitions})
+	foreach(adapter-definition ${adapter-definitions-requiring-generation})
 		file(READ ${adapter-definition} adapter-definition-contents)
 		if(NOT "${adapter-definition-contents}" MATCHES "[ \t]*(struct|class)[ \t]+.*kernel_adapter.*{")
 			math(EXPR num-generated-adapters "${num-generated-adapters} - 1" OUTPUT_FORMAT DECIMAL)
 			continue()
 		endif()
 		get_filename_component(adapter-name ${adapter-definition} NAME_WE)
-		get_filename_component(adapter-definition-dir ${adapter-definition} DIRECTORY)
-		set(adapter-source "src/${adapter-definition-dir}/${adapter-name}.cpp") # Note this will be generated within the build directory
+		get_filename_component(adapter-definition-dir_ ${adapter-definition} DIRECTORY)
+		cmake_path(NORMAL_PATH adapter-definition-dir_)
+		poor_mans_remove_prefix("${adapter-definition-dir_}" "${root-len}" adapter-definition-dir)
+		cmake_path(SET adapter-source "src/${adapter-definition-dir}/${adapter-name}.cpp" NORMALIZE)
+		# ... but note that this source file will be generated under the build directory
 		if (Python_FOUND)
 			add_custom_command(
 				OUTPUT ${adapter-source}
@@ -110,7 +125,6 @@ foreach(adapter-definitions-root-dir ${adapter-definition-root-dirs})
 				VERBATIM
 			)
 		endif()
-
 		target_sources(kernel-adapters PRIVATE "${adapter-source}")
 	endforeach()
 endforeach()

@@ -30,7 +30,6 @@
 
 #include "../util/filesystem.hpp"
 
-using include_dir_paths_t = std::vector<std::string>;
 
 bool check_potential_cuda_include_dir(filesystem::path candidate_dir)
 {
@@ -61,7 +60,7 @@ optional<std::string> locate_cuda_include_directory()
             if (check_potential_cuda_include_dir(candidate)) {
                 spdlog::trace( "Using the CUDA include directory specified in {}, "
                    "to append to  the compilation options", env_var_name);
-                return candidate.native();
+                return candidate.string();
             }
         }
     }
@@ -69,7 +68,7 @@ optional<std::string> locate_cuda_include_directory()
 #ifdef CUDA_INCLUDE_DIR
     candidate = CUDA_INCLUDE_DIR;
     if (check_potential_cuda_include_dir(candidate)) {
-        return candidate.native();
+        return candidate.string();
     }
 #endif
     // TODO: Check the PATH for the CUDA binaries dir
@@ -158,6 +157,7 @@ compilation_result_t build_cuda_kernel(
         spdlog::debug("As requested, NOT setting a compilation option describing the target compute capability");
     }
     // TODO: Note the copying of strings and maps here; can we move all of these instead?
+
     opts.additional_include_paths = include_dir_paths;
     opts.preinclude_files = preinclude_files;
     opts.no_value_defines = preprocessor_definitions.valueless;

@@ -12,7 +12,7 @@ std::vector<byte_type> read_input_file(const filesystem::path& src, size_t extra
     verify_input_path(src);
     auto file_size = filesystem::file_size(src);
     auto buffer_size = file_size + extra_buffer_size;
-    std::ifstream file(src, std::ios::binary | std::ios::ate);
+    std::ifstream file(src.string(), std::ios::binary | std::ios::ate);
     try {
         file.exceptions(std::ios::failbit | std::ios::badbit);
         file.seekg(0, std::ios::beg);
@@ -24,7 +24,7 @@ std::vector<byte_type> read_input_file(const filesystem::path& src, size_t extra
             throw ios_failure;
         }
         throw std::system_error(errno, std::generic_category(),
-            "trying to read " + std::to_string(file_size) + " from file " + src.native());
+            "trying to read " + std::to_string(file_size) + " from file " + src.string());
     }
 }
 
@@ -43,7 +43,7 @@ void write_data_to_file(
     bool                overwrite_allowed)
 {
     verify_path(destination, for_writing, overwrite_allowed);
-    auto file = std::fstream(destination, std::ios::out | std::ios::binary);
+    auto file = std::fstream(destination.string(), std::ios::out | std::ios::binary);
     try {
         file.exceptions(std::ios::failbit | std::ios::badbit);
         file.write(data.data(), (std::streamsize) data.size());
@@ -53,7 +53,7 @@ void write_data_to_file(
             throw ios_failure;
         }
         throw std::system_error(errno, std::generic_category(),
-            "trying to write " + data_description + " to file " + destination.native());
+            "trying to write " + data_description + " to file " + destination.string());
     }
 }
 

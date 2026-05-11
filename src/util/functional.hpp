@@ -8,6 +8,18 @@
 
 namespace util {
 
+
+/// Similar to `transform()`, but when no transformation is required,
+/// i.e. elements of the destination container are constructible from
+/// elements of the source container.
+template<typename DestinationContainer, typename SourceContainer>
+DestinationContainer as(const SourceContainer& container)
+{
+    DestinationContainer dest;
+    std::copy(container.cbegin(), container.cend(), std::inserter(dest, dest.begin()));
+    return dest;
+}
+
 template<typename SourceContainer, typename DestinationContainer>
 DestinationContainer copy(SourceContainer& src, DestinationContainer& dest)
 {

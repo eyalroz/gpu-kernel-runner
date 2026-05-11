@@ -30,7 +30,6 @@ DISABLE_WARNING_POP
 #include <tuple>
 
 using string_map = std::unordered_map<std::string, std::string>;
-using include_paths_t = std::vector<std::string>;
 using device_buffer_info_map_t = std::unordered_map<std::string, device_side_buffer_info_t>;
 
 // TODO: Switch to a variant, perhaps?
@@ -148,7 +147,7 @@ struct execution_context_t {
     struct {
         split_preprocessor_definitions_t generated, finalized;
     } preprocessor_definitions;
-    include_paths_t finalized_include_dir_paths;
+    paths_t finalized_include_dir_paths;
     marshalled_arguments_type finalized_arguments;
     launch_configuration_type kernel_launch_configuration;
     durations_t durations; // The execution durations of each invocation of the kernel

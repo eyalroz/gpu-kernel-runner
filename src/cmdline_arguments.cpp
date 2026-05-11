@@ -72,10 +72,10 @@ cxxopts::Options basic_cmdline_options(const char* program_name)
         ("sync-after-execution,sync-after-invocation", "Have the GPU finish all work for a given run before scheduling the next", cxxopts::value<bool>()->default_value("false"))
         ("sync-after-buffer-op,sync-after-buffer-write", "Have the GPU finish all work for a given run after scheduling a buffer operation", cxxopts::value<bool>()->default_value("false"))
         ("language-standard,std", "Set the language standard to use for CUDA compilation (options: c++11, c++14, c++17)", cxxopts::value<string>())
-        ("input-buffer-directory,in-dir,input-buffer-dir,input-buffers-directory,input-buffers-dir,inbuf-dir,inbufs,inbufs-dir,inbuf-directory,inbufs-directory,in-directory", "Base location for locating input buffers", cxxopts::value<string>()->default_value( filesystem::current_path().native() ))
-        ("output-buffer-directory,output-buffer-dir,output-buffers-directory,output-buffers-dir,outbuf-dir,outbufs,outbufs-dir,outbuf-directory,outbufs-directory,out-directory", "Base location for writing output buffers", cxxopts::value<string>()->default_value( filesystem::current_path().native() ))
+        ("input-buffer-directory,in-dir,input-buffer-dir,input-buffers-directory,input-buffers-dir,inbuf-dir,inbufs,inbufs-dir,inbuf-directory,inbufs-directory,in-directory", "Base location for locating input buffers", cxxopts::value<string>()->default_value( filesystem::current_path().string() ))
+        ("output-buffer-directory,output-buffer-dir,output-buffers-directory,output-buffers-dir,outbuf-dir,outbufs,outbufs-dir,outbuf-directory,outbufs-directory,out-directory", "Base location for writing output buffers", cxxopts::value<string>()->default_value( filesystem::current_path().string() ))
         ("accept-oversized-inputs,accept-oversized,allow-oversized-inputs,allow-oversized,lax-size-validation", "Accept input buffers exceeding the expected size calculated for them", cxxopts::value<bool>()->default_value("false"))
-        ("kernel-sources-dir,kernel-source-dir,kernel-source-directory,kernel-sources-directory,kernel-sources,source-dir,sources", "Base location for locating kernel source files", cxxopts::value<string>()->default_value( filesystem::current_path().native() ))
+        ("kernel-sources-dir,kernel-source-dir,kernel-source-directory,kernel-sources-directory,kernel-sources,source-dir,sources", "Base location for locating kernel source files", cxxopts::value<string>()->default_value( filesystem::current_path().string() ))
         ("h,help", "Print usage information")
         ;
     return options;
@@ -252,10 +252,10 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
         struct { bool key, source_file_path; } usable_as_function_name =
         {
             util::is_valid_identifier(clipped_key),
-            util::is_valid_identifier(parsed_options.kernel.source_file.filename().native())
+            util::is_valid_identifier(parsed_options.kernel.source_file.filename().string())
         };
         if (usable_as_function_name.source_file_path and not usable_as_function_name.key) {
-            parsed_options.kernel.function_name = parsed_options.kernel.source_file.filename().native();
+            parsed_options.kernel.function_name = parsed_options.kernel.source_file.filename().string();
             spdlog::info("Inferring the kernel function name from the kernel source filename: '{}'",
                 parsed_options.kernel.function_name);
         }
@@ -268,7 +268,7 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
 
     if (not got.key and (got.source_file_path or got.function_name)) {
         if (got.source_file_path) {
-            parsed_options.kernel.key = parsed_options.kernel.source_file.filename().native();
+            parsed_options.kernel.key = parsed_options.kernel.source_file.filename().string();
         }
         else {
             parsed_options.kernel.key = parsed_options.kernel.function_name;
@@ -292,9 +292,9 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
         (got.source_file_path ?
          "Specified kernel source file does not exist: {}" :
          "No kernel source file specified, and inferred file does not exist: {}"),
-        parsed_options.kernel.source_file.native());
+        parsed_options.kernel.source_file.string());
 
-    spdlog::debug("Resolved kernel source file path: {}", parsed_options.kernel.source_file.native());
+    spdlog::debug("Resolved kernel source file path: {}", parsed_options.kernel.source_file.string());
 
     // Note: Doing nothing if the kernel source file is missing. Since we must have gotten
     // the kernel name, we'll prefer printing usage information with kernel-specific options,
@@ -332,7 +332,7 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
             if (filesystem::exists(parsed_options.ptx_output_file)) {
                 if (not parsed_options.overwrite_allowed) {
                     throw std::invalid_argument("Specified PTX output file "
-                        + parsed_options.ptx_output_file.native() + " exists, and overwrite is not allowed.");
+                        + parsed_options.ptx_output_file.string() + " exists, and overwrite is not allowed.");
                 }
                 // Note that there could theoretically be a race condition in which the file gets created
                 // between our checking for its existence and our wanting to write to it after compilation.
@@ -345,7 +345,7 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
         if (filesystem::exists(parsed_options.execution_durations_file)) {
             if (not parsed_options.overwrite_allowed) {
                 throw std::invalid_argument("Specified execution durations file "
-                    + parsed_options.execution_durations_file.native() + " exists, and overwrite is not allowed.");
+                    + parsed_options.execution_durations_file.string() + " exists, and overwrite is not allowed.");
             }
             // Note that there could theoretically be a race condition in which the file gets created
             // between our checking for its existence and our wanting to write to it after compilation.
@@ -358,7 +358,7 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
         if (filesystem::exists(parsed_options.compilation_log_file)) {
             if (not parsed_options.overwrite_allowed) {
                 throw std::invalid_argument("Specified compilation log file "
-                    + parsed_options.compilation_log_file.native() + " exists, and overwrite is not allowed.");
+                    + parsed_options.compilation_log_file.string() + " exists, and overwrite is not allowed.");
             }
             // Note that there could theoretically be a race condition in which the file gets created
             // between our checking for its existence and our wanting to write to it after compilation.
@@ -366,9 +366,9 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
     }
 
     if (not filesystem::exists(parsed_options.buffer_base_paths.output)) {
-        spdlog::info("Trying to create path to missing directory {}", parsed_options.buffer_base_paths.output.native());
+        spdlog::info("Trying to create path to missing directory {}", parsed_options.buffer_base_paths.output.string());
         filesystem::create_directories(parsed_options.buffer_base_paths.output)
-            or die("Failed creating path: {}", parsed_options.buffer_base_paths.output.native());
+            or die("Failed creating path: {}", parsed_options.buffer_base_paths.output.string());
     }
 
     for (const auto& path : {
@@ -377,8 +377,8 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
              parsed_options.kernel_sources_base_path
          } )
     {
-        if (not filesystem::exists(path)) die("No such directory {}", path.native());
-        if (not filesystem::is_directory(path)) die("{} is not a directory.", path.native());
+        if (not filesystem::exists(path)) die("No such directory {}", path.string());
+        if (not filesystem::is_directory(path)) die("{} is not a directory.", path.string());
     }
 
     parsed_options.write_output_buffers_to_files = parse_result["write-output"].as<bool>();
@@ -530,15 +530,17 @@ parsed_cmdline_options_t parse_command_line(int argc, char** argv)
 //        });
 
     if (parse_result.count("include-path") > 0) {
-        parsed_options.include_dir_paths = parse_result["include-path"].as<std::vector<string>>();
+        auto include_dir_paths = parse_result["include-path"].as<std::vector<std::string>>();
+        parsed_options.include_dir_paths = util::as<paths_t>(include_dir_paths);
         for (const auto& p : parsed_options.include_dir_paths) {
-            spdlog::trace("User-specified include path: {}", p);
+            spdlog::trace("User-specified include path: {}", p.string());
         }
     }
     if (parse_result.count("include") > 0) {
-        parsed_options.preinclude_files = parse_result["include"].as<std::vector<string>>();
+        auto preinclude_files = parse_result["include"].as<std::vector<std::string>>();
+        parsed_options.preinclude_files = util::as<paths_t>(preinclude_files);
         for (const auto& p : parsed_options.preinclude_files) {
-            spdlog::trace("User-specified pre-include file: {}", p);
+            spdlog::trace("User-specified pre-include file: {}", p.string());
         }
     }
 

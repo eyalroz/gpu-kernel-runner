@@ -38,7 +38,7 @@ std::string obtain_ptx(const cl::Program &built_program, device_id_t device_id)
 std::string marshal_opencl_compilation_options(
     bool                               hopefully_generate_debug_info,
     bool                               generate_source_line_info,
-    include_paths_t                    include_paths,
+    paths_t                    include_paths,
     preprocessor_definitions_t         valueless_definitions,
     valued_preprocessor_definitions_t  valued_definitions,
     const std::vector<std::string>     extra_options)
@@ -87,7 +87,7 @@ std::string marshal_opencl_compilation_options(
 }
 
 std::vector<host_buffer_t>
-load_preinclude_files(const include_paths_t& preincludes, const include_paths_t& include_dirs)
+load_preinclude_files(const paths_t& preincludes, const paths_t& include_dirs)
 {
     // TODO: What about the source file directory?
     auto include_dir_fs_paths = util::transform<std::vector<filesystem::path>>(
@@ -99,26 +99,26 @@ load_preinclude_files(const include_paths_t& preincludes, const include_paths_t&
             // First search our process' CWD in case of a relative search path, or use
             // the absolute path
             if (filesystem::exists(preinclude_file_path)) {
-                spdlog::debug("Loading pre-include \"{}\"", preinclude_file_path_);
+                spdlog::debug("Loading pre-include \"{}\"", preinclude_file_path.string());
                 return util::read_file_as_null_terminated_string(preinclude_file_path);
             }
             else {
                 spdlog::trace("pre-include \"{}\" not found relative to current working directory {}",
-                    preinclude_file_path_, filesystem::current_path().native());
+                    preinclude_file_path.string(), filesystem::current_path().string());
             }
             if (preinclude_file_path.is_relative()) {
                 for(const auto& p : include_dir_fs_paths) {
                     auto preinclude_path = p / preinclude_file_path;
                     if (filesystem::exists(preinclude_path)) {
-                        spdlog::debug("Loading pre-include \"{}\" from {}", preinclude_file_path_, preinclude_path.native());
+                        spdlog::debug("Loading pre-include \"{}\" from {}", preinclude_file_path.string(), preinclude_path.string());
                         return util::read_file_as_null_terminated_string(preinclude_path);
                     }
                     else {
-                        spdlog::trace("pre-include \"{}\" not found in {}", preinclude_file_path_, preinclude_path.native());
+                        spdlog::trace("pre-include \"{}\" not found in {}", preinclude_file_path.string(), preinclude_path.string());
                     }
                 }
             }
-            die("Preinclude loading failed: Could not locate preinclude file \"{}\"", preinclude_file_path_);
+            die("Preinclude loading failed: Could not locate preinclude file \"{}\"", preinclude_file_path.string());
         });
 }
 
@@ -131,8 +131,8 @@ opencl_compilation_result_t build_opencl_kernel(
     bool        generate_debug_info,
     bool        generate_source_line_info,
     bool        need_ptx,
-    const include_paths_t& finalized_include_dir_paths,
-    const include_paths_t& preinclude_files,
+    const paths_t& finalized_include_dir_paths,
+    const paths_t& preinclude_files,
     split_preprocessor_definitions_t preprocessor_definitions,
     std::vector<std::string>         extra_compilation_options)
 {

@@ -59,7 +59,7 @@ void collect_include_paths(execution_context_t& context)
         // ... and note that "." is guaranteed to be portable to any platform
         source_file_include_dir = filesystem::path{"."};
     }
-    context.finalized_include_dir_paths.insert(context.finalized_include_dir_paths.begin(), source_file_include_dir.native());
+    context.finalized_include_dir_paths.insert(context.finalized_include_dir_paths.begin(), source_file_include_dir.string());
 
     auto ecosystem_include_paths = get_ecosystem_include_paths(context);
     util::append(ecosystem_include_paths, context.finalized_include_dir_paths);
@@ -82,7 +82,7 @@ std::string resolve_input_buffer_filename(
         return name;
     }
     else {
-        spdlog::debug("Fallback input filename search for input buffer parameter '{}': No such file {}", name, (context.options.buffer_base_paths.input / name).native());
+        spdlog::debug("Fallback input filename search for input buffer parameter '{}': No such file {}", name, (context.options.buffer_base_paths.input / name).string());
     }
     for(const auto& alias : buffer_param_details.get_aliases()) {
         filesystem::path input_file_for_alias = context.options.buffer_base_paths.input / alias;
@@ -90,7 +90,7 @@ std::string resolve_input_buffer_filename(
             return alias;
         }
         else {
-            spdlog::debug("Fallback input filename search for input buffer parameter '{}': No such file {}", name, input_file_for_alias.native());
+            spdlog::debug("Fallback input filename search for input buffer parameter '{}': No such file {}", name, input_file_for_alias.string());
         }
     }
     die("Cannot locate an input buffer file for parameter {}", name);
@@ -124,11 +124,11 @@ std::string resolve_output_buffer_filename(
     if (filesystem::exists(output_file)) {
         if (not context.options.overwrite_allowed and not context.options.compile_only) {
             die("Writing the contents of output buffer '{}' would overwrite output buffer file: {}",
-                name, output_file.native());
+                name, output_file.string());
         }
-        spdlog::info("Output buffer '{}' will overwrite {}", name, output_file.native());
+        spdlog::info("Output buffer '{}' will overwrite {}", name, output_file.string());
     }
-    return output_file;
+    return output_file.string();
 }
 
 void resolve_buffer_filenames(execution_context_t& context)
@@ -343,23 +343,29 @@ bool build_kernel(execution_context_t& context)
 {
     finalize_kernel_function_name(context);
     const auto& source_file = context.options.kernel.source_file;
-    spdlog::debug("Reading the kernel from {}", source_file.native());
+    spdlog::debug("Reading the kernel from {}", source_file.string());
     auto kernel_source_buffer = util::read_file_as_null_terminated_string(source_file);
     auto kernel_source = static_cast<const char*>(kernel_source_buffer.data());
     bool build_succeeded;
 
     if (context.ecosystem == execution_ecosystem_t::cuda) {
+        auto source_file_ = source_file.string();
+        auto path_to_string = [](auto const& p) { return p.string(); };
+        auto finalized_include_dir_path_strings = util::transform<std::vector<string>>(
+            context.finalized_include_dir_paths,path_to_string);
+        auto preinclude_file_strings = util::transform<std::vector<string>>(
+            context.options.preinclude_files,path_to_string);
         auto result = build_cuda_kernel(
             *context.cuda.context,
-            source_file.c_str(),
+            source_file_.c_str(),
             kernel_source,
             context.options.kernel.function_name.c_str(),
             context.options.set_default_compilation_options,
             context.options.generate_debug_info,
             context.options.generate_source_line_info,
             context.language_standard,
-            context.finalized_include_dir_paths,
-            context.options.preinclude_files,
+            finalized_include_dir_path_strings,
+            preinclude_file_strings,
             context.preprocessor_definitions.finalized,
             context.options.extra_compilation_options);
         build_succeeded = result.succeeded;
@@ -657,7 +663,7 @@ void handle_execution_durations(execution_context_t &context)
         print_execution_durations(std::cout, context.durations);
     }
     if (not context.options.execution_durations_file.empty()) {
-        std::ofstream ofs(context.options.execution_durations_file);
+        std::ofstream ofs(context.options.execution_durations_file.string());
         print_execution_durations(ofs, context.durations);
     }
 }

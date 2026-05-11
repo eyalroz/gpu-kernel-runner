@@ -28,14 +28,14 @@ static host_buffers_t read_input_buffers_from_files(
         // to have already had names determined
         auto path = maybe_prepend_base_dir(buffer_directory, filenames.at(name).value());
         try {
-            spdlog::debug("Reading buffer '{}' from {}", name, path.native());
+            spdlog::debug("Reading buffer '{}' from {}", name, path.string());
             host_buffer_t buffer = util::read_input_file(path);
-            spdlog::debug("Have read buffer '{}': {} bytes from {}", name, buffer.size(), path.native());
+            spdlog::debug("Have read buffer '{}': {} bytes from {}", name, buffer.size(), path.string());
             spdlog::trace("... into a buffer at {}", static_cast<void*>(buffer.data()));
             result.emplace(name, std::move(buffer));
         }
         catch(std::exception& ex) {
-            spdlog::critical("Failed reading buffer '{}' from {}: {}", name, path.native(), ex.what());
+            spdlog::critical("Failed reading buffer '{}' from {}: {}", name, path.string(), ex.what());
             throw;
         }
     }
@@ -569,7 +569,7 @@ void write_data_to_file(
     bool                     log_at_info_level)
 {
     auto level = log_at_info_level ? spdlog::level::info : spdlog::level::debug;
-    spdlog::log(level, "Writing {} '{}' to file {}", kind, name, destination.c_str());
+    spdlog::log(level, "Writing {} '{}' to file {}", kind, name, destination.string());
     util::write_data_to_file(kind + " '" + name + "'", data, destination, overwrite_allowed);
 }
 

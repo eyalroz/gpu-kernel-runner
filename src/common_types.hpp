@@ -43,7 +43,7 @@ using valued_preprocessor_definitions_t = std::unordered_map<std::string, std::s
 using string_set = std::unordered_set<std::string>;
 using preprocessor_definitions_t = string_set;
 using argument_values_t = std::unordered_map<std::string, std::string>;
-using include_paths_t = std::vector<std::string>;
+using paths_t = std::vector<filesystem::path>;
 
 enum class execution_ecosystem_t {
     cuda = 0,

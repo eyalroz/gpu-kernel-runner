@@ -56,8 +56,8 @@ struct parsed_cmdline_options_t {
     // std::unordered_map<std::string, kernel_parameters::element_type_descriptor_t> buffer_channel_element_types;
 
     argument_values_t aliased_kernel_arguments;
-    include_paths_t include_dir_paths;
-    include_paths_t preinclude_files;
+    paths_t include_dir_paths;
+    paths_t preinclude_files;
     bool zero_output_buffers;
     bool clear_l2_cache;
     bool sync_after_kernel_execution;

@@ -155,9 +155,24 @@ foreach(tgt ${compiled-targets})
 	    CUDA_STANDARD 14
 	    CUDA_STANDARD_REQUIRED O
 	)
+	if (MSVC)
+		set_target_properties(${tgt} PROPERTIES CXX_STANDARD 17)
+		target_compile_definitions(${tgt} PRIVATE
+			"_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING"
+			"_CRT_SECURE_NO_WARNINGS"
+			"_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING"
+			)
+		target_compile_options(${tgt} PRIVATE
+			"/Zc:__cplusplus" # ensure the __cplusplus macro is defined
+			"/permissive-" # Make MSVC's preprocessor behave more properly
+			"/utf-8" # Interpret text as UTF-8
+			"/EHs" # Exception stack unwinding
+		)
+		target_link_options(${tgt} PUBLIC "/NODEFAULTLIB:LIBCMT" "/NODEFAULTLIB:LIBCMT.lib")
+	endif()
 	# Give some special treatment to libraries we didn't write
 	target_include_directories(${tgt} SYSTEM PRIVATE third-party)
-	target_include_directories(${tgt} PRIVATE src src/cuda-samples-helpers)
+	target_include_directories(${tgt} PRIVATE src)
 	target_warning_options(${tgt})
 	target_link_libraries(
 		${tgt}
@@ -172,7 +187,6 @@ target_link_libraries(
 	kernel-runner
 	PRIVATE
 	spdlog::spdlog
-	stdc++fs # For std::filesystem / std::experimental::filesystem
 	CUDA::cudart
 	CUDA::cuda_driver
 	CUDA::nvrtc
@@ -180,6 +194,9 @@ target_link_libraries(
 	CUDA::OpenCL
 	)
 
+if (NOT MSVC)
+	target_link_libraries(kernel-runner PRIVATE stdc++fs)
+endif()
 
 ####################
 ##  Installation  ##

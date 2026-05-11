@@ -4,6 +4,10 @@
 #include <cuda/api/device.hpp>
 #include <spdlog/common.h>
 
+#ifdef _MSC_VER
+#include <iso646.h>
+#endif
+
 template <>
 void ensure_gpu_device_validity_<execution_ecosystem_t::opencl>(
     optional<unsigned> platform_id, int device_id, bool)

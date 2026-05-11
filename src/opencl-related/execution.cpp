@@ -2,6 +2,10 @@
 #include "execution.hpp"
 #include "../util/spdlog-extra.hpp"
 
+#ifdef _MSC_VER
+#include <iso646.h>
+#endif
+
 template <execution_ecosystem_t ecosystem>
 void validate_launch_configuration_(execution_context_t const& context);
 

@@ -12,6 +12,10 @@
 #include <unordered_set>
 #include <vector>
 
+#ifdef _MSC_VER
+#include <iso646.h>
+#endif
+
 using util::byte_type;
 using util::memory_region;
 using util::const_memory_region;

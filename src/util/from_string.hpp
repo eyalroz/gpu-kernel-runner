@@ -4,6 +4,10 @@
 #include <string>
 #include <stdexcept>
 
+#ifdef _MSC_VER
+#include <iso646.h>
+#endif
+
 namespace util {
 
 // Poor man's boost::lexical_cast... :-(

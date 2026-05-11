@@ -2,6 +2,9 @@
 #define KERNEL_RUNNER_OPENCL_TYPES_HPP_
 
 #include "../util/warning_suppression.hpp"
+#ifdef _MSC_VER
+#include <ciso646>
+#endif
 
 #define CL_TARGET_OPENCL_VERSION 300
 #define __CL_ENABLE_EXCEPTIONS
@@ -15,6 +18,10 @@ DISABLE_WARNING_POP
 #include <chrono>
 #include <array>
 #include <cassert>
+
+#ifdef _MSC_VER
+#include <iso646.h>
+#endif
 
 using opencl_duration_type = std::chrono::duration<std::uint64_t, std::nano>;
 static_assert(sizeof(std::uint64_t) == sizeof(cl_ulong), "Unexpected size for cl_ulong");

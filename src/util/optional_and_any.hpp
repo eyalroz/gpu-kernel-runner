@@ -3,6 +3,10 @@
 
 #include <type_traits>
 
+#ifdef _MSC_VER
+#include <iso646.h>
+#endif
+
 #if __cplusplus >= 201703L
 #include <optional>
 #include <any>

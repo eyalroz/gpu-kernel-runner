@@ -1,5 +1,9 @@
 #include "filesystem.hpp"
 
+#ifdef _MSC_VER
+#include <iso646.h>
+#endif
+
 filesystem::path maybe_prepend_base_dir(
     const filesystem::path& prefix,
     const filesystem::path& suffix_or_absolute_path)

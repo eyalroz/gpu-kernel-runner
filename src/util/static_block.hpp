@@ -70,10 +70,15 @@
 #define STATIC_BLOCK_IMPL1(prefix) \
 	STATIC_BLOCK_IMPL2(CONCATENATE_FOR_STATIC_BLOCK(prefix,_fn),CONCATENATE_FOR_STATIC_BLOCK(prefix,_var))
 
+#ifndef _MSC_VER
+#define ATTRIBUTE_UNUSED __attribute((unused))
+#else
+#define ATTRIBUTE_UNUSED
+#endif
+
 #define STATIC_BLOCK_IMPL2(function_name,var_name) \
 static void function_name(); \
-static int var_name __attribute((unused)) = (function_name(), 0) ; \
+static int var_name ATTRIBUTE_UNUSED = (function_name(), 0) ; \
 static void function_name()
-
 
 #endif /* STATIC_BLOCK_HPP_ */

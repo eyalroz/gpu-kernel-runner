@@ -1,8 +1,7 @@
-
 #include "build.hpp"
 #include "ugly_error_handling.hpp"
 
-
+#include <sstream>
 
 // TODO: Use the generated PTX for the device index!
 std::string obtain_ptx(const cl::Program &built_program, device_id_t device_id)

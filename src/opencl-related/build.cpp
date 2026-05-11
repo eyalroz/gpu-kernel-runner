@@ -160,7 +160,7 @@ opencl_compilation_result_t build_opencl_kernel(
 
     try {
         program.build(wrapped_device, build_options.c_str());
-    } catch(cl::Error& e) {
+    } catch(cl::Error&) {
         cl_build_status status = program.getBuildInfo<CL_PROGRAM_BUILD_STATUS>(device);
         (status == CL_BUILD_NONE or status == CL_BUILD_IN_PROGRESS) and die(
             "Unexpected OpenCL build status encountered: Expected either success or failure");

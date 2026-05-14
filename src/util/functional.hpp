@@ -167,7 +167,11 @@ OutContainer transform_if(InContainer in_container, Predicate pred, UnaryOperato
 
 /// Create a map from any container, by extracting/deriving a key from each of its values
 template<template <typename, typename, typename...> class Map, typename Container, typename KeyExtractor>
+#if __cplusplus < 201703L
 Map<std::result_of_t<KeyExtractor(typename Container::value_type)>, typename Container::value_type>
+#else
+Map<std::invoke_result_t<KeyExtractor,typename Container::value_type>, typename Container::value_type>
+#endif
 to_map(const Container& container, KeyExtractor key_extractor)
 {
     using mapped_type = typename Container::value_type;

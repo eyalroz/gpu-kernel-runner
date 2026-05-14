@@ -10,6 +10,7 @@
 #include <climits>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 using util::byte_type;
 using util::memory_region;

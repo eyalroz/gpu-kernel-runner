@@ -42,6 +42,8 @@
 //
 #define __local_array __local
 #define __local_ptr __local
+#define __local_variable __local
+#define __local_var __local
 
 // constexpr in C++ is mostly-discretionary; in OpenCL C we'll just
 // ignore it

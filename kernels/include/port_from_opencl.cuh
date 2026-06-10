@@ -167,6 +167,7 @@ float nanf( const char * );
 // definitions with something ecosystem-specific as necessary.
 #define __local_array __shared__
 #define __local_variable __shared__
+#define __local_var __shared__
 #define __local_ptr
 
 // This next definition is for "emulating" constexpr in OpenCL - or

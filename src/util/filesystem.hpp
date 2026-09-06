@@ -38,6 +38,13 @@ enum path_check_kind { for_reading, for_writing, for_recursion };
 
 bool has_permission(const filesystem::path& path, path_check_kind permissions_kind);
 
-void verify_path(const filesystem::path& path, path_check_kind check_kind, bool allow_overwrite);
+enum {
+    overwrite_allowed = true,
+    overwrite_is_allowed = true,
+    overwrite_disallowed = false,
+    overwrite_not_allowed = false,
+};
+
+void validate_path(const filesystem::path& path, path_check_kind check_kind, bool allow_overwrite = false);
 
 #endif // UTIL_FILESYSTEM_HPP_

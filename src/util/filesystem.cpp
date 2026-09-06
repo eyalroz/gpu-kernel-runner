@@ -34,7 +34,7 @@ bool has_permission(const filesystem::path& path, path_check_kind permissions_ki
 #endif
 }
 
-void verify_path(const filesystem::path& path, path_check_kind check_kind, bool allow_overwrite)
+void validate_path(const filesystem::path& path, path_check_kind check_kind, bool allow_overwrite)
 {
     // TODO: Consider checking path execution permissions down to the parent directory
     if (filesystem::exists(path)) {

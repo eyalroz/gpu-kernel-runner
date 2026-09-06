@@ -2,14 +2,9 @@
 
 namespace util {
 
-inline void verify_input_path(const filesystem::path& path)
-{
-    return verify_path(path, for_reading, false);
-}
-
 std::vector<byte_type> read_input_file(const filesystem::path& src, size_t extra_buffer_size)
 {
-    verify_input_path(src);
+    validate_path(src, for_reading);
     auto file_size = filesystem::file_size(src);
     auto buffer_size = file_size + extra_buffer_size;
     std::ifstream file(src.string(), std::ios::binary | std::ios::ate);
@@ -42,7 +37,7 @@ void write_data_to_file(
     filesystem::path    destination,
     bool                overwrite_allowed)
 {
-    verify_path(destination, for_writing, overwrite_allowed);
+    validate_path(destination, for_writing, overwrite_allowed);
     auto file = std::fstream(destination.string(), std::ios::out | std::ios::binary);
     try {
         file.exceptions(std::ios::failbit | std::ios::badbit);

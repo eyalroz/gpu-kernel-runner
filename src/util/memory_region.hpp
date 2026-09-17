@@ -1,7 +1,8 @@
-#ifndef GPU_KERNEL_RUNNER_UTIL_SPAN_HPP_
-#define GPU_KERNEL_RUNNER_UTIL_SPAN_HPP_
 
-#include <stdlib.h> // for std::size_t
+#ifndef UTIL_MEMORY_REGION_HPP_
+#define UTIL_MEMORY_REGION_HPP_
+
+#include <type_traits>
 
 namespace util {
 
@@ -40,7 +41,7 @@ struct memory_region {
 };
 
 template <typename ContiguousContainer>
-inline auto as_region(ContiguousContainer& container)
+auto as_region(ContiguousContainer& container)
 {
     using region_type = typename std::conditional_t<
         std::is_const<std::remove_reference_t<decltype(*(container.data()))>>::value,
@@ -52,4 +53,4 @@ inline auto as_region(ContiguousContainer& container)
 } // namespace util
 
 
-#endif // GPU_KERNEL_RUNNER_UTIL_SPAN_HPP_
+#endif // UTIL_MEMORY_REGION_HPP_

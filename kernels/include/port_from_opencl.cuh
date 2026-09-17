@@ -176,6 +176,12 @@ float nanf( const char * );
 // with CUDA actually producing `constexpr`, and OpenCL using `__constant`
 #define CONSTEXPR_OR_CONSTANT_MEM constexpr const
 
+// Both OpenCL and CUDA support a "constant" memory space; it differs from
+// global memory by the hardware used to access it, which is designed to
+// better support reads without having to worry about caching and propagation
+// of changes
+#define __constant __constant__
+
 #define CLK_LOCAL_MEM_FENCE 0
 
 template <typename T>

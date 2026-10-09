@@ -14,9 +14,9 @@ std::vector<byte_type> read_input_file(const filesystem::path& src, size_t extra
         std::vector<byte_type> result(buffer_size);
         file.read(result.data(), (std::streamsize) file_size);
         return result;
-    } catch (std::ios_base::failure& ios_failure) {
+    } catch (std::ios_base::failure&) {
         if (errno == 0) {
-            throw ios_failure;
+            throw;
         }
         throw std::system_error(errno, std::generic_category(),
             "trying to read " + std::to_string(file_size) + " from file " + src.string());

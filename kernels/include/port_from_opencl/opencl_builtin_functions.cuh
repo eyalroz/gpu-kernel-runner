@@ -970,19 +970,18 @@ int signbit(half x) noexcept
 // we only work on scalars; see the vectorized/ subdirectory
 
 #ifdef PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
-double vload_half(size_t offset, const half *p) { return __half2double(*(p + offset)); }
-void vstore_half(double data, size_t offset, half *p)      { *(p + offset) = __double2half(data); }
-void vstore_half_rte(double data, size_t offset, half *p)  { *(p + offset) = __double2half_rn(data); }
-void vstore_half_rtz(double data, size_t offset, half *p)  { *(p + offset) = __double2half_rz(data); }
-void vstore_half_rtp(double data, size_t offset, half *p)  { *(p + offset) = __double2half_ru(data); }
-void vstore_half_rtn(double data, size_t offset, half *p)  { *(p + offset) = __double2half_rd(data); }
+void vstore_half(double data, size_t offset, half *p)      { *(p + offset) = __double2half(data); /* perhaps just assign? */ }
+
+// Note: the rounding-mode-specific vstore_half functions (rte,rtz,rtp,rtn) are  unavailable,
+// as CUDA does not have rounding-mode-specific variants of __double2half
 
 float vload_half(size_t offset, const half *p) { return __half2float(*(p + offset)); }
-void vstore_half(float data, size_t offset, half *p)      { *(p + offset) = __float2half(data); }
+void vstore_half(float data, size_t offset, half *p)      { *(p + offset) = __float2half(data); /* perhaps just assign? */ }
 void vstore_half_rte(float data, size_t offset, half *p)  { *(p + offset) = __float2half_rn(data); }
 void vstore_half_rtz(float data, size_t offset, half *p)  { *(p + offset) = __float2half_rz(data); }
 void vstore_half_rtp(float data, size_t offset, half *p)  { *(p + offset) = __float2half_ru(data); }
 void vstore_half_rtn(float data, size_t offset, half *p)  { *(p + offset) = __float2half_rd(data); }
+
 #endif // PORT_FROM_OPENCL_ENABLE_HALF_PRECISION
 
 // §6.15.8. Synchronization Functions
@@ -994,21 +993,39 @@ typedef enum {
     CLK_IMAGE_MEM_FENCE // CUDA doesn't really support this AFAICT
 } cl_mem_fence_flags;
 
-void work_group_barrier(cl_mem_fence_flags flags)
+typedef enum {
+    memory_scope_work_item,
+    memory_scope_sub_group,
+    memory_scope_work_group,
+    memory_scope_device,
+    memory_scope_all_svm_devices,
+    memory_scope_all_devices
+} memory_scope;
+
+void work_group_barrier(cl_mem_fence_flags flags, memory_scope scope = memory_scope_work_group)
 {
+    switch (scope) {
+    case memory_scope_device:
+    case memory_scope_all_svm_devices:
+    case memory_scope_all_devices:
+        // CUDA does not - AFAICT - offer such functionality.
+        asm("trap;");
+    default:
+    }
     __syncthreads();
 }
 void barrier(cl_mem_fence_flags flags) { return work_group_barrier(flags); }
-// void work_group_barrier(cl_mem_fence_flags flags, memory_scope scope);
 
 // Note: Subgroups are not supported in CUDA
 
 // §6.15.9. Legacy Explicit Memory Fence Functions
 // --------------------------------------------------------------
 
-// void mem_fence(cl_mem_fence_flags flags);
-// void read_mem_fence(cl_mem_fence_flags flags);
-// void write_mem_fence(cl_mem_fence_flags flags);
+// Note: CUDA does not distinguish read vs write fencing, nor local-vs-global memory fencing
+
+void mem_fence(cl_mem_fence_flags) { __threadfence_block(); }
+void read_mem_fence(cl_mem_fence_flags flags) { __threadfence_block(); }
+void write_mem_fence(cl_mem_fence_flags flags) { __threadfence_block(); }
 
 // §6.15.10. Address Space Qualifier Functions - not implemented,
 // since CUDA does not use explicit address space qualifiers on
@@ -1016,6 +1033,39 @@ void barrier(cl_mem_fence_flags flags) { return work_group_barrier(flags); }
 
 // §6.15.11. Async Copies From Global to Local Memory, Local to Global Memory, and Prefetch
 // --------------------------------------------------------------
+
+event_t async_work_group_copy( gentype *dst, const __local gentype *src, size_t num_gentypes, event_t event)
+event_t async_work_group_strided_copy(gentype *dst, const __local gentype *src, size_t num_gentypes, size_t dst_stride, event_t event)
+void wait_group_events(int num_events, event_t *event_list)
+void prefetch(const __global gentype *p, size_t num_gentypes)
+void async_work_group_copy_fence(cl_mem_fence_flags flags)
+// async_work_group_strided_copy
+
+event_t async_work_group_copy_2D2D(
+  __global void *dst,
+  size_t dst_offset,
+  const __local void *src,
+  size_t src_offset,
+  size_t num_bytes_per_element,
+  size_t num_elements_per_line,
+  size_t num_lines,
+  size_t src_total_line_length,
+  size_t dst_total_line_length,
+  event_t event)
+event_t async_work_group_copy_3D3D(
+  __global void *dst,
+  size_t dst_offset,
+  const __local void *src,
+  size_t src_offset,
+  size_t num_bytes_per_element,
+  size_t num_elements_per_line,
+  size_t num_lines,
+  size_t num_planes,
+  size_t src_total_line_length,
+  size_t src_total_plane_area,
+  size_t dst_total_line_length,
+  size_t dst_total_plane_area,
+  event_t event)
 
 // §6.15.12. Atomic Functions
 // --------------------------------------------------------------

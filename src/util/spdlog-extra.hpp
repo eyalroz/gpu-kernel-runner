@@ -52,6 +52,7 @@ template <typename... Ts>
     if(not message_format_string.empty()) {
         spdlog::critical(message_format_string, std::forward<Ts>(args)...);
     }
+    spdlog::shutdown();
     exit(EXIT_FAILURE);
 }
 

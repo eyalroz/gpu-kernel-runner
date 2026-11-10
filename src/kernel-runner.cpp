@@ -49,20 +49,27 @@ void collect_include_paths(execution_context_t& context)
 {
     // Note the relative order in which we place the includes; it is non-trivial.
     context.finalized_include_dir_paths = context.options.include_dir_paths;
-    if (not context.options.set_default_compilation_options) {
-        return;
+    if (context.options.set_default_compilation_options) {
+        auto source_file_include_dir = context.options.kernel.source_file.parent_path();
+        if (source_file_include_dir.empty()) {
+            // We can't rely on the dynamic compilation libraries accepting empty paths.
+            // ... and note that "." is guaranteed to be portable to any platform
+            source_file_include_dir = filesystem::path{"."};
+        }
+        context.finalized_include_dir_paths.insert(context.finalized_include_dir_paths.begin(), source_file_include_dir.string());
+
+        auto ecosystem_include_paths = get_ecosystem_include_paths(context);
+        util::append(ecosystem_include_paths, context.finalized_include_dir_paths);
     }
 
-    auto source_file_include_dir = context.options.kernel.source_file.parent_path();
-    if (source_file_include_dir.empty()) {
-        // We can't rely on the dynamic compilation libraries accepting empty paths.
-        // ... and note that "." is guaranteed to be portable to any platform
-        source_file_include_dir = filesystem::path{"."};
+    for (const auto& path : context.finalized_include_dir_paths) {
+        if (not filesystem::exists(path)) {
+            spdlog::info("Include search path does not exist: {}", path.string());
+        }
+        else if (not filesystem::is_directory(path)) {
+            spdlog::info("Include search path is not a directory: {}", path.string());
+        }
     }
-    context.finalized_include_dir_paths.insert(context.finalized_include_dir_paths.begin(), source_file_include_dir.string());
-
-    auto ecosystem_include_paths = get_ecosystem_include_paths(context);
-    util::append(ecosystem_include_paths, context.finalized_include_dir_paths);
 }
 
 std::string resolve_input_buffer_filename(
